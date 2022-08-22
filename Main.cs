@@ -44,7 +44,7 @@ try
                     new ClientSocket(socket, Running).Start();
                 });
                 // 接收客户端消息
-                Receive(socket);
+                Read(socket);
                 // 发送给客户端消息
                 Send(socket);
             }
@@ -87,24 +87,28 @@ Console.WriteLine("服务器已关闭，按任意键退出程序。");
 Console.ReadKey();
 
 
-static void Receive(Socket socket)
+void Read(Socket socket)
 {
-    byte[] bytes = new byte[1024];
-    //从客户端接收消息
-    int len = socket.Receive(bytes, bytes.Length, 0);
-    //将消息转为字符串
-    string recvStr = Encoding.ASCII.GetString(bytes, 0, len);
-    Console.WriteLine("接收的客户端消息 ： {0}", recvStr);
+    // 接收客户端消息
+    byte[] buffer = new byte[2048];
+    int length = socket.Receive(buffer);
+    if (length > 0)
+    {
+        string msg = Encoding.GetEncoding("unicode").GetString(buffer, 0, length);
+        Console.WriteLine("收到来自：客户端 -> " + msg);
+    }
+    else
+        Console.WriteLine("客户端没有回应。");
 }
 
 void Send(Socket socket)
 {
-    string sendStr = ">> 服务器"  + host + ":" + port + "连接成功";
-    Console.WriteLine("发送给客户端消息 ： {0}", sendStr);
-    // 将字符串消息转为数组
-    byte[] bytes = Encoding.ASCII.GetBytes(sendStr);
-    //发送消息给客户端
-    socket.Send(bytes, bytes.Length, 0);
+    // 发送消息给客户端
+    string msg = ">> 已连接至服务器 -> [ " + host + " ] 连接成功";
+    Console.WriteLine("发送给：客户端 <- " + msg);
+    byte[] buffer = new byte[2048];
+    buffer = Encoding.GetEncoding("unicode").GetBytes(msg);
+    socket.Send(buffer);
 }
 
 bool IsIP(string ip)
