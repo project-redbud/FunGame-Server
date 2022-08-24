@@ -5,27 +5,27 @@ using System.Text.RegularExpressions;
 using System;
 using FunGameServer.Sockets;
 using System.Net.WebSockets;
+using FunGameServer.Models.Config;
 
 bool Running = true;
 Socket? ServerSocket = null;
 
-string host = "127.0.0.1";
-int port = 22222;
+string host = Config.SERVER_IPADRESS;
+int port = Config.SERVER_PORT;
 
 try
 {
     Task t = Task.Factory.StartNew(() =>
     {
         // 创建IP地址终结点对象
-        IPAddress ip = IPAddress.Parse(host);
-        IPEndPoint ipe = new IPEndPoint(ip, port);
+        IPEndPoint ip = new(IPAddress.Parse(host), port);
 
         // 创建TCP Socket对象并绑定终结点
         ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        ServerSocket.Bind(ipe);
+        ServerSocket.Bind(ip);
 
         // 开始监听连接
-        ServerSocket.Listen(0);
+        ServerSocket.Listen(Config.MAX_PLAYERS);
         Console.WriteLine("服务器启动成功，正在监听 . . .");
 
         while (Running)
@@ -39,14 +39,16 @@ try
                     Console.WriteLine("客户端" + clientIP.ToString() + "连接 . . .");
                 else
                     Console.WriteLine("未知地点客户端连接 . . .");
-                Task.Factory.StartNew(() =>
-                {
-                    new ClientSocket(socket, Running).Start();
-                });
-                // 接收客户端消息
-                Read(socket);
-                // 发送给客户端消息
-                Send(socket);
+                if (Read(socket) && Send(socket))
+                    Task.Factory.StartNew(() =>
+                    {
+                        new ClientSocket(socket, Running).Start();
+                    });
+                else
+                    if (clientIP != null)
+                        Console.WriteLine("客户端" + clientIP.ToString() + "连接失败。");
+                    else
+                    Console.WriteLine("客户端连接失败。");
             }
             catch (Exception e)
             {
@@ -87,7 +89,7 @@ Console.WriteLine("服务器已关闭，按任意键退出程序。");
 Console.ReadKey();
 
 
-void Read(Socket socket)
+bool Read(Socket socket)
 {
     // 接收客户端消息
     byte[] buffer = new byte[2048];
@@ -95,20 +97,28 @@ void Read(Socket socket)
     if (length > 0)
     {
         string msg = Encoding.GetEncoding("unicode").GetString(buffer, 0, length);
-        Console.WriteLine("收到来自：客户端 -> " + msg);
+        Console.WriteLine("收到来自：客户端（玩家ID） -> " + msg);
+        return true;
     }
     else
         Console.WriteLine("客户端没有回应。");
+    return false;
 }
 
-void Send(Socket socket)
+bool Send(Socket socket)
 {
     // 发送消息给客户端
     string msg = ">> 已连接至服务器 -> [ " + host + " ] 连接成功";
-    Console.WriteLine("发送给：客户端 <- " + msg);
     byte[] buffer = new byte[2048];
     buffer = Encoding.GetEncoding("unicode").GetBytes(msg);
-    socket.Send(buffer);
+    if (socket.Send(buffer) > 0)
+    {
+        Console.WriteLine("发送给：客户端 <- " + msg);
+        return true;
+    }
+    else
+        Console.WriteLine("无法传输数据，与客户端的连接可能丢失。");
+    return false;
 }
 
 bool IsIP(string ip)
