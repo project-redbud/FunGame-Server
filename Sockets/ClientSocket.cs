@@ -6,6 +6,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using System.Data.SqlTypes;
 
 namespace FunGameServer.Sockets
 {
@@ -20,126 +21,116 @@ namespace FunGameServer.Sockets
             Running = running;
         }
 
-        bool Read(Socket socket)
+        private int FailedTimes = 0; // 超过一定次数断开连接
+
+        private bool Read(Socket socket)
         {
             // 接收客户端消息
-            byte[] buffer = new byte[2048];
-            int length = socket.Receive(buffer);
-            if (length > 0)
+            try
             {
-                string type = Encoding.GetEncoding("unicode").GetString(buffer, 0, length);
-                Console.Write("收到来自：客户端（" + type + "） -> ");
-                buffer = new byte[2048];
-                length = socket.Receive(buffer);
+                byte[] buffer = new byte[2048];
+                int length = socket.Receive(buffer);
                 if (length > 0)
                 {
-                    string msg = Encoding.GetEncoding("unicode").GetString(buffer, 0, length);
-                    Console.WriteLine(msg);
-                    int getType = Convert.ToInt32(type);
-                    if (getType == (int)SocketEnums.ReadType.HeartBeat) // 检测心跳包
-                        Send(socket, getType, msg);
-                    return true;
+                    string msg = Encoding.GetEncoding(Config.DEFAULT_ENCODING).GetString(buffer, 0, length);
+                    int type = GetType(msg);
+                    msg = GetMessage(msg);
+                    Console.Write("收到来自：客户端（" + type + "） -> " + msg);
+                    buffer = new byte[2048];
+                    length = socket.Receive(buffer);
+                    switch (type)
+                    {
+                        case (int)SocketEnums.ReadType.Login:
+                            break;
+                        case (int)SocketEnums.ReadType.CheckLogin:
+                            break;
+                        case (int)SocketEnums.ReadType.Logout:
+                            break;
+                        case (int)SocketEnums.ReadType.HeartBeat:
+                            break;
+                    }
+                    if (Send(socket, type, msg))
+                        return true;
+                    throw new Exception();
                 }
-                else
-                    Console.WriteLine("客户端没有回应。");
+                throw new Exception();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("ERROR：客户端没有回应。\n" + e.StackTrace);
                 return false;
             }
-            else
-                Console.WriteLine("客户端没有回应。");
-            return false;
         }
 
-        bool Send(Socket socket, int type, string msg)
+        private bool Send(Socket socket, int type, string msg, object[]? objs = null)
         {
             // 发送消息给客户端
-            byte[] buffer = new byte[2048];
-            buffer = Encoding.GetEncoding("unicode").GetBytes(Convert.ToString(type));
-            if (socket.Send(buffer) > 0)
+            try
             {
-                Console.Write("发送给：客户端（" + type + "） <- ");
-                buffer = new byte[2048];
-                buffer = Encoding.GetEncoding("unicode").GetBytes(msg);
+                string send = MakeMessage(type, msg);
+                byte[] buffer = new byte[2048];
+                buffer = Encoding.GetEncoding(Config.DEFAULT_ENCODING).GetBytes(Convert.ToString(send));
                 if (socket.Send(buffer) > 0)
                 {
-                    Console.WriteLine("发送给：客户端（" + msg + "） <- ");
+                    Console.WriteLine("发送给：客户端（" + type + "） <- " + msg);
                     return true;
                 }
-                else
-                Console.WriteLine("无法传输数据，与客户端的连接可能丢失。");
+                throw new Exception();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("ERROR：客户端没有回应。" + e.StackTrace);
                 return false;
             }
-            else
-                Console.WriteLine("无法传输数据，与客户端的连接可能丢失。");
-            return false;
+        }
+
+        private int GetType(string msg)
+        {
+            return Convert.ToInt32(msg[..(msg.IndexOf(';') - 1)]);
+        }
+
+        private string GetMessage(string msg)
+        {
+            return msg.Substring(msg.IndexOf(';') + 1, msg.Length - 1);
+        }
+
+        private string MakeMessage(int type, string msg)
+        {
+            return type + ";" + msg;
         }
 
         public void Start()
         {
-            Task StringStream = Task.Factory.StartNew(() =>
+            Task StreamReader = Task.Factory.StartNew(() =>
             {
-                CreateStringStream();
-            });
-            Task IntStream = Task.Factory.StartNew(() =>
-            {
-                CreateStringStream();
-            });
-            Task DecimalStream = Task.Factory.StartNew(() =>
-            {
-                CreateDecimalStream();
-            });
-            Task ObjectStream = Task.Factory.StartNew(() =>
-            {
-                CreateObjectStream();
+                CreateStreamReader();
             });
         }
 
-        private void CreateStringStream()
+        private void CreateStreamReader()
         {
             Thread.Sleep(1000);
-            Console.WriteLine("Creating: StringStream...OK");
+            Console.WriteLine("Creating: StreamReader...OK");
             while (Running)
             {
                 if (Socket != null)
-                    Read(Socket);
+                    if (!Read(Socket))
+                    {
+                        FailedTimes++;
+                        if (FailedTimes >= Config.MAX_CONNECTFAILED)
+                        {
+                            Console.WriteLine("ERROR: Too Many Faileds.");
+                            Console.WriteLine("DONE: StringStream is Closed.");
+                            break;
+                        }
+                    }
+                    else if (FailedTimes - 1 >= 0) FailedTimes--;
                 else
                 {
                     Console.WriteLine("ERROR: Socket is Closed.");
                     Console.WriteLine("DONE: StringStream is Closed.");
                     break;
                 }
-            }
-        }
-
-        private void CreateIntStream()
-        {
-            Thread.Sleep(1000);
-            Console.WriteLine("Creating: IntStream...OK");
-            while (Running)
-            {
-                Console.WriteLine("DONE: IntStream is Closed.");
-                break;
-            }
-        }
-        
-        private void CreateDecimalStream()
-        {
-            Thread.Sleep(1000);
-            Console.WriteLine("Creating: DecimalStream...OK");
-            while (Running)
-            {
-                Console.WriteLine("DONE: DecimalStream is Closed.");
-                break;
-            }
-        }
-        
-        private void CreateObjectStream()
-        {
-            Thread.Sleep(1000);
-            Console.WriteLine("Creating: ObjectStream...OK");
-            while (Running)
-            {
-                Console.WriteLine("DONE: ObjectStream is Closed.");
-                break;
             }
         }
     }

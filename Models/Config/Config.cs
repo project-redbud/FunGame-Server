@@ -16,6 +16,8 @@ namespace FunGameServer.Models.Config
         public static int CONNECTING_PLAYERS = 0; // 正在连接的玩家数量
         public static string SERVER_IPADRESS = "127.0.0.1"; // 默认IP地址
         public static int SERVER_PORT = 22222; // 默认端口
+        public static string DEFAULT_ENCODING = "unicode"; // 默认传输字符集
+        public static int MAX_CONNECTFAILED = 5; // 最大连接失败次数
 
         /// <summary>
         /// string: 玩家标识ID
