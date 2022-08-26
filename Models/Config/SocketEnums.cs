@@ -10,18 +10,26 @@ namespace FunGameServer.Models.Config
     {
         public enum SendType
         {
-            Login = 1,
-            CheckLogin = 2,
-            Logout = 3,
-            HeartBeat = 4,
+            GetNotice = 1,
+            Login = 2,
+            CheckLogin = 3,
+            Logout = 4,
+            HeartBeat = 5
         }
 
         public enum ReadType
         {
-            Login = 1,
-            CheckLogin = 2,
-            Logout = 3,
-            HeartBeat = 4,
+            GetNotice = 1,
+            Login = 2,
+            CheckLogin = 3,
+            Logout = 4,
+            HeartBeat = 5
         }
+
+        public static string SENDTYPE_GetNotice = "GetNotice";
+        public static string SENDTYPE_Login = "Login";
+        public static string SENDTYPE_CheckLogin = "CheckLogin";
+        public static string SENDTYPE_Logout = "Logout";
+        public static string SENDTYPE_HeartBeat = "HeartBeat";
     }
 }

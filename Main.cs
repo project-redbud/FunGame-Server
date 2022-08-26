@@ -6,6 +6,7 @@ using System;
 using FunGameServer.Sockets;
 using System.Net.WebSockets;
 using FunGameServer.Models.Config;
+using FunGameServer.Utils;
 
 bool Running = true;
 Socket? ServerSocket = null;
@@ -96,7 +97,7 @@ bool Read(Socket socket)
     int length = socket.Receive(buffer);
     if (length > 0)
     {
-        string msg = Encoding.GetEncoding("unicode").GetString(buffer, 0, length);
+        string msg = Config.DEFAULT_ENCODING.GetString(buffer, 0, length);
         Console.WriteLine("收到来自：客户端（玩家ID） -> " + msg);
         return true;
     }
@@ -110,7 +111,7 @@ bool Send(Socket socket)
     // 发送消息给客户端
     string msg = ">> 已连接至服务器 -> [ " + host + " ] 连接成功";
     byte[] buffer = new byte[2048];
-    buffer = Encoding.GetEncoding("unicode").GetBytes(msg);
+    buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketEnums.SendType.CheckLogin, msg));
     if (socket.Send(buffer) > 0)
     {
         Console.WriteLine("发送给：客户端 <- " + msg);
