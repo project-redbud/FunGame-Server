@@ -11,15 +11,17 @@ using FunGameServer.Utils;
 bool Running = true;
 Socket? ServerSocket = null;
 
-string host = Config.SERVER_IPADRESS;
+string hostname = Config.SERVER_NAME;
 int port = Config.SERVER_PORT;
+
+Console.Title = Config.CONSOLE_TITLE;
 
 try
 {
     Task t = Task.Factory.StartNew(() =>
     {
         // 创建IP地址终结点对象
-        IPEndPoint ip = new(IPAddress.Parse(host), port);
+        IPEndPoint ip = new(IPAddress.Any, port);
 
         // 创建TCP Socket对象并绑定终结点
         ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -27,7 +29,7 @@ try
 
         // 开始监听连接
         ServerSocket.Listen(Config.MAX_PLAYERS);
-        Console.WriteLine("服务器启动成功，正在监听 . . .");
+        Console.WriteLine(SocketHelper.GetPrefix() + "服务器启动成功，正在监听 . . .");
 
         while (Running)
         {
@@ -37,9 +39,9 @@ try
                 socket = ServerSocket.Accept();
                 IPEndPoint? clientIP = (IPEndPoint?)socket.RemoteEndPoint;
                 if (clientIP != null)
-                    Console.WriteLine("客户端" + clientIP.ToString() + "连接 . . .");
+                    Console.WriteLine(SocketHelper.GetPrefix() + "客户端" + clientIP.ToString() + "连接 . . .");
                 else
-                    Console.WriteLine("未知地点客户端连接 . . .");
+                    Console.WriteLine(SocketHelper.GetPrefix() + "未知地点客户端连接 . . .");
                 if (Read(socket) && Send(socket))
                     Task.Factory.StartNew(() =>
                     {
@@ -47,13 +49,13 @@ try
                     });
                 else
                     if (clientIP != null)
-                        Console.WriteLine("客户端" + clientIP.ToString() + "连接失败。");
+                        Console.WriteLine(SocketHelper.GetPrefix() + "客户端" + clientIP.ToString() + "连接失败。");
                     else
-                    Console.WriteLine("客户端连接失败。");
+                    Console.WriteLine(SocketHelper.GetPrefix() + "客户端连接失败。");
             }
             catch (Exception e)
             {
-                Console.WriteLine("ERROR: 客户端断开连接！\n" + e.StackTrace);
+                Console.WriteLine(SocketHelper.GetPrefix() + "ERROR: 客户端断开连接！\n" + e.StackTrace);
             }
         }
         
@@ -86,7 +88,7 @@ finally
     }
 }
 
-Console.WriteLine("服务器已关闭，按任意键退出程序。");
+Console.WriteLine(SocketHelper.GetPrefix() + "服务器已关闭，按任意键退出程序。");
 Console.ReadKey();
 
 
@@ -98,27 +100,34 @@ bool Read(Socket socket)
     if (length > 0)
     {
         string msg = Config.DEFAULT_ENCODING.GetString(buffer, 0, length);
-        Console.WriteLine("收到来自：客户端（玩家ID） -> " + msg);
-        return true;
+        string typestring = SocketHelper.GetTypeString(SocketHelper.GetType(msg));
+        msg = SocketHelper.GetMessage(msg);
+        if (typestring != SocketEnums.TYPE_UNKNOWN)
+        {
+            Console.WriteLine(SocketHelper.GetPrefix() + "[ 客户端（" + typestring + "）] -> " + msg);
+            return true;
+        }
+        Console.WriteLine(SocketHelper.GetPrefix() + "客户端发送了不符合FunGame规定的字符，拒绝连接。");
+        return false;
     }
     else
-        Console.WriteLine("客户端没有回应。");
+        Console.WriteLine(SocketHelper.GetPrefix() + "客户端没有回应。");
     return false;
 }
 
 bool Send(Socket socket)
 {
     // 发送消息给客户端
-    string msg = ">> 已连接至服务器 -> [ " + host + " ] 连接成功";
+    string msg = ">> 已连接至服务器 -> [ " + hostname + " ] 连接成功";
     byte[] buffer = new byte[2048];
-    buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketEnums.SendType.CheckLogin, msg));
+    buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketEnums.Type.CheckLogin, msg));
     if (socket.Send(buffer) > 0)
     {
-        Console.WriteLine("发送给：客户端 <- " + msg);
+        Console.WriteLine(SocketHelper.GetPrefix() + "[ 客户端 ] <- " + msg);
         return true;
     }
     else
-        Console.WriteLine("无法传输数据，与客户端的连接可能丢失。");
+        Console.WriteLine(SocketHelper.GetPrefix() + "无法传输数据，与客户端的连接可能丢失。");
     return false;
 }
 

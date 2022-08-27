@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Data.SqlTypes;
 using FunGameServer.Utils;
+using System.Reflection.Metadata;
+using FunGame.Models.Entity;
 
 namespace FunGameServer.Sockets
 {
@@ -15,6 +17,8 @@ namespace FunGameServer.Sockets
     {
         public bool Running { get; set; } = false;
         public Socket? Socket { get; set; } = null;
+
+        private User? user = null;
 
         public ClientSocket(Socket socket, bool running)
         {
@@ -35,19 +39,21 @@ namespace FunGameServer.Sockets
                 {
                     string msg = Config.DEFAULT_ENCODING.GetString(buffer, 0, length);
                     int type = SocketHelper.GetType(msg);
+                    string typestring = SocketHelper.GetTypeString(type);
                     msg = SocketHelper.GetMessage(msg);
-                    Console.WriteLine("收到来自：客户端（" + type + "） -> " + msg);
+                    Console.WriteLine(SocketHelper.GetPrefix() + "[ 客户端（" + typestring + "）] -> " + msg);
                     switch (type)
                     {
-                        case (int)SocketEnums.ReadType.GetNotice:
+                        case (int)SocketEnums.Type.GetNotice:
                             break;
-                        case (int)SocketEnums.ReadType.Login:
+                        case (int)SocketEnums.Type.Login:
                             break;
-                        case (int)SocketEnums.ReadType.CheckLogin:
+                        case (int)SocketEnums.Type.CheckLogin:
+                            return true;
+                        case (int)SocketEnums.Type.Logout:
                             break;
-                        case (int)SocketEnums.ReadType.Logout:
-                            break;
-                        case (int)SocketEnums.ReadType.HeartBeat:
+                        case (int)SocketEnums.Type.HeartBeat:
+                            msg = "";
                             break;
                     }
                     return Send(socket, type, msg);
@@ -56,7 +62,7 @@ namespace FunGameServer.Sockets
             }
             catch (Exception e)
             {
-                Console.WriteLine("ERROR：客户端没有回应。\n" + e.StackTrace);
+                Console.WriteLine(SocketHelper.GetPrefix() + "ERROR：客户端没有回应。\n" + e.StackTrace);
                 return false;
             }
         }
@@ -68,16 +74,20 @@ namespace FunGameServer.Sockets
             {
                 byte[] buffer = new byte[2048];
                 buffer = Config.DEFAULT_ENCODING.GetBytes(Convert.ToString(SocketHelper.MakeMessage(type, msg)));
+                string typestring = SocketHelper.GetTypeString(type);
                 if (socket.Send(buffer) > 0)
                 {
-                    Console.WriteLine("发送给：客户端（" + type + "） <- " + msg);
+                    if (msg != "")
+                        Console.WriteLine(SocketHelper.GetPrefix() + "[ 客户端（" + typestring + "）] <- " + msg);
+                    else
+                        Console.WriteLine(SocketHelper.GetPrefix() + "-> [ 客户端（" + typestring + "）]");
                     return true;
                 }
                 throw new Exception();
             }
             catch (Exception e)
             {
-                Console.WriteLine("ERROR：客户端没有回应。" + e.StackTrace);
+                Console.WriteLine(SocketHelper.GetPrefix() + "ERROR：客户端没有回应。" + e.StackTrace);
                 return false;
             }
         }
@@ -93,7 +103,7 @@ namespace FunGameServer.Sockets
         private void CreateStreamReader()
         {
             Thread.Sleep(1000);
-            Console.WriteLine("Creating: StreamReader...OK");
+            Console.WriteLine(SocketHelper.GetPrefix() + "Creating: StreamReader...OK");
             while (Running)
             {
                 if (Socket != null)
@@ -103,8 +113,8 @@ namespace FunGameServer.Sockets
                         FailedTimes++;
                         if (FailedTimes >= Config.MAX_CONNECTFAILED)
                         {
-                            Console.WriteLine("ERROR: Too Many Faileds.");
-                            Console.WriteLine("DONE: StreamReader is Closed.");
+                            Console.WriteLine(SocketHelper.GetPrefix() + "ERROR: Too Many Faileds.");
+                            Console.WriteLine(SocketHelper.GetPrefix() + "CLOSE: StreamReader is Closed.");
                             break;
                         }
                     }
@@ -112,8 +122,8 @@ namespace FunGameServer.Sockets
                 }
                 else
                 {
-                    Console.WriteLine("ERROR: Socket is Closed.");
-                    Console.WriteLine("DONE: StringStream is Closed.");
+                    Console.WriteLine(SocketHelper.GetPrefix() + "ERROR: Socket is Closed.");
+                    Console.WriteLine(SocketHelper.GetPrefix() + "CLOSE: StringStream is Closed.");
                     break;
                 }
             }

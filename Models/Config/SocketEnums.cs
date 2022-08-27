@@ -8,7 +8,7 @@ namespace FunGameServer.Models.Config
 {
     public static class SocketEnums
     {
-        public enum SendType
+        public enum Type
         {
             GetNotice = 1,
             Login = 2,
@@ -17,19 +17,11 @@ namespace FunGameServer.Models.Config
             HeartBeat = 5
         }
 
-        public enum ReadType
-        {
-            GetNotice = 1,
-            Login = 2,
-            CheckLogin = 3,
-            Logout = 4,
-            HeartBeat = 5
-        }
-
-        public static string SENDTYPE_GetNotice = "GetNotice";
-        public static string SENDTYPE_Login = "Login";
-        public static string SENDTYPE_CheckLogin = "CheckLogin";
-        public static string SENDTYPE_Logout = "Logout";
-        public static string SENDTYPE_HeartBeat = "HeartBeat";
+        public const string TYPE_UNKNOWN = "Unknown Type";
+        public const string TYPE_GetNotice = "GetNotice";
+        public const string TYPE_Login = "Login";
+        public const string TYPE_CheckLogin = "CheckLogin";
+        public const string TYPE_Logout = "Logout";
+        public const string TYPE_HeartBeat = "HeartBeat";
     }
 }
