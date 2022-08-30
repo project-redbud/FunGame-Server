@@ -18,7 +18,7 @@ namespace FunGameServer.Models.Config
         public static int SERVER_PORT = 22222; // 默认端口
         public static Encoding DEFAULT_ENCODING = Encoding.UTF8; // 默认传输字符集
         public static int MAX_CONNECTFAILED = 5; // 最大连接失败次数
-        public const string CONSOLE_TITLE = "FunGame Server";
+        public const string CONSOLE_TITLE = "FunGame Server"; // 控制台的标题
 
         /// <summary>
         /// string: 玩家标识ID

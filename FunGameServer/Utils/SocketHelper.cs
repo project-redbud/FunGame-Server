@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -52,6 +53,11 @@ namespace FunGameServer.Utils
         {
             DateTime now = System.DateTime.Now;
             return now.AddMilliseconds(-now.Millisecond).ToString() + " " + Config.SERVER_NAME + "：";
+        }
+
+        public static void WriteLine(string? msg)
+        {
+            Console.Write("\r" + msg + "\n\r> ");
         }
     }
 }

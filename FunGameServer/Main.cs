@@ -29,7 +29,7 @@ try
 
         // 开始监听连接
         ServerSocket.Listen(Config.MAX_PLAYERS);
-        Console.WriteLine(SocketHelper.GetPrefix() + "服务器启动成功，正在监听 . . .");
+        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "服务器启动成功，正在监听 . . .");
 
         while (Running)
         {
@@ -39,9 +39,9 @@ try
                 socket = ServerSocket.Accept();
                 IPEndPoint? clientIP = (IPEndPoint?)socket.RemoteEndPoint;
                 if (clientIP != null)
-                    Console.WriteLine(SocketHelper.GetPrefix() + "客户端" + clientIP.ToString() + "连接 . . .");
+                    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端" + clientIP.ToString() + "连接 . . .");
                 else
-                    Console.WriteLine(SocketHelper.GetPrefix() + "未知地点客户端连接 . . .");
+                    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "未知地点客户端连接 . . .");
                 if (Read(socket) && Send(socket))
                     Task.Factory.StartNew(() =>
                     {
@@ -49,13 +49,13 @@ try
                     });
                 else
                     if (clientIP != null)
-                        Console.WriteLine(SocketHelper.GetPrefix() + "客户端" + clientIP.ToString() + "连接失败。");
+                        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端" + clientIP.ToString() + "连接失败。");
                     else
-                    Console.WriteLine(SocketHelper.GetPrefix() + "客户端连接失败。");
+                    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端连接失败。");
             }
             catch (Exception e)
             {
-                Console.WriteLine(SocketHelper.GetPrefix() + "ERROR: 客户端断开连接！\n" + e.StackTrace);
+                SocketHelper.WriteLine(SocketHelper.GetPrefix() + "ERROR: 客户端断开连接！\n" + e.StackTrace);
             }
         }
         
@@ -63,7 +63,7 @@ try
 }
 catch (Exception e)
 {
-    Console.WriteLine(e.StackTrace);
+    SocketHelper.WriteLine(e.StackTrace);
     if (ServerSocket != null)
     {
         ServerSocket.Close();
@@ -76,6 +76,7 @@ finally
     {
         string? order = "";
         order = Console.ReadLine();
+        SocketHelper.WriteLine("\r> " + order);
         if (order != null && !order.Equals(""))
         {
             switch (order)
@@ -88,7 +89,7 @@ finally
     }
 }
 
-Console.WriteLine(SocketHelper.GetPrefix() + "服务器已关闭，按任意键退出程序。");
+SocketHelper.WriteLine(SocketHelper.GetPrefix() + "服务器已关闭，按任意键退出程序。");
 Console.ReadKey();
 
 
@@ -104,14 +105,14 @@ bool Read(Socket socket)
         msg = SocketHelper.GetMessage(msg);
         if (typestring != SocketEnums.TYPE_UNKNOWN)
         {
-            Console.WriteLine(SocketHelper.GetPrefix() + "[ 客户端（" + typestring + "）] -> " + msg);
+            SocketHelper.WriteLine(SocketHelper.GetPrefix() + "[ 客户端（" + typestring + "）] -> " + msg);
             return true;
         }
-        Console.WriteLine(SocketHelper.GetPrefix() + "客户端发送了不符合FunGame规定的字符，拒绝连接。");
+        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端发送了不符合FunGame规定的字符，拒绝连接。");
         return false;
     }
     else
-        Console.WriteLine(SocketHelper.GetPrefix() + "客户端没有回应。");
+        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端没有回应。");
     return false;
 }
 
@@ -123,11 +124,11 @@ bool Send(Socket socket)
     buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketEnums.Type.CheckLogin, msg));
     if (socket.Send(buffer) > 0)
     {
-        Console.WriteLine(SocketHelper.GetPrefix() + "[ 客户端 ] <- " + msg);
+        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "[ 客户端 ] <- " + msg);
         return true;
     }
     else
-        Console.WriteLine(SocketHelper.GetPrefix() + "无法传输数据，与客户端的连接可能丢失。");
+        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "无法传输数据，与客户端的连接可能丢失。");
     return false;
 }
 
