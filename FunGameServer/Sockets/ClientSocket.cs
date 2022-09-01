@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using System.Data.SqlTypes;
 using FunGameServer.Utils;
 using System.Reflection.Metadata;
-using FunGame.Models.Entity;
+using FunGame.Core.Api.Model.Entity;
 using System.Net;
 
 namespace FunGameServer.Sockets
