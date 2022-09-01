@@ -8,10 +8,30 @@
     <ApplicationIcon>logo.ico</ApplicationIcon>
     <PackageIcon>logo.ico</PackageIcon>
     <BaseOutputPath>C:\milimoe\FunGame\bin</BaseOutputPath>
+    <Title>FunGameServer</Title>
+    <Company>Milimoe</Company>
+    <Authors>Milimoe</Authors>
+    <PackageOutputPath>C:\milimoe\FunGame\bin</PackageOutputPath>
+    <AssemblyVersion>1.0</AssemblyVersion>
+    <FileVersion>1.0</FileVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <DebugType>embedded</DebugType>
   </PropertyGroup>
 
   <ItemGroup>
     <Content Include="logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="FunGame.Core.Api">
+      <HintPath>..\..\FunGame\bin\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

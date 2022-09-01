@@ -80,8 +80,6 @@ namespace FunGameServer.Sockets
                 {
                     if (msg != "")
                         SocketHelper.WriteLine(SocketHelper.GetPrefix() + "[ 客户端（" + typestring + "）] <- " + msg);
-                    //else
-                    //    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "-> [ 客户端（" + typestring + "）]");
                     return true;
                 }
                 throw new Exception();
