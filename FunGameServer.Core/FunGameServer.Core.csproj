@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
@@ -24,6 +24,12 @@
 
   <ItemGroup>
     <Folder Include="Implement\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="FunGame.Core.Api">
+      <HintPath>..\..\FunGame\bin\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
