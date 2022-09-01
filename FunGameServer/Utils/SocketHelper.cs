@@ -48,16 +48,5 @@ namespace FunGameServer.Utils
         {
             return type + ";" + msg;
         }
-
-        public static string GetPrefix()
-        {
-            DateTime now = System.DateTime.Now;
-            return now.AddMilliseconds(-now.Millisecond).ToString() + " " + Config.SERVER_NAME + "：";
-        }
-
-        public static void WriteLine(string? msg)
-        {
-            Console.Write("\r" + msg + "\n\r> ");
-        }
     }
 }

@@ -31,6 +31,7 @@
   <ItemGroup>
     <Reference Include="FunGame.Core.Api">
       <HintPath>..\..\FunGame\bin\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
+      <Private>True</Private>
     </Reference>
   </ItemGroup>
 

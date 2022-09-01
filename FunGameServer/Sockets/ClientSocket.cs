@@ -11,6 +11,7 @@ using FunGameServer.Utils;
 using System.Reflection.Metadata;
 using FunGame.Core.Api.Model.Entity;
 using System.Net;
+using static FunGame.Core.Api.Model.Enum.CommonEnums;
 
 namespace FunGameServer.Sockets
 {
@@ -42,7 +43,7 @@ namespace FunGameServer.Sockets
                     int type = SocketHelper.GetType(msg);
                     string typestring = SocketHelper.GetTypeString(type);
                     msg = SocketHelper.GetMessage(msg);
-                    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "[ 客户端（" + typestring + "）] -> " + msg);
+                    ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
                     switch (type)
                     {
                         case (int)SocketEnums.Type.GetNotice:
@@ -63,7 +64,7 @@ namespace FunGameServer.Sockets
             }
             catch (Exception e)
             {
-                SocketHelper.WriteLine(SocketHelper.GetPrefix() + "ERROR：客户端没有回应。\n" + e.StackTrace);
+                ServerHelper.WriteLine("ERROR：客户端没有回应。\n" + e.StackTrace);
                 return false;
             }
         }
@@ -79,14 +80,14 @@ namespace FunGameServer.Sockets
                 if (socket.Send(buffer) > 0)
                 {
                     if (msg != "")
-                        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "[ 客户端（" + typestring + "）] <- " + msg);
+                        ServerHelper.WriteLine("[ 客户端（" + typestring + "）] <- " + msg);
                     return true;
                 }
                 throw new Exception();
             }
             catch (Exception e)
             {
-                SocketHelper.WriteLine(SocketHelper.GetPrefix() + "ERROR：客户端没有回应。" + e.StackTrace);
+                ServerHelper.WriteLine("ERROR：客户端没有回应。" + e.StackTrace);
                 return false;
             }
         }
@@ -102,7 +103,7 @@ namespace FunGameServer.Sockets
         private void CreateStreamReader()
         {
             Thread.Sleep(1000);
-            SocketHelper.WriteLine(SocketHelper.GetPrefix() + "Creating: StreamReader...OK");
+            ServerHelper.WriteLine("Creating: StreamReader...OK");
             while (Running)
             {
                 if (Socket != null)
@@ -112,8 +113,8 @@ namespace FunGameServer.Sockets
                         FailedTimes++;
                         if (FailedTimes >= Config.MAX_CONNECTFAILED)
                         {
-                            SocketHelper.WriteLine(SocketHelper.GetPrefix() + "ERROR: Too Many Faileds.");
-                            SocketHelper.WriteLine(SocketHelper.GetPrefix() + "CLOSE: StreamReader is Closed.");
+                            ServerHelper.WriteLine("ERROR: Too Many Faileds.");
+                            ServerHelper.WriteLine("CLOSE: StreamReader is Closed.");
                             break;
                         }
                     }
@@ -121,8 +122,8 @@ namespace FunGameServer.Sockets
                 }
                 else
                 {
-                    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "ERROR: Socket is Closed.");
-                    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "CLOSE: StringStream is Closed.");
+                    ServerHelper.WriteLine("ERROR: Socket is Closed.");
+                    ServerHelper.WriteLine("CLOSE: StringStream is Closed.");
                     break;
                 }
             }

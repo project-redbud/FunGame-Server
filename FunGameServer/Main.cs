@@ -7,6 +7,7 @@ using FunGameServer.Sockets;
 using System.Net.WebSockets;
 using FunGameServer.Models.Config;
 using FunGameServer.Utils;
+using static FunGame.Core.Api.Model.Enum.CommonEnums;
 
 bool Running = true;
 Socket? ServerSocket = null;
@@ -29,7 +30,16 @@ try
 
         // 开始监听连接
         ServerSocket.Listen(Config.MAX_PLAYERS);
-        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "服务器启动成功，正在监听 . . .");
+        ServerHelper.WriteLine("服务器启动成功，正在监听 . . .");
+
+        Task.Run(() =>
+        {
+            Config.ServerNotice = ServerHelper.GetServerNotice();
+            if (Config.ServerNotice != "")
+                ServerHelper.WriteLine("\n\n" + Config.ServerNotice + "\n\n");
+            else
+                ServerHelper.WriteLine("无法读取服务器公告。");
+        });
 
         while (Running)
         {
@@ -39,9 +49,9 @@ try
                 socket = ServerSocket.Accept();
                 IPEndPoint? clientIP = (IPEndPoint?)socket.RemoteEndPoint;
                 if (clientIP != null)
-                    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端" + clientIP.ToString() + "连接 . . .");
+                    ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接 . . .");
                 else
-                    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "未知地点客户端连接 . . .");
+                    ServerHelper.WriteLine("未知地点客户端连接 . . .");
                 if (Read(socket) && Send(socket))
                     Task.Factory.StartNew(() =>
                     {
@@ -49,13 +59,13 @@ try
                     });
                 else
                     if (clientIP != null)
-                        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端" + clientIP.ToString() + "连接失败。");
+                        ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接失败。");
                     else
-                    SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端连接失败。");
+                    ServerHelper.WriteLine("客户端连接失败。");
             }
             catch (Exception e)
             {
-                SocketHelper.WriteLine(SocketHelper.GetPrefix() + "ERROR: 客户端断开连接！\n" + e.StackTrace);
+                ServerHelper.WriteLine("ERROR: 客户端断开连接！\n" + e.StackTrace);
             }
         }
         
@@ -63,7 +73,7 @@ try
 }
 catch (Exception e)
 {
-    SocketHelper.WriteLine(e.StackTrace);
+    ServerHelper.WriteLine(e.StackTrace);
     if (ServerSocket != null)
     {
         ServerSocket.Close();
@@ -76,7 +86,7 @@ finally
     {
         string? order = "";
         order = Console.ReadLine();
-        SocketHelper.WriteLine("\r> " + order);
+        ServerHelper.Type();
         if (order != null && !order.Equals(""))
         {
             switch (order)
@@ -89,7 +99,7 @@ finally
     }
 }
 
-SocketHelper.WriteLine(SocketHelper.GetPrefix() + "服务器已关闭，按任意键退出程序。");
+ServerHelper.WriteLine("服务器已关闭，按任意键退出程序。");
 Console.ReadKey();
 
 
@@ -105,14 +115,14 @@ bool Read(Socket socket)
         msg = SocketHelper.GetMessage(msg);
         if (typestring != SocketEnums.TYPE_UNKNOWN)
         {
-            SocketHelper.WriteLine(SocketHelper.GetPrefix() + "[ 客户端（" + typestring + "）] -> " + msg);
+            ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
             return true;
         }
-        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端发送了不符合FunGame规定的字符，拒绝连接。");
+        ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
         return false;
     }
     else
-        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "客户端没有回应。");
+        ServerHelper.WriteLine("客户端没有回应。");
     return false;
 }
 
@@ -124,11 +134,11 @@ bool Send(Socket socket)
     buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketEnums.Type.CheckLogin, msg));
     if (socket.Send(buffer) > 0)
     {
-        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "[ 客户端 ] <- " + msg);
+        ServerHelper.WriteLine("[ 客户端 ] <- " + msg);
         return true;
     }
     else
-        SocketHelper.WriteLine(SocketHelper.GetPrefix() + "无法传输数据，与客户端的连接可能丢失。");
+        ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
     return false;
 }
 
