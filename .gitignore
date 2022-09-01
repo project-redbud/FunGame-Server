@@ -362,5 +362,5 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-#FunGame.Implement
+#FunGame.Core.Implement
 FunGame.Core/Implement/*.cs
