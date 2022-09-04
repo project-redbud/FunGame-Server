@@ -16,6 +16,11 @@ namespace FunGameServer.Utils
             return now.AddMilliseconds(-now.Millisecond).ToString() + " " + Config.SERVER_NAME + "：";
         }
 
+        public static void Error(Exception e)
+        {
+            Console.Write("\r" + GetPrefix() + e.Message + "\n" + e.StackTrace + "\n\r> ");
+        }
+
         public static void WriteLine(string? msg)
         {
             Console.Write("\r" + GetPrefix() + msg + "\n\r> ");
@@ -30,9 +35,7 @@ namespace FunGameServer.Utils
         {
             try
             {
-                string? ServerNotice = (string?)Config.DefaultAssemblyHelper.GetFunGameCoreValue((int)InterfaceType.ServerInterface, (int)InterfaceMethod.ServerNotice);
-                if (ServerNotice != null)
-                    return ServerNotice;
+                
             }
             catch (Exception e)
             {

@@ -1,4 +1,5 @@
 ﻿using FunGame.Core.Api.Util;
+using FunGameServer.Utils;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -23,6 +24,7 @@ namespace FunGameServer.Models.Config
         public static string ServerNotice = ""; // 服务器的公告
 
         public static AssemblyHelper DefaultAssemblyHelper = new AssemblyHelper();
+        public static DataHelper DefaultDataHelper = new DataHelper();
 
         /// <summary>
         /// string: 玩家标识ID

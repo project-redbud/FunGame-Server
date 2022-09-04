@@ -17,10 +17,17 @@ int port = Config.SERVER_PORT;
 
 Console.Title = Config.CONSOLE_TITLE;
 
-try
+Task t = Task.Factory.StartNew(() =>
 {
-    Task t = Task.Factory.StartNew(() =>
+    try
     {
+        // 连接MySQL服务器
+        if (!Config.DefaultDataHelper.Connect())
+        {
+            Running = false;
+            throw new Exception("服务器遇到问题需要关闭，请重新启动服务器！");
+        }
+
         // 创建IP地址终结点对象
         IPEndPoint ip = new(IPAddress.Any, port);
 
@@ -30,15 +37,15 @@ try
 
         // 开始监听连接
         ServerSocket.Listen(Config.MAX_PLAYERS);
-        ServerHelper.WriteLine("服务器启动成功，正在监听 . . .");
+        ServerHelper.WriteLine("服务器启动成功，端口号 " + port + " ，开始监听 . . .");
 
         Task.Run(() =>
         {
             Config.ServerNotice = ServerHelper.GetServerNotice();
             if (Config.ServerNotice != "")
-                ServerHelper.WriteLine("\n\n" + Config.ServerNotice + "\n\n");
+                ServerHelper.WriteLine("\n**********服务器公告**********\n" + Config.ServerNotice + "\n\n");
             else
-                ServerHelper.WriteLine("无法读取服务器公告。");
+                ServerHelper.WriteLine("无法读取服务器公告");
         });
 
         while (Running)
@@ -59,42 +66,51 @@ try
                     });
                 else
                     if (clientIP != null)
-                        ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接失败。");
-                    else
+                    ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接失败。");
+                else
                     ServerHelper.WriteLine("客户端连接失败。");
             }
             catch (Exception e)
             {
-                ServerHelper.WriteLine("ERROR: 客户端断开连接！\n" + e.StackTrace);
+                ServerHelper.WriteLine("客户端断开连接！\n" + e.StackTrace);
             }
         }
-        
-    });
-}
-catch (Exception e)
-{
-    ServerHelper.WriteLine(e.StackTrace);
-    if (ServerSocket != null)
-    {
-        ServerSocket.Close();
-        ServerSocket = null;
     }
-}
-finally
-{
-    while (Running)
+    catch (Exception e)
     {
-        string? order = "";
-        order = Console.ReadLine();
-        ServerHelper.Type();
-        if (order != null && !order.Equals(""))
+        if (e.Message.Equals("服务器遇到问题需要关闭，请重新启动服务器！"))
         {
-            switch (order)
+            if (ServerSocket != null)
             {
-                case "quit":
-                    Running = false;
-                    break;
+                ServerSocket.Close();
+                ServerSocket = null;
             }
+        }
+        ServerHelper.Error(e);
+    }
+    finally
+    {
+        if (ServerSocket != null)
+        {
+            ServerSocket.Close();
+            ServerSocket = null;
+        }
+    }
+
+});
+
+while (Running)
+{
+    string? order = "";
+    order = Console.ReadLine();
+    ServerHelper.Type();
+    if (order != null && !order.Equals("") && Running)
+    {
+        switch (order)
+        {
+            case "quit":
+                Running = false;
+                break;
         }
     }
 }

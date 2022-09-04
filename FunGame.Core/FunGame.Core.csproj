@@ -23,6 +23,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MySql.Data" Version="8.0.30" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="FunGame.Core.Api">
       <HintPath>..\..\FunGame\bin\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
     </Reference>

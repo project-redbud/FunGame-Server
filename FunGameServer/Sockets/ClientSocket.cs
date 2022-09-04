@@ -43,7 +43,7 @@ namespace FunGameServer.Sockets
                     int type = SocketHelper.GetType(msg);
                     string typestring = SocketHelper.GetTypeString(type);
                     msg = SocketHelper.GetMessage(msg);
-                    ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
+                    if (type != (int)SocketEnums.Type.HeartBeat) ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
                     switch (type)
                     {
                         case (int)SocketEnums.Type.GetNotice:
@@ -64,7 +64,7 @@ namespace FunGameServer.Sockets
             }
             catch (Exception e)
             {
-                ServerHelper.WriteLine("ERROR：客户端没有回应。\n" + e.StackTrace);
+                ServerHelper.WriteLine("客户端没有回应。\n" + e.StackTrace);
                 return false;
             }
         }
@@ -87,7 +87,7 @@ namespace FunGameServer.Sockets
             }
             catch (Exception e)
             {
-                ServerHelper.WriteLine("ERROR：客户端没有回应。" + e.StackTrace);
+                ServerHelper.WriteLine("客户端没有回应。" + e.StackTrace);
                 return false;
             }
         }
@@ -113,8 +113,8 @@ namespace FunGameServer.Sockets
                         FailedTimes++;
                         if (FailedTimes >= Config.MAX_CONNECTFAILED)
                         {
-                            ServerHelper.WriteLine("ERROR: Too Many Faileds.");
-                            ServerHelper.WriteLine("CLOSE: StreamReader is Closed.");
+                            ServerHelper.WriteLine("ERROR -> Too Many Faileds.");
+                            ServerHelper.WriteLine("CLOSE -> StreamReader is Closed.");
                             break;
                         }
                     }
@@ -122,8 +122,8 @@ namespace FunGameServer.Sockets
                 }
                 else
                 {
-                    ServerHelper.WriteLine("ERROR: Socket is Closed.");
-                    ServerHelper.WriteLine("CLOSE: StringStream is Closed.");
+                    ServerHelper.WriteLine("ERROR -> Socket is Closed.");
+                    ServerHelper.WriteLine("CLOSE -> StringStream is Closed.");
                     break;
                 }
             }
