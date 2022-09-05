@@ -1,5 +1,6 @@
 ﻿using FunGameServer.Models.Config;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -31,17 +32,37 @@ namespace FunGameServer.Utils
             Console.Write("\r> ");
         }
 
-        public static string GetServerNotice()
+        public static void GetServerSettings()
         {
             try
             {
-                
+                Hashtable? settings = (Hashtable?)Config.DefaultAssemblyHelper.GetFunGameCoreValue((int)InterfaceType.ServerInterface, (int)InterfaceMethod.GetServerSettings);
+                if (settings != null)
+                {
+                    string? Name = (string?)settings["Name"];
+                    string? Password = (string?)settings["Password"];
+                    string? Describe = (string?)settings["Describe"];
+                    string? Notice = (string?)settings["Notice"];
+                    string? Key = (string?)settings["Key"];
+                    if (Name != null) Config.SERVER_NAME = Name;
+                    if (Password != null) Config.SERVER_PASSWORD = Password;
+                    if (Describe != null) Config.SERVER_DESCRIBE = Describe;
+                    if (Notice != null) Config.SERVER_NOTICE = Notice;
+                    if (Key != null) Config.SERVER_KEY = Key;
+                    int? Status = (int?)settings["Status"];
+                    int? Port = (int?)settings["Port"];
+                    int? MaxPlayer = (int?)settings["MaxPlayer"];
+                    int? MaxConnectFailed = (int?)settings["MaxConnectFailed"];
+                    if (Status != null) Config.SERVER_STATUS = (int)Status;
+                    if (Port != null) Config.SERVER_PORT = (int)Port;
+                    if (MaxPlayer != null) Config.MAX_PLAYERS = (int)MaxPlayer;
+                    if (MaxConnectFailed != null) Config.MAX_CONNECTFAILED = (int)MaxConnectFailed;
+                }
             }
             catch (Exception e)
             {
                 ServerHelper.WriteLine(e.StackTrace);
             }
-            return "";
         }
     }
 }

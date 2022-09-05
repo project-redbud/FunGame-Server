@@ -13,18 +13,23 @@ namespace FunGameServer.Models.Config
 {
     public static class Config
     {
+        public static string SERVER_NAME = "FunGame Server"; // 服务器名称
+        public static int SERVER_PORT = 22222; // 默认端口
+        public static int SERVER_STATUS = 1; // 默认状态：1可连接 0不可连接 -1不可用
+        public static string SERVER_NOTICE = ""; // 服务器的公告
+        public static string SERVER_PASSWORD = ""; // 服务器的密码
+        public static string SERVER_DESCRIBE = ""; // 服务器的描述
+        public static string SERVER_KEY = ""; // 注册社区服务器的Key
         public static int MAX_PLAYERS = 20; // 最多接受连接的玩家数量
+        public static int MAX_CONNECTFAILED = 5; // 最大连接失败次数
         public static int ONLINE_PLAYERS = 0; // 已连接的玩家数量
         public static int CONNECTING_PLAYERS = 0; // 正在连接的玩家数量
-        public static string SERVER_NAME = "米粒的糖果屋"; // 服务器名称
-        public static int SERVER_PORT = 22222; // 默认端口
         public static Encoding DEFAULT_ENCODING = Encoding.UTF8; // 默认传输字符集
-        public static int MAX_CONNECTFAILED = 5; // 最大连接失败次数
         public const string CONSOLE_TITLE = "FunGame Server"; // 控制台的标题
-        public static string ServerNotice = ""; // 服务器的公告
 
-        public static AssemblyHelper DefaultAssemblyHelper = new AssemblyHelper();
-        public static DataHelper DefaultDataHelper = new DataHelper();
+        public static AssemblyHelper DefaultAssemblyHelper = new();
+        public static DataHelper DefaultDataHelper = new();
+        public static INIHelper DefaultINIHelper = new();
 
         /// <summary>
         /// string: 玩家标识ID

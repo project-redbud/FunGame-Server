@@ -9,95 +9,12 @@ using FunGameServer.Models.Config;
 using FunGameServer.Utils;
 using static FunGame.Core.Api.Model.Enum.CommonEnums;
 
+Console.Title = Config.CONSOLE_TITLE;
+
 bool Running = true;
 Socket? ServerSocket = null;
 
-string hostname = Config.SERVER_NAME;
-int port = Config.SERVER_PORT;
-
-Console.Title = Config.CONSOLE_TITLE;
-
-Task t = Task.Factory.StartNew(() =>
-{
-    try
-    {
-        // 连接MySQL服务器
-        if (!Config.DefaultDataHelper.Connect())
-        {
-            Running = false;
-            throw new Exception("服务器遇到问题需要关闭，请重新启动服务器！");
-        }
-
-        // 创建IP地址终结点对象
-        IPEndPoint ip = new(IPAddress.Any, port);
-
-        // 创建TCP Socket对象并绑定终结点
-        ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        ServerSocket.Bind(ip);
-
-        // 开始监听连接
-        ServerSocket.Listen(Config.MAX_PLAYERS);
-        ServerHelper.WriteLine("服务器启动成功，端口号 " + port + " ，开始监听 . . .");
-
-        Task.Run(() =>
-        {
-            Config.ServerNotice = ServerHelper.GetServerNotice();
-            if (Config.ServerNotice != "")
-                ServerHelper.WriteLine("\n**********服务器公告**********\n" + Config.ServerNotice + "\n\n");
-            else
-                ServerHelper.WriteLine("无法读取服务器公告");
-        });
-
-        while (Running)
-        {
-            Socket socket;
-            try
-            {
-                socket = ServerSocket.Accept();
-                IPEndPoint? clientIP = (IPEndPoint?)socket.RemoteEndPoint;
-                if (clientIP != null)
-                    ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接 . . .");
-                else
-                    ServerHelper.WriteLine("未知地点客户端连接 . . .");
-                if (Read(socket) && Send(socket))
-                    Task.Factory.StartNew(() =>
-                    {
-                        new ClientSocket(socket, Running).Start();
-                    });
-                else
-                    if (clientIP != null)
-                    ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接失败。");
-                else
-                    ServerHelper.WriteLine("客户端连接失败。");
-            }
-            catch (Exception e)
-            {
-                ServerHelper.WriteLine("客户端断开连接！\n" + e.StackTrace);
-            }
-        }
-    }
-    catch (Exception e)
-    {
-        if (e.Message.Equals("服务器遇到问题需要关闭，请重新启动服务器！"))
-        {
-            if (ServerSocket != null)
-            {
-                ServerSocket.Close();
-                ServerSocket = null;
-            }
-        }
-        ServerHelper.Error(e);
-    }
-    finally
-    {
-        if (ServerSocket != null)
-        {
-            ServerSocket.Close();
-            ServerSocket = null;
-        }
-    }
-
-});
+StartServer();
 
 while (Running)
 {
@@ -110,6 +27,18 @@ while (Running)
         {
             case "quit":
                 Running = false;
+                break;
+            case "help":
+                ServerHelper.WriteLine("Milimoe -> 帮助");
+                break;
+            case "restart":
+                if (ServerSocket == null)
+                {
+                    ServerHelper.WriteLine("重启服务器");
+                    StartServer();
+                }
+                else
+                    ServerHelper.WriteLine("服务器正在运行，拒绝重启！");
                 break;
         }
     }
@@ -145,7 +74,7 @@ bool Read(Socket socket)
 bool Send(Socket socket)
 {
     // 发送消息给客户端
-    string msg = ">> 已连接至服务器 -> [ " + hostname + " ] 连接成功";
+    string msg = ">> 已连接至服务器 -> [ " + Config.SERVER_NAME + " ] 连接成功";
     byte[] buffer = new byte[2048];
     buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketEnums.Type.CheckLogin, msg));
     if (socket.Send(buffer) > 0)
@@ -168,4 +97,98 @@ bool IsEmail(string ip)
 {
     //判断是否为Email
     return Regex.IsMatch(ip, @"^(\w)+(\.\w)*@(\w)+((\.\w+)+)$");
+}
+
+void StartServer()
+{
+    Task t = Task.Factory.StartNew(() =>
+    {
+        try
+        {
+            ServerHelper.WriteLine("正在读取配置文件并初始化服务 . . .");
+            // 检查是否存在配置文件
+            if (!Config.DefaultINIHelper.ExistINIFile())
+            {
+                ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
+                Config.DefaultINIHelper.Init();
+                ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
+                ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
+                return;
+            }
+            else
+                ServerHelper.GetServerSettings();
+
+            // 连接MySQL服务器
+            if (!Config.DefaultDataHelper.Connect())
+            {
+                Running = false;
+                throw new Exception("服务器遇到问题需要关闭，请重新启动服务器！");
+            }
+
+            // 创建IP地址终结点对象
+            IPEndPoint ip = new(IPAddress.Any, Config.SERVER_PORT);
+
+            // 创建TCP Socket对象并绑定终结点
+            ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            ServerSocket.Bind(ip);
+
+            // 开始监听连接
+            ServerSocket.Listen(Config.MAX_PLAYERS);
+            ServerHelper.WriteLine("服务器启动成功，端口号 " + Config.SERVER_PORT + " ，开始监听 . . .");
+
+            if (Config.SERVER_NOTICE != "")
+                ServerHelper.WriteLine("\n\n**********服务器公告**********\n\n" + Config.SERVER_NOTICE + "\n");
+            else
+                ServerHelper.WriteLine("无法读取服务器公告");
+
+            while (Running)
+            {
+                Socket socket;
+                try
+                {
+                    socket = ServerSocket.Accept();
+                    IPEndPoint? clientIP = (IPEndPoint?)socket.RemoteEndPoint;
+                    if (clientIP != null)
+                        ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接 . . .");
+                    else
+                        ServerHelper.WriteLine("未知地点客户端连接 . . .");
+                    if (Read(socket) && Send(socket))
+                        Task.Factory.StartNew(() =>
+                        {
+                            new ClientSocket(socket, Running).Start();
+                        });
+                    else
+                        if (clientIP != null)
+                        ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接失败。");
+                    else
+                        ServerHelper.WriteLine("客户端连接失败。");
+                }
+                catch (Exception e)
+                {
+                    ServerHelper.WriteLine("客户端断开连接！\n" + e.StackTrace);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            if (e.Message.Equals("服务器遇到问题需要关闭，请重新启动服务器！"))
+            {
+                if (ServerSocket != null)
+                {
+                    ServerSocket.Close();
+                    ServerSocket = null;
+                }
+            }
+            ServerHelper.Error(e);
+        }
+        finally
+        {
+            if (ServerSocket != null)
+            {
+                ServerSocket.Close();
+                ServerSocket = null;
+            }
+        }
+
+    });
 }

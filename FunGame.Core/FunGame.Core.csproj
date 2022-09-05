@@ -4,7 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <BaseOutputPath>C:\milimoe\FunGame\bin</BaseOutputPath>
+    <BaseOutputPath>C:\milimoe\FunGame\bin\Server</BaseOutputPath>
     <Title>FunGameServer</Title>
     <Authors>Milimoe</Authors>
     <Product>$(AssemblyName)</Product>
@@ -23,12 +23,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MySql.Data" Version="8.0.30" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="FunGame.Core.Api">
-      <HintPath>..\..\FunGame\bin\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
+      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
     </Reference>
   </ItemGroup>
 

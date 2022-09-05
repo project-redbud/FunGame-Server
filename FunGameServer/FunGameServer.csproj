@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ApplicationIcon>logo.ico</ApplicationIcon>
     <PackageIcon>logo.ico</PackageIcon>
-    <BaseOutputPath>C:\milimoe\FunGame\bin</BaseOutputPath>
+    <BaseOutputPath>C:\milimoe\FunGame\bin\Server</BaseOutputPath>
     <Title>FunGameServer</Title>
     <Company>Milimoe</Company>
     <Authors>Milimoe</Authors>
@@ -29,13 +29,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MySql.Data" Version="8.0.30" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Reference Include="FunGame.Core.Api">
-      <HintPath>..\..\FunGame\bin\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
+    </Reference>
+    <Reference Include="MySql.Data">
+      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\MySql.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Configuration.ConfigurationManager">
+      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\System.Configuration.ConfigurationManager.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Security.Permissions">
+      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\System.Security.Permissions.dll</HintPath>
     </Reference>
   </ItemGroup>
 
