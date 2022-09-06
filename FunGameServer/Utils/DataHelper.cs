@@ -30,7 +30,7 @@ namespace FunGameServer.Utils
                     string[] DataSetting = GetConnection.Split(";");
                     if (DataSetting.Length > 1 && DataSetting[0].Length > 14 && DataSetting[1].Length > 8)
                     {
-                        ServerHelper.WriteLine("Connect -> MySQL:\\\\" + DataSetting[0][14..] + ":" + DataSetting[1][8..]);
+                        ServerHelper.WriteLine("Connect -> MySQL://" + DataSetting[0][14..] + ":" + DataSetting[1][8..]);
                     }
                     msc = new MySqlConnection(GetConnection);
                     msc.Open();

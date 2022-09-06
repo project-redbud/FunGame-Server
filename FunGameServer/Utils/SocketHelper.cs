@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.NetworkInformation;
 using System.Text;
 using System.Threading.Tasks;
+using FunGame.Core.Api.Model.Enum;
 
 namespace FunGameServer.Utils
 {
@@ -17,25 +18,6 @@ namespace FunGameServer.Utils
                 return Convert.ToInt32(msg[..index]);
             else
                 return Convert.ToInt32(msg[..1]);
-        }
-
-        public static string GetTypeString(int type)
-        {
-            switch (type)
-            {
-                case (int)SocketEnums.Type.GetNotice:
-                    return SocketEnums.TYPE_GetNotice;
-                case (int)SocketEnums.Type.Login:
-                    return SocketEnums.TYPE_Login;
-                case (int)SocketEnums.Type.CheckLogin:
-                    return SocketEnums.TYPE_CheckLogin;
-                case (int)SocketEnums.Type.Logout:
-                    return SocketEnums.TYPE_Logout;
-                case (int)SocketEnums.Type.HeartBeat:
-                    return SocketEnums.TYPE_HeartBeat;
-                default:
-                    return SocketEnums.TYPE_UNKNOWN;
-            }
         }
 
         public static string GetMessage(string msg)

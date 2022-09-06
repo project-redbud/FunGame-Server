@@ -11,7 +11,7 @@ using FunGameServer.Utils;
 using System.Reflection.Metadata;
 using FunGame.Core.Api.Model.Entity;
 using System.Net;
-using static FunGame.Core.Api.Model.Enum.CommonEnums;
+using FunGame.Core.Api.Model.Enum;
 
 namespace FunGameServer.Sockets
 {
@@ -41,20 +41,22 @@ namespace FunGameServer.Sockets
                 {
                     string msg = Config.DEFAULT_ENCODING.GetString(buffer, 0, length);
                     int type = SocketHelper.GetType(msg);
-                    string typestring = SocketHelper.GetTypeString(type);
+                    string typestring = CommonEnums.GetSocketTypeName(type);
                     msg = SocketHelper.GetMessage(msg);
-                    if (type != (int)SocketEnums.Type.HeartBeat) ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
+                    if (type != (int)CommonEnums.SocketType.HeartBeat) ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
                     switch (type)
                     {
-                        case (int)SocketEnums.Type.GetNotice:
+                        case (int)CommonEnums.SocketType.GetNotice:
+                            msg = Config.SERVER_NOTICE;
                             break;
-                        case (int)SocketEnums.Type.Login:
+                        case (int)CommonEnums.SocketType.Login:
                             break;
-                        case (int)SocketEnums.Type.CheckLogin:
-                            return true;
-                        case (int)SocketEnums.Type.Logout:
+                        case (int)CommonEnums.SocketType.CheckLogin:
+                            msg = ">> 已连接至服务器 -> [ " + Config.SERVER_NAME + " ] 连接成功";
                             break;
-                        case (int)SocketEnums.Type.HeartBeat:
+                        case (int)CommonEnums.SocketType.Logout:
+                            break;
+                        case (int)CommonEnums.SocketType.HeartBeat:
                             msg = "";
                             break;
                     }
@@ -76,7 +78,7 @@ namespace FunGameServer.Sockets
             {
                 byte[] buffer = new byte[2048];
                 buffer = Config.DEFAULT_ENCODING.GetBytes(Convert.ToString(SocketHelper.MakeMessage(type, msg)));
-                string typestring = SocketHelper.GetTypeString(type);
+                string typestring = CommonEnums.GetSocketTypeName(type);
                 if (socket.Send(buffer) > 0)
                 {
                     if (msg != "")

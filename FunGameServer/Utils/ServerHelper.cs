@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static FunGame.Core.Api.Model.Enum.CommonEnums;
 
@@ -63,6 +64,18 @@ namespace FunGameServer.Utils
             {
                 ServerHelper.WriteLine(e.StackTrace);
             }
+        }
+
+        public static bool IsIP(string ip)
+        {
+            //判断是否为IP
+            return Regex.IsMatch(ip, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$");
+        }
+
+        public static bool IsEmail(string ip)
+        {
+            //判断是否为Email
+            return Regex.IsMatch(ip, @"^(\w)+(\.\w)*@(\w)+((\.\w+)+)$");
         }
     }
 }

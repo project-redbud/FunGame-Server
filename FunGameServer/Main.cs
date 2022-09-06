@@ -7,9 +7,9 @@ using FunGameServer.Sockets;
 using System.Net.WebSockets;
 using FunGameServer.Models.Config;
 using FunGameServer.Utils;
-using static FunGame.Core.Api.Model.Enum.CommonEnums;
+using FunGame.Core.Api.Model.Enum;
 
-Console.Title = Config.CONSOLE_TITLE;
+Console.Title = Config.SERVER_NAME;
 
 bool Running = true;
 Socket? ServerSocket = null;
@@ -47,58 +47,6 @@ while (Running)
 ServerHelper.WriteLine("服务器已关闭，按任意键退出程序。");
 Console.ReadKey();
 
-
-bool Read(Socket socket)
-{
-    // 接收客户端消息
-    byte[] buffer = new byte[2048];
-    int length = socket.Receive(buffer);
-    if (length > 0)
-    {
-        string msg = Config.DEFAULT_ENCODING.GetString(buffer, 0, length);
-        string typestring = SocketHelper.GetTypeString(SocketHelper.GetType(msg));
-        msg = SocketHelper.GetMessage(msg);
-        if (typestring != SocketEnums.TYPE_UNKNOWN)
-        {
-            ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
-            return true;
-        }
-        ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
-        return false;
-    }
-    else
-        ServerHelper.WriteLine("客户端没有回应。");
-    return false;
-}
-
-bool Send(Socket socket)
-{
-    // 发送消息给客户端
-    string msg = ">> 已连接至服务器 -> [ " + Config.SERVER_NAME + " ] 连接成功";
-    byte[] buffer = new byte[2048];
-    buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketEnums.Type.CheckLogin, msg));
-    if (socket.Send(buffer) > 0)
-    {
-        ServerHelper.WriteLine("[ 客户端 ] <- " + msg);
-        return true;
-    }
-    else
-        ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
-    return false;
-}
-
-bool IsIP(string ip)
-{
-    //判断是否为IP
-    return Regex.IsMatch(ip, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$");
-}
-
-bool IsEmail(string ip)
-{
-    //判断是否为Email
-    return Regex.IsMatch(ip, @"^(\w)+(\.\w)*@(\w)+((\.\w+)+)$");
-}
-
 void StartServer()
 {
     Task t = Task.Factory.StartNew(() =>
@@ -116,7 +64,10 @@ void StartServer()
                 return;
             }
             else
+            {
                 ServerHelper.GetServerSettings();
+                Console.Title = Config.SERVER_NAME + " - FunGame Server Port: " + Config.SERVER_PORT;
+            }
 
             // 连接MySQL服务器
             if (!Config.DefaultDataHelper.Connect())
@@ -137,7 +88,7 @@ void StartServer()
             ServerHelper.WriteLine("服务器启动成功，端口号 " + Config.SERVER_PORT + " ，开始监听 . . .");
 
             if (Config.SERVER_NOTICE != "")
-                ServerHelper.WriteLine("\n\n**********服务器公告**********\n\n" + Config.SERVER_NOTICE + "\n");
+                ServerHelper.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.SERVER_NOTICE + "\n");
             else
                 ServerHelper.WriteLine("无法读取服务器公告");
 
@@ -191,4 +142,43 @@ void StartServer()
         }
 
     });
+}
+
+bool Read(Socket socket)
+{
+    // 接收客户端消息
+    byte[] buffer = new byte[2048];
+    int length = socket.Receive(buffer);
+    if (length > 0)
+    {
+        string msg = Config.DEFAULT_ENCODING.GetString(buffer, 0, length);
+        string typestring = CommonEnums.GetSocketTypeName(SocketHelper.GetType(msg));
+        msg = SocketHelper.GetMessage(msg);
+        if (typestring != CommonEnums.SocketType.Unknown.ToString())
+        {
+            ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
+            return true;
+        }
+        ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
+        return false;
+    }
+    else
+        ServerHelper.WriteLine("客户端没有回应。");
+    return false;
+}
+
+bool Send(Socket socket)
+{
+    // 发送消息给客户端
+    string msg = " >> 已连接至服务器：" + Config.SERVER_NAME + "。\n\n********** 服务器公告 **********\n\n" + Config.SERVER_NOTICE + "\n\n";
+    byte[] buffer = new byte[2048];
+    buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)CommonEnums.SocketType.GetNotice, msg));
+    if (socket.Send(buffer) > 0)
+    {
+        ServerHelper.WriteLine("[ 客户端 ] <- " + "已确认连接");
+        return true;
+    }
+    else
+        ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
+    return false;
 }

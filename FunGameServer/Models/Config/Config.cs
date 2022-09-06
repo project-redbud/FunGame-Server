@@ -1,6 +1,7 @@
 ﻿using FunGame.Core.Api.Util;
 using FunGameServer.Utils;
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +26,8 @@ namespace FunGameServer.Models.Config
         public static int ONLINE_PLAYERS = 0; // 已连接的玩家数量
         public static int CONNECTING_PLAYERS = 0; // 正在连接的玩家数量
         public static Encoding DEFAULT_ENCODING = Encoding.UTF8; // 默认传输字符集
-        public const string CONSOLE_TITLE = "FunGame Server"; // 控制台的标题
+
+        public static Hashtable OrderList = new();
 
         public static AssemblyHelper DefaultAssemblyHelper = new();
         public static DataHelper DefaultDataHelper = new();
