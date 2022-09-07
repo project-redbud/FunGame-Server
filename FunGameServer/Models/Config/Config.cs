@@ -1,4 +1,5 @@
-﻿using FunGame.Core.Api.Util;
+﻿using FunGame.Core.Api.Model.Enum;
+using FunGame.Core.Api.Util;
 using FunGameServer.Utils;
 using System;
 using System.Collections;
@@ -26,6 +27,7 @@ namespace FunGameServer.Models.Config
         public static int ONLINE_PLAYERS = 0; // 已连接的玩家数量
         public static int CONNECTING_PLAYERS = 0; // 正在连接的玩家数量
         public static Encoding DEFAULT_ENCODING = Encoding.UTF8; // 默认传输字符集
+        public static FunGameEnums.FunGame FunGameType = FunGameEnums.FunGame.FunGame_Server;
 
         public static Hashtable OrderList = new();
 

@@ -10,6 +10,7 @@ using FunGameServer.Utils;
 using FunGame.Core.Api.Model.Enum;
 
 Console.Title = Config.SERVER_NAME;
+Console.WriteLine(FunGameEnums.GetInfo(Config.FunGameType));
 
 bool Running = true;
 Socket? ServerSocket = null;
@@ -54,6 +55,9 @@ void StartServer()
         try
         {
             ServerHelper.WriteLine("正在读取配置文件并初始化服务 . . .");
+            // 初始化命令菜单
+            ServerHelper.InitOrderList();
+
             // 检查是否存在配置文件
             if (!Config.DefaultINIHelper.ExistINIFile())
             {
@@ -85,7 +89,8 @@ void StartServer()
 
             // 开始监听连接
             ServerSocket.Listen(Config.MAX_PLAYERS);
-            ServerHelper.WriteLine("服务器启动成功，端口号 " + Config.SERVER_PORT + " ，开始监听 . . .");
+            ServerHelper.WriteLine("Listen -> " + Config.SERVER_PORT);
+            ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
 
             if (Config.SERVER_NOTICE != "")
                 ServerHelper.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.SERVER_NOTICE + "\n");

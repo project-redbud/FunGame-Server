@@ -66,6 +66,11 @@ namespace FunGameServer.Utils
             }
         }
 
+        public static void InitOrderList()
+        {
+            Config.OrderList.Add("Help", "Milimoe -> 帮助");
+        }
+
         public static bool IsIP(string ip)
         {
             //判断是否为IP

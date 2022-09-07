@@ -52,7 +52,7 @@ namespace FunGameServer.Sockets
                         case (int)CommonEnums.SocketType.Login:
                             break;
                         case (int)CommonEnums.SocketType.CheckLogin:
-                            msg = ">> 已连接至服务器 -> [ " + Config.SERVER_NAME + " ] 连接成功";
+                            msg = ">> 欢迎回来， " + msg + " 。";
                             break;
                         case (int)CommonEnums.SocketType.Logout:
                             break;
