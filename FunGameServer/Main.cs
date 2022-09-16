@@ -26,13 +26,13 @@ while (Running)
     {
         switch (order)
         {
-            case "quit":
+            case OrderDictionary.Quit:
                 Running = false;
                 break;
-            case "help":
+            case OrderDictionary.Help:
                 ServerHelper.WriteLine("Milimoe -> 帮助");
                 break;
-            case "restart":
+            case OrderDictionary.Restart:
                 if (ServerSocket == null)
                 {
                     ServerHelper.WriteLine("重启服务器");
@@ -73,6 +73,8 @@ void StartServer()
                 Console.Title = Config.SERVER_NAME + " - FunGame Server Port: " + Config.SERVER_PORT;
             }
 
+            Config.DefaultDataHelper.Close();
+
             // 连接MySQL服务器
             if (!Config.DefaultDataHelper.Connect())
             {
@@ -104,20 +106,19 @@ void StartServer()
                 {
                     socket = ServerSocket.Accept();
                     IPEndPoint? clientIP = (IPEndPoint?)socket.RemoteEndPoint;
-                    if (clientIP != null)
-                        ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接 . . .");
-                    else
-                        ServerHelper.WriteLine("未知地点客户端连接 . . .");
+                    string clientIPaddress = (clientIP != null) ? clientIP.ToString() : "Unknown";
+                    ServerHelper.WriteLine("客户端" + clientIPaddress + "连接 . . .");
                     if (Read(socket) && Send(socket))
-                        Task.Factory.StartNew(() =>
+                    {
+                        ClientSocket cs = new ClientSocket(socket, Running);
+                        Task t = Task.Factory.StartNew(() =>
                         {
-                            new ClientSocket(socket, Running).Start();
+                            cs.Start();
                         });
+                        cs.Task = t;
+                    }
                     else
-                        if (clientIP != null)
-                        ServerHelper.WriteLine("客户端" + clientIP.ToString() + "连接失败。");
-                    else
-                        ServerHelper.WriteLine("客户端连接失败。");
+                        ServerHelper.WriteLine("客户端" + clientIPaddress + "连接失败。");
                 }
                 catch (Exception e)
                 {
@@ -157,9 +158,9 @@ bool Read(Socket socket)
     if (length > 0)
     {
         string msg = Config.DEFAULT_ENCODING.GetString(buffer, 0, length);
-        string typestring = CommonEnums.GetSocketTypeName(SocketHelper.GetType(msg));
+        string typestring = EnumHelper.GetSocketTypeName(SocketHelper.GetType(msg));
         msg = SocketHelper.GetMessage(msg);
-        if (typestring != CommonEnums.SocketType.Unknown.ToString())
+        if (typestring != SocketMessageType.Unknown.ToString())
         {
             ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
             return true;
@@ -177,7 +178,7 @@ bool Send(Socket socket)
     // 发送消息给客户端
     string msg = " >> 已连接至服务器：" + Config.SERVER_NAME + "。\n\n********** 服务器公告 **********\n\n" + Config.SERVER_NOTICE + "\n\n";
     byte[] buffer = new byte[2048];
-    buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)CommonEnums.SocketType.GetNotice, msg));
+    buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketMessageType.GetNotice, msg));
     if (socket.Send(buffer) > 0)
     {
         ServerHelper.WriteLine("[ 客户端 ] <- " + "已确认连接");

@@ -1,4 +1,5 @@
-﻿using FunGameServer.Models.Config;
+﻿using FunGame.Core.Api.Model.Enum;
+using FunGameServer.Models.Config;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -6,7 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static FunGame.Core.Api.Model.Enum.CommonEnums;
 
 namespace FunGameServer.Utils
 {
@@ -68,7 +68,10 @@ namespace FunGameServer.Utils
 
         public static void InitOrderList()
         {
-            Config.OrderList.Add("Help", "Milimoe -> 帮助");
+            Config.OrderList.Clear();
+            Config.OrderList.Add(OrderDictionary.Help, "Milimoe -> 帮助");
+            Config.OrderList.Add(OrderDictionary.Quit, "Milimoe -> 帮助");
+            Config.OrderList.Add(OrderDictionary.Restart, "Milimoe -> 帮助");
         }
 
         public static bool IsIP(string ip)

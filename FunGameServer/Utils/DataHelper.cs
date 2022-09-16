@@ -1,4 +1,5 @@
 ﻿using FunGame.Core.Api.Model.Entity;
+using FunGame.Core.Api.Model.Enum;
 using FunGameServer.Models.Config;
 using MySql.Data.MySqlClient;
 using System;
@@ -6,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static FunGame.Core.Api.Model.Enum.CommonEnums;
 
 namespace FunGameServer.Utils
 {
@@ -50,6 +50,15 @@ namespace FunGameServer.Utils
                 ServerHelper.Error(e);
             }
             return false;
+        }
+
+        public void Close()
+        {
+            if (msc != null && msc.State == System.Data.ConnectionState.Open)
+            {
+                msc.Close();
+            }
+            msc = null;
         }
     }
 }
