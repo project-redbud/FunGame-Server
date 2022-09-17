@@ -27,6 +27,8 @@ while (Running)
         switch (order)
         {
             case OrderDictionary.Quit:
+            case OrderDictionary.Exit:
+            case OrderDictionary.Close:
                 Running = false;
                 break;
             case OrderDictionary.Help:

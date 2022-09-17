@@ -70,20 +70,10 @@ namespace FunGameServer.Utils
         {
             Config.OrderList.Clear();
             Config.OrderList.Add(OrderDictionary.Help, "Milimoe -> 帮助");
-            Config.OrderList.Add(OrderDictionary.Quit, "Milimoe -> 帮助");
-            Config.OrderList.Add(OrderDictionary.Restart, "Milimoe -> 帮助");
-        }
-
-        public static bool IsIP(string ip)
-        {
-            //判断是否为IP
-            return Regex.IsMatch(ip, @"^((2[0-4]\d|25[0-5]|[01]?\d\d?)\.){3}(2[0-4]\d|25[0-5]|[01]?\d\d?)$");
-        }
-
-        public static bool IsEmail(string ip)
-        {
-            //判断是否为Email
-            return Regex.IsMatch(ip, @"^(\w)+(\.\w)*@(\w)+((\.\w+)+)$");
+            Config.OrderList.Add(OrderDictionary.Quit, "关闭服务器");
+            Config.OrderList.Add(OrderDictionary.Exit, "关闭服务器");
+            Config.OrderList.Add(OrderDictionary.Close, "关闭服务器");
+            Config.OrderList.Add(OrderDictionary.Restart, "重启服务器");
         }
     }
 }

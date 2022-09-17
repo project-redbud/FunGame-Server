@@ -55,35 +55,20 @@ namespace FunGameServer.Sockets
                             break;
                         case (int)SocketMessageType.CheckLogin:
                             // 添加至玩家列表
-                            if (!Config.OnlinePlayers.ContainsKey(msg))
-                            {
-                                if (Task != null)
-                                {
-                                    User = new User(msg);
-                                    Config.OnlinePlayers.AddOrUpdate(User.Userame, Task, (key, value) => value);
-                                    ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Userame + " 已添加");
-                                }
-                            }
-                            else
-                            {
-                                // TODO
-                                ServerHelper.WriteLine("OnlinePlayers: 玩家 " + msg + " 重复登录！");
-                            }
+                            User = new User(msg);
                             msg = " >> 欢迎回来， " + msg + " 。";
+                            AddUser();
+                            ServerHelper.WriteLine("目前在线玩家数量: " + Config.OnlinePlayers.Count);
                             break;
                         case (int)SocketMessageType.Logout:
                             msg = " >> 你已成功退出登录！ ";
-                            if (Task != null && User != null)
-                            {
-                                if (Config.OnlinePlayers.TryRemove(User.Userame, out Task))
-                                {
-                                    ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Userame + " 已移除");
-                                    Task = null;
-                                    User = null;
-                                }
-                                else
-                                    ServerHelper.WriteLine("OnlinePlayers: 移除玩家 " + User.Userame + " 失败");
-                            }
+                            RemoveUser();
+                            GetUserCount();
+                            break;
+                        case (int)SocketMessageType.Disconnect:
+                            msg = " >> 你已成功断开与服务器的连接: " + Config.SERVER_NAME + "。 ";
+                            RemoveUser();
+                            GetUserCount();
                             break;
                         case (int)SocketMessageType.HeartBeat:
                             msg = "";
@@ -131,9 +116,59 @@ namespace FunGameServer.Sockets
             });
         }
 
+        private void KickUser()
+        {
+            if (User != null)
+            {
+                ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Userame + " 重复登录！");
+            }
+        }
+
+        private bool AddUser()
+        {
+            if (User != null)
+            {
+                if (!Config.OnlinePlayers.ContainsKey(User.Userame))
+                {
+                    if (Task != null)
+                    {
+                        Config.OnlinePlayers.AddOrUpdate(User.Userame, Task, (key, value) => value);
+                        ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Userame + " 已添加");
+                        return true;
+                    }
+                }
+                else
+                {
+                    KickUser();
+                }
+            }
+            return false;
+        }
+
+        private bool RemoveUser()
+        {
+            if (Task != null && User != null)
+            {
+                if (Config.OnlinePlayers.TryRemove(User.Userame, out Task))
+                {
+                    ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Userame + " 已移除");
+                    Task = null;
+                    User = null;
+                    return true;
+                }
+                else ServerHelper.WriteLine("OnlinePlayers: 移除玩家 " + User.Userame + " 失败");
+            }
+            return false;
+        }
+
+        private void GetUserCount()
+        {
+            ServerHelper.WriteLine("目前在线玩家数量: " + Config.OnlinePlayers.Count);
+        }
+
         private void CreateStreamReader()
         {
-            Thread.Sleep(1000);
+            Thread.Sleep(100);
             ServerHelper.WriteLine("Creating: StreamReader...OK");
             while (Running)
             {
@@ -144,6 +179,8 @@ namespace FunGameServer.Sockets
                         FailedTimes++;
                         if (FailedTimes >= Config.MAX_CONNECTFAILED)
                         {
+                            RemoveUser();
+                            GetUserCount();
                             ServerHelper.WriteLine("ERROR -> Too Many Faileds.");
                             ServerHelper.WriteLine("CLOSE -> StreamReader is Closed.");
                             break;
@@ -153,6 +190,8 @@ namespace FunGameServer.Sockets
                 }
                 else
                 {
+                    RemoveUser();
+                    GetUserCount();
                     ServerHelper.WriteLine("ERROR -> Socket is Closed.");
                     ServerHelper.WriteLine("CLOSE -> StringStream is Closed.");
                     break;
