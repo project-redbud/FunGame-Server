@@ -62,7 +62,7 @@ void StartServer()
             if (!Config.DefaultINIHelper.ExistINIFile())
             {
                 ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
-                Config.DefaultINIHelper.Init();
+                Config.DefaultINIHelper.InitServerConfigs();
                 ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
                 ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
                 return;
@@ -176,7 +176,7 @@ bool Read(Socket socket)
 bool Send(Socket socket)
 {
     // 发送消息给客户端
-    string msg = " >> 已连接至服务器：" + Config.SERVER_NAME + "。\n\n********** 服务器公告 **********\n\n" + Config.SERVER_NOTICE + "\n\n";
+    string msg = Config.SERVER_NAME + ";" + Config.SERVER_NOTICE;
     byte[] buffer = new byte[2048];
     buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketMessageType.GetNotice, msg));
     if (socket.Send(buffer) > 0)
