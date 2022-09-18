@@ -3,11 +3,12 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System;
-using FunGameServer.Sockets;
 using System.Net.WebSockets;
 using FunGameServer.Models.Config;
 using FunGameServer.Utils;
 using FunGame.Core.Api.Model.Enum;
+using FunGame.Core.Api.Util;
+using FunGameServer.ServerCore;
 
 Console.Title = Config.SERVER_NAME;
 Console.WriteLine(FunGameEnums.GetInfo(Config.FunGameType));
@@ -61,10 +62,10 @@ void StartServer()
             ServerHelper.InitOrderList();
 
             // 检查是否存在配置文件
-            if (!Config.DefaultINIHelper.ExistINIFile())
+            if (!INIHelper.ExistINIFile())
             {
                 ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
-                Config.DefaultINIHelper.InitServerConfigs();
+                INIHelper.Init(Config.FunGameType);
                 ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
                 ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
                 return;
@@ -75,10 +76,10 @@ void StartServer()
                 Console.Title = Config.SERVER_NAME + " - FunGame Server Port: " + Config.SERVER_PORT;
             }
 
-            Config.DefaultDataHelper.Close();
+            DataHelper.Close();
 
             // 连接MySQL服务器
-            if (!Config.DefaultDataHelper.Connect())
+            if (!DataHelper.Connect())
             {
                 Running = false;
                 throw new Exception("服务器遇到问题需要关闭，请重新启动服务器！");

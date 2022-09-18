@@ -14,7 +14,7 @@ using System.Net;
 using FunGame.Core.Api.Model.Enum;
 using MySqlX.XDevAPI.Common;
 
-namespace FunGameServer.Sockets
+namespace FunGameServer.ServerCore
 {
     public class ClientSocket
     {
@@ -197,6 +197,29 @@ namespace FunGameServer.Sockets
                     break;
                 }
             }
+        }
+    }
+
+    public class SocketHelper
+    {
+        public static int GetType(string msg)
+        {
+            int index = msg.IndexOf(';') - 1;
+            if (index > 0)
+                return Convert.ToInt32(msg[..index]);
+            else
+                return Convert.ToInt32(msg[..1]);
+        }
+
+        public static string GetMessage(string msg)
+        {
+            int index = msg.IndexOf(';') + 1;
+            return msg[index..];
+        }
+
+        public static string MakeMessage(int type, string msg)
+        {
+            return type + ";" + msg;
         }
     }
 }

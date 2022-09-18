@@ -30,10 +30,7 @@ namespace FunGameServer.Models.Config
         public static FunGameEnums.FunGame FunGameType = FunGameEnums.FunGame.FunGame_Server;
 
         public static Hashtable OrderList = new();
-
-        public static AssemblyHelper DefaultAssemblyHelper = new();
-        public static DataHelper DefaultDataHelper = new();
-        public static INIHelper DefaultINIHelper = new();
+        public static ReflectionHelper ReflectionHelper = new();
 
         /// <summary>
         /// string: 玩家标识ID
