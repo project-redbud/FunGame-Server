@@ -12,6 +12,7 @@ using System.Reflection.Metadata;
 using FunGame.Core.Api.Model.Entity;
 using System.Net;
 using FunGame.Core.Api.Model.Enum;
+using FunGame.Core.Api.Util;
 using MySqlX.XDevAPI.Common;
 
 namespace FunGameServer.ServerCore
