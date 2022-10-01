@@ -23,8 +23,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="FunGame.Core.Api">
-      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
+    <Reference Include="FunGame.Core">
+      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\FunGame.Core.dll</HintPath>
     </Reference>
   </ItemGroup>
 

@@ -4,11 +4,11 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System;
 using System.Net.WebSockets;
-using FunGameServer.Models.Config;
-using FunGameServer.Utils;
-using FunGame.Core.Api.Model.Enum;
-using FunGame.Core.Api.Util;
-using FunGameServer.ServerCore;
+using Milimoe.FunGame.Server.Others;
+using Milimoe.FunGame.Server.Utility;
+using Milimoe.FunGame.Core.Entity.Enum;
+using Milimoe.FunGame.Core.Api.Utility;
+using FunGame.Server.Model;
 
 Console.Title = Config.SERVER_NAME;
 Console.WriteLine(FunGameEnums.GetInfo(Config.FunGameType));
@@ -105,27 +105,30 @@ void StartServer()
             while (Running)
             {
                 Socket socket;
+                string clientIPaddress = "";
                 try
                 {
                     socket = ServerSocket.Accept();
                     IPEndPoint? clientIP = (IPEndPoint?)socket.RemoteEndPoint;
-                    string clientIPaddress = (clientIP != null) ? clientIP.ToString() : "Unknown";
+                    clientIPaddress = (clientIP != null) ? clientIP.ToString() : "Unknown";
                     ServerHelper.WriteLine("客户端" + clientIPaddress + "连接 . . .");
-                    if (Read(socket) && Send(socket))
+                    if (Read(socket, clientIPaddress) && Send(socket, clientIPaddress))
                     {
-                        ClientSocket cs = new ClientSocket(socket, Running);
+                        ClientSocket cs = new(socket, Running);
                         Task t = Task.Factory.StartNew(() =>
                         {
                             cs.Start();
                         });
                         cs.Task = t;
+                        cs.ClientName = clientIPaddress;
+                        Config.OnlineClients.Add(clientIPaddress, clientIPaddress);
                     }
                     else
                         ServerHelper.WriteLine("客户端" + clientIPaddress + "连接失败。");
                 }
-                catch (Exception e)
+                catch
                 {
-                    ServerHelper.WriteLine("客户端断开连接！\n" + e.StackTrace);
+                    ServerHelper.WriteLine("客户端" + clientIPaddress + "断开连接！");
                 }
             }
         }
@@ -153,7 +156,7 @@ void StartServer()
     });
 }
 
-bool Read(Socket socket)
+bool Read(Socket socket, string name)
 {
     // 接收客户端消息
     byte[] buffer = new byte[2048];
@@ -165,18 +168,18 @@ bool Read(Socket socket)
         msg = SocketHelper.GetMessage(msg);
         if (typestring != SocketMessageType.Unknown.ToString())
         {
-            ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
+            ServerHelper.WriteLine("[" + typestring + "] " + SocketHelper.MakeClientName(name) + " -> " + msg);
             return true;
         }
         ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
         return false;
     }
     else
-        ServerHelper.WriteLine("客户端没有回应。");
+        ServerHelper.WriteLine(SocketHelper.MakeClientName(name) + " 没有回应。");
     return false;
 }
 
-bool Send(Socket socket)
+bool Send(Socket socket, string name)
 {
     // 发送消息给客户端
     string msg = Config.SERVER_NAME + ";" + Config.SERVER_NOTICE;
@@ -184,7 +187,7 @@ bool Send(Socket socket)
     buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketMessageType.GetNotice, msg));
     if (socket.Send(buffer) > 0)
     {
-        ServerHelper.WriteLine("[ 客户端 ] <- " + "已确认连接");
+        ServerHelper.WriteLine(SocketHelper.MakeClientName(name) + " <- " + "已确认连接");
         return true;
     }
     else

@@ -1,5 +1,4 @@
-﻿using FunGameServer.Models.Config;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
@@ -7,22 +6,30 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data.SqlTypes;
-using FunGameServer.Utils;
 using System.Reflection.Metadata;
-using FunGame.Core.Api.Model.Entity;
 using System.Net;
-using FunGame.Core.Api.Model.Enum;
-using FunGame.Core.Api.Util;
 using MySqlX.XDevAPI.Common;
+using Milimoe.FunGame.Server.Utility;
+using Milimoe.FunGame.Core.Entity.General;
+using Milimoe.FunGame.Core.Entity.Enum;
+using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Server.Others;
 
-namespace FunGameServer.ServerCore
+namespace FunGame.Server.Model
 {
     public class ClientSocket
     {
-        public bool Running { get; set; } = false;
-        public Socket? Socket { get; set; } = null;
+        /**
+         * Public
+         */
+        public bool Running = false;
+        public Socket? Socket = null;
         public Task? Task = null;
+        public string ClientName = "";
 
+        /**
+         * Private
+         */
         private User? User = null;
 
         public ClientSocket(Socket socket, bool running)
@@ -46,7 +53,7 @@ namespace FunGameServer.ServerCore
                     int type = SocketHelper.GetType(msg);
                     string typestring = EnumHelper.GetSocketTypeName(type);
                     msg = SocketHelper.GetMessage(msg);
-                    if (type != (int)SocketMessageType.HeartBeat) ServerHelper.WriteLine("[ 客户端（" + typestring + "）] -> " + msg);
+                    if (type != (int)SocketMessageType.HeartBeat) ServerHelper.WriteLine("[" + typestring + "] " + SocketHelper.MakeClientName(ClientName, User) + " -> " + msg);
                     switch (type)
                     {
                         case (int)SocketMessageType.GetNotice:
@@ -79,9 +86,9 @@ namespace FunGameServer.ServerCore
                 }
                 throw new Exception();
             }
-            catch (Exception e)
+            catch
             {
-                ServerHelper.WriteLine("客户端没有回应。\n" + e.StackTrace);
+                ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 没有回应。");
                 return false;
             }
         }
@@ -97,14 +104,14 @@ namespace FunGameServer.ServerCore
                 if (socket.Send(buffer) > 0)
                 {
                     if (msg != "")
-                        ServerHelper.WriteLine("[ 客户端（" + typestring + "）] <- " + msg);
+                        ServerHelper.WriteLine("[" + typestring + "] " + SocketHelper.MakeClientName(ClientName, User) + " <- " + msg);
                     return true;
                 }
                 throw new Exception();
             }
-            catch (Exception e)
+            catch
             {
-                ServerHelper.WriteLine("客户端没有回应。" + e.StackTrace);
+                ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 没有回应。");
                 return false;
             }
         }
@@ -170,7 +177,7 @@ namespace FunGameServer.ServerCore
         private void CreateStreamReader()
         {
             Thread.Sleep(100);
-            ServerHelper.WriteLine("Creating: StreamReader...OK");
+            ServerHelper.WriteLine("Creating: StreamReader -> " + SocketHelper.MakeClientName(ClientName, User) + " ...OK");
             while (Running)
             {
                 if (Socket != null)
@@ -182,8 +189,8 @@ namespace FunGameServer.ServerCore
                         {
                             RemoveUser();
                             GetUserCount();
-                            ServerHelper.WriteLine("ERROR -> Too Many Faileds.");
-                            ServerHelper.WriteLine("CLOSE -> StreamReader is Closed.");
+                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " ERROR -> Too Many Faileds.");
+                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " CLOSE -> StreamReader is Closed.");
                             break;
                         }
                     }
@@ -193,34 +200,11 @@ namespace FunGameServer.ServerCore
                 {
                     RemoveUser();
                     GetUserCount();
-                    ServerHelper.WriteLine("ERROR -> Socket is Closed.");
-                    ServerHelper.WriteLine("CLOSE -> StringStream is Closed.");
+                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " ERROR -> Socket is Closed.");
+                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " CLOSE -> StringStream is Closed.");
                     break;
                 }
             }
-        }
-    }
-
-    public class SocketHelper
-    {
-        public static int GetType(string msg)
-        {
-            int index = msg.IndexOf(';') - 1;
-            if (index > 0)
-                return Convert.ToInt32(msg[..index]);
-            else
-                return Convert.ToInt32(msg[..1]);
-        }
-
-        public static string GetMessage(string msg)
-        {
-            int index = msg.IndexOf(';') + 1;
-            return msg[index..];
-        }
-
-        public static string MakeMessage(int type, string msg)
-        {
-            return type + ";" + msg;
         }
     }
 }

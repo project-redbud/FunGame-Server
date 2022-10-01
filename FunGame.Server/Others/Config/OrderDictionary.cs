@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FunGameServer.Models.Config
+namespace Milimoe.FunGame.Server.Others
 {
     public class OrderDictionary
     {

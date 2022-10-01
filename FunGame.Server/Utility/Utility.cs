@@ -1,7 +1,4 @@
-﻿using FunGame.Core.Api.Model.Enum;
-using FunGame.Core.Api.Util;
-using FunGameServer.Models.Config;
-using MySql.Data.MySqlClient;
+﻿using MySql.Data.MySqlClient;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -9,10 +6,14 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Milimoe.FunGame.Core.Entity.General;
+using Milimoe.FunGame.Core.Entity.Enum;
+using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Server.Others;
 
-namespace FunGameServer.Utils
+namespace Milimoe.FunGame.Server.Utility
 {
-    public class Utility : FunGame.Core.Api.Util.Utility
+    public class Utility : FunGame.Core.Api.Utility.Utility
     {
 
     }
@@ -182,6 +183,39 @@ namespace FunGameServer.Utils
             Config.OrderList.Add(OrderDictionary.Exit, "关闭服务器");
             Config.OrderList.Add(OrderDictionary.Close, "关闭服务器");
             Config.OrderList.Add(OrderDictionary.Restart, "重启服务器");
+        }
+    }
+
+    public class SocketHelper
+    {
+        public static int GetType(string msg)
+        {
+            int index = msg.IndexOf(';') - 1;
+            if (index > 0)
+                return Convert.ToInt32(msg[..index]);
+            else
+                return Convert.ToInt32(msg[..1]);
+        }
+
+        public static string GetMessage(string msg)
+        {
+            int index = msg.IndexOf(';') + 1;
+            return msg[index..];
+        }
+
+        public static string MakeMessage(int type, string msg)
+        {
+            return type + ";" + msg;
+        }
+
+        public static string MakeClientName(string name, User? user = null)
+        {
+            if (user != null)
+            {
+                return "玩家 " + user.Userame;
+            }
+            if (name != "") return "客户端(" + name + ")";
+            return "客户端";
         }
     }
 }

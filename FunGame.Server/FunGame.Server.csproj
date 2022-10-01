@@ -5,7 +5,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <ApplicationIcon>logo.ico</ApplicationIcon>
+    <ApplicationIcon>Images\logo.ico</ApplicationIcon>
     <PackageIcon>logo.ico</PackageIcon>
     <BaseOutputPath>C:\milimoe\FunGame\bin\Server</BaseOutputPath>
     <Title>FunGameServer</Title>
@@ -14,6 +14,7 @@
     <PackageOutputPath>C:\milimoe\FunGame\bin</PackageOutputPath>
     <AssemblyVersion>1.0</AssemblyVersion>
     <FileVersion>1.0</FileVersion>
+    <AssemblyName>FunGameServer</AssemblyName>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -25,12 +26,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="logo.ico" />
+    <Content Include="Images\logo.ico" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="FunGame.Core.Api">
-      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\FunGame.Core.Api.dll</HintPath>
+    <Reference Include="FunGame.Core">
+      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\FunGame.Core.dll</HintPath>
     </Reference>
     <Reference Include="MySql.Data">
       <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\MySql.Data.dll</HintPath>
@@ -44,10 +45,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="logo.ico">
+    <None Update="Images\logo.ico">
       <Pack>True</Pack>
       <PackagePath>\</PackagePath>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controller\" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,4 @@
-﻿using FunGame.Core.Api.Model.Enum;
-using FunGame.Core.Api.Util;
-using FunGameServer.Utils;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -10,8 +7,10 @@ using System.Net.Sockets;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
+using Milimoe.FunGame.Core.Entity.Enum;
+using Milimoe.FunGame.Core.Api.Utility;
 
-namespace FunGameServer.Models.Config
+namespace Milimoe.FunGame.Server.Others
 {
     public static class Config
     {
@@ -31,6 +30,8 @@ namespace FunGameServer.Models.Config
 
         public static Hashtable OrderList = new();
         public static ReflectionHelper ReflectionHelper = new();
+
+        public static Hashtable OnlineClients = new Hashtable();
 
         /// <summary>
         /// string: 玩家标识ID
