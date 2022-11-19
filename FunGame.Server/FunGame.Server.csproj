@@ -5,7 +5,7 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <ApplicationIcon>Images\logo.ico</ApplicationIcon>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
     <PackageIcon>logo.ico</PackageIcon>
     <BaseOutputPath>C:\milimoe\FunGame\bin\Server</BaseOutputPath>
     <Title>FunGameServer</Title>
@@ -26,12 +26,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Images\logo.ico" />
+    <Content Include="logo.ico" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="FunGame.Core">
-      <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\FunGame.Core.dll</HintPath>
+      <HintPath>..\..\FunGame\bin\Server\Debug\net7.0\FunGame.Core.dll</HintPath>
     </Reference>
     <Reference Include="MySql.Data">
       <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\MySql.Data.dll</HintPath>

@@ -7,7 +7,7 @@ using System.Net.Sockets;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
-using Milimoe.FunGame.Core.Entity.Enum;
+using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Api.Utility;
 
 namespace Milimoe.FunGame.Server.Others
@@ -26,10 +26,9 @@ namespace Milimoe.FunGame.Server.Others
         public static int ONLINE_PLAYERS = 0; // 已连接的玩家数量
         public static int CONNECTING_PLAYERS = 0; // 正在连接的玩家数量
         public static Encoding DEFAULT_ENCODING = Encoding.UTF8; // 默认传输字符集
-        public static FunGameEnums.FunGame FunGameType = FunGameEnums.FunGame.FunGame_Server;
+        public static FunGameEnum.FunGame FunGameType = FunGameEnum.FunGame.FunGame_Server;
 
         public static Hashtable OrderList = new();
-        public static ReflectionHelper ReflectionHelper = new();
 
         public static Hashtable OnlineClients = new Hashtable();
 

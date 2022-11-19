@@ -10,10 +10,10 @@ using System.Reflection.Metadata;
 using System.Net;
 using MySqlX.XDevAPI.Common;
 using Milimoe.FunGame.Server.Utility;
-using Milimoe.FunGame.Core.Entity.General;
-using Milimoe.FunGame.Core.Entity.Enum;
+using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Server.Others;
+using Milimoe.FunGame.Core.Entity;
 
 namespace FunGame.Server.Model
 {
@@ -63,7 +63,7 @@ namespace FunGame.Server.Model
                             break;
                         case (int)SocketMessageType.CheckLogin:
                             // 添加至玩家列表
-                            User = new User(msg);
+                            User = (User)Factory.New<User>(msg);
                             msg = " >> 欢迎回来， " + msg + " 。";
                             AddUser();
                             ServerHelper.WriteLine("目前在线玩家数量: " + Config.OnlinePlayers.Count);

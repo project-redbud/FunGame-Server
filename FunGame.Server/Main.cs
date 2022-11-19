@@ -6,12 +6,12 @@ using System;
 using System.Net.WebSockets;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
-using Milimoe.FunGame.Core.Entity.Enum;
+using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Api.Utility;
 using FunGame.Server.Model;
 
 Console.Title = Config.SERVER_NAME;
-Console.WriteLine(FunGameEnums.GetInfo(Config.FunGameType));
+Console.WriteLine(FunGameEnum.GetInfo(Config.FunGameType));
 
 bool Running = true;
 Socket? ServerSocket = null;
@@ -184,7 +184,7 @@ bool Send(Socket socket, string name)
     // 发送消息给客户端
     string msg = Config.SERVER_NAME + ";" + Config.SERVER_NOTICE;
     byte[] buffer = new byte[2048];
-    buffer = Config.DEFAULT_ENCODING.GetBytes(SocketHelper.MakeMessage((int)SocketMessageType.GetNotice, msg));
+    buffer = Config.DEFAULT_ENCODING.GetBytes($"1;{msg}");
     if (socket.Send(buffer) > 0)
     {
         ServerHelper.WriteLine(SocketHelper.MakeClientName(name) + " <- " + "已确认连接");
