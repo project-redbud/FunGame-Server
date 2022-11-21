@@ -12,12 +12,12 @@ using MySqlX.XDevAPI.Common;
 using Milimoe.FunGame.Server.Utility;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Api.Utility;
-using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Core.Entity;
+using Milimoe.FunGame.Server.Others;
 
-namespace FunGame.Server.Model
+namespace Milimoe.FunGame.Server.Model
 {
-    public class ClientSocket
+    public class ServerModel
     {
         /**
          * Public
@@ -32,7 +32,7 @@ namespace FunGame.Server.Model
          */
         private User? User = null;
 
-        public ClientSocket(Socket socket, bool running)
+        public ServerModel(Socket socket, bool running)
         {
             Socket = socket;
             Running = running;

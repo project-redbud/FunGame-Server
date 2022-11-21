@@ -4,14 +4,14 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System;
 using System.Net.WebSockets;
-using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Api.Utility;
-using FunGame.Server.Model;
+using Milimoe.FunGame.Server.Model;
+using Milimoe.FunGame.Server.Others;
 
 Console.Title = Config.SERVER_NAME;
-Console.WriteLine(FunGameEnum.GetInfo(Config.FunGameType));
+Console.WriteLine(FunGameEnum.GetInfo((FunGameEnum.FunGame)Config.FunGameType));
 
 bool Running = true;
 Socket? ServerSocket = null;
@@ -65,7 +65,7 @@ void StartServer()
             if (!INIHelper.ExistINIFile())
             {
                 ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
-                INIHelper.Init(Config.FunGameType);
+                INIHelper.Init((FunGameEnum.FunGame)Config.FunGameType);
                 ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
                 ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
                 return;
@@ -114,7 +114,7 @@ void StartServer()
                     ServerHelper.WriteLine("客户端" + clientIPaddress + "连接 . . .");
                     if (Read(socket, clientIPaddress) && Send(socket, clientIPaddress))
                     {
-                        ClientSocket cs = new(socket, Running);
+                        ServerModel cs = new(socket, Running);
                         Task t = Task.Factory.StartNew(() =>
                         {
                             cs.Start();
