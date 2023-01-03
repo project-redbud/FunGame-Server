@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data.SqlTypes;
@@ -11,6 +10,7 @@ using System.Net;
 using MySqlX.XDevAPI.Common;
 using Milimoe.FunGame.Server.Utility;
 using Milimoe.FunGame.Core.Library.Constant;
+using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Server.Others;
@@ -23,7 +23,7 @@ namespace Milimoe.FunGame.Server.Model
          * Public
          */
         public bool Running = false;
-        public Socket? Socket = null;
+        public ClientSocket? Socket = null;
         public Task? Task = null;
         public string ClientName = "";
 
@@ -32,7 +32,7 @@ namespace Milimoe.FunGame.Server.Model
          */
         private User? User = null;
 
-        public ServerModel(Socket socket, bool running)
+        public ServerModel(ClientSocket socket, bool running)
         {
             Socket = socket;
             Running = running;
@@ -40,78 +40,79 @@ namespace Milimoe.FunGame.Server.Model
 
         private int FailedTimes = 0; // 超过一定次数断开连接
 
-        private bool Read(Socket socket)
+        private bool Read(ClientSocket socket)
         {
             // 接收客户端消息
             try
             {
-                byte[] buffer = new byte[2048];
-                int length = socket.Receive(buffer);
-                if (length > 0)
+                object[] objs = socket.Receive();
+                SocketMessageType type = (SocketMessageType)objs[0];
+                string msg = "";
+                if (type != SocketMessageType.HeartBeat)
                 {
-                    string msg = Config.DEFAULT_ENCODING.GetString(buffer, 0, length);
-                    int type = SocketHelper.GetType(msg);
-                    string typestring = EnumHelper.GetSocketTypeName(type);
-                    msg = SocketHelper.GetMessage(msg);
-                    if (type != (int)SocketMessageType.HeartBeat) ServerHelper.WriteLine("[" + typestring + "] " + SocketHelper.MakeClientName(ClientName, User) + " -> " + msg);
-                    switch (type)
-                    {
-                        case (int)SocketMessageType.GetNotice:
-                            msg = Config.SERVER_NOTICE;
-                            break;
-                        case (int)SocketMessageType.Login:
-                            break;
-                        case (int)SocketMessageType.CheckLogin:
-                            // 添加至玩家列表
-                            User = (User)Factory.New<User>(msg);
-                            msg = " >> 欢迎回来， " + msg + " 。";
-                            AddUser();
-                            ServerHelper.WriteLine("目前在线玩家数量: " + Config.OnlinePlayers.Count);
-                            break;
-                        case (int)SocketMessageType.Logout:
-                            msg = " >> 你已成功退出登录！ ";
-                            RemoveUser();
-                            GetUserCount();
-                            break;
-                        case (int)SocketMessageType.Disconnect:
-                            msg = " >> 你已成功断开与服务器的连接: " + Config.SERVER_NAME + "。 ";
-                            RemoveUser();
-                            GetUserCount();
-                            break;
-                        case (int)SocketMessageType.HeartBeat:
-                            msg = "";
-                            break;
-                    }
-                    return Send(socket, type, msg);
+                    if (msg == "")
+                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User));
+                    else
+                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User) + " -> " + msg);
                 }
+                switch (type)
+                {
+                    case SocketMessageType.GetNotice:
+                        msg = Config.SERVER_NOTICE;
+                        break;
+                    case SocketMessageType.Login:
+                        break;
+                    case SocketMessageType.CheckLogin:
+                        // 添加至玩家列表
+                        User = (User)Factory.New<User>(msg);
+                        msg = "欢迎回来， " + msg + " 。";
+                        AddUser();
+                        GetUserCount();
+                        break;
+                    case SocketMessageType.Logout:
+                        msg = "你已成功退出登录！ ";
+                        GetUserCount();
+                        break;
+                    case SocketMessageType.Disconnect:
+                        msg = "你已成功断开与服务器的连接: " + Config.SERVER_NAME + "。 ";
+                        GetUserCount();
+                        break;
+                    case SocketMessageType.HeartBeat:
+                        msg = "";
+                        break;
+                }
+                return Send(socket, type, msg);
                 throw new Exception();
             }
-            catch
+            catch (Exception e)
             {
                 ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 没有回应。");
+                ServerHelper.Error(e);
                 return false;
             }
         }
 
-        private bool Send(Socket socket, int type, string msg, object[]? objs = null)
+        private bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
         {
             // 发送消息给客户端
             try
             {
-                byte[] buffer = new byte[2048];
-                buffer = Config.DEFAULT_ENCODING.GetBytes(Convert.ToString(SocketHelper.MakeMessage(type, msg)));
-                string typestring = EnumHelper.GetSocketTypeName(type);
-                if (socket.Send(buffer) > 0)
+                if (socket.Send(type, objs) == SocketResult.Success)
                 {
-                    if (msg != "")
-                        ServerHelper.WriteLine("[" + typestring + "] " + SocketHelper.MakeClientName(ClientName, User) + " <- " + msg);
+                    // Logout和Disconnect需要移除User与其线程
+                    if (type == SocketMessageType.Logout || type == SocketMessageType.Disconnect)
+                        RemoveUser();
+                    object obj = objs[0];
+                    if (obj.GetType() == typeof(string) && (string)obj != "")
+                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User) + " <- " + obj);
                     return true;
                 }
-                throw new Exception();
+                throw new Exception("无法向客户端传输消息。");
             }
-            catch
+            catch (Exception e)
             {
                 ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 没有回应。");
+                ServerHelper.Error(e);
                 return false;
             }
         }

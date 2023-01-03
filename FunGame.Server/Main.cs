@@ -1,20 +1,18 @@
-﻿using System.Net.Sockets;
-using System.Net;
-using System.Text;
+﻿using System.Text;
 using System.Text.RegularExpressions;
 using System;
-using System.Net.WebSockets;
 using Milimoe.FunGame.Server.Utility;
-using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
+using Milimoe.FunGame.Core.Library.Constant;
+using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.Network;
 
 Console.Title = Config.SERVER_NAME;
 Console.WriteLine(FunGameEnum.GetInfo((FunGameEnum.FunGame)Config.FunGameType));
 
 bool Running = true;
-Socket? ServerSocket = null;
+ServerSocket? ListeningSocket = null;
 
 StartServer();
 
@@ -36,7 +34,7 @@ while (Running)
                 ServerHelper.WriteLine("Milimoe -> 帮助");
                 break;
             case OrderDictionary.Restart:
-                if (ServerSocket == null)
+                if (ListeningSocket == null)
                 {
                     ServerHelper.WriteLine("重启服务器");
                     StartServer();
@@ -84,16 +82,12 @@ void StartServer()
                 Running = false;
                 throw new Exception("服务器遇到问题需要关闭，请重新启动服务器！");
             }
-
-            // 创建IP地址终结点对象
-            IPEndPoint ip = new(IPAddress.Any, Config.SERVER_PORT);
-
-            // 创建TCP Socket对象并绑定终结点
-            ServerSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            ServerSocket.Bind(ip);
+            
+            // 创建监听
+            ListeningSocket = ServerSocket.StartListening();
 
             // 开始监听连接
-            ServerSocket.Listen(Config.MAX_PLAYERS);
+            //ServerSocket.Listen(Config.MAX_PLAYERS);
             ServerHelper.WriteLine("Listen -> " + Config.SERVER_PORT);
             ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
 
@@ -104,14 +98,12 @@ void StartServer()
 
             while (Running)
             {
-                Socket socket;
+                ClientSocket socket;
                 string clientIPaddress = "";
                 try
                 {
-                    socket = ServerSocket.Accept();
-                    IPEndPoint? clientIP = (IPEndPoint?)socket.RemoteEndPoint;
-                    clientIPaddress = (clientIP != null) ? clientIP.ToString() : "Unknown";
-                    ServerHelper.WriteLine("客户端" + clientIPaddress + "连接 . . .");
+                    socket = ListeningSocket.Accept();
+                    ServerHelper.WriteLine("客户端" + socket.ClientIP + "连接 . . .");
                     if (Read(socket, clientIPaddress) && Send(socket, clientIPaddress))
                     {
                         ServerModel cs = new(socket, Running);
@@ -121,14 +113,15 @@ void StartServer()
                         });
                         cs.Task = t;
                         cs.ClientName = clientIPaddress;
-                        Config.OnlineClients.Add(clientIPaddress, clientIPaddress);
+                        if (!Config.OnlineClients.ContainsKey(clientIPaddress)) Config.OnlineClients.Add(clientIPaddress, clientIPaddress);
                     }
                     else
                         ServerHelper.WriteLine("客户端" + clientIPaddress + "连接失败。");
                 }
-                catch
+                catch (Exception e)
                 {
                     ServerHelper.WriteLine("客户端" + clientIPaddress + "断开连接！");
+                    ServerHelper.Error(e);
                 }
             }
         }
@@ -136,56 +129,49 @@ void StartServer()
         {
             if (e.Message.Equals("服务器遇到问题需要关闭，请重新启动服务器！"))
             {
-                if (ServerSocket != null)
+                if (ListeningSocket != null)
                 {
-                    ServerSocket.Close();
-                    ServerSocket = null;
+                    ListeningSocket.Close();
+                    ListeningSocket = null;
                 }
             }
             ServerHelper.Error(e);
         }
         finally
         {
-            if (ServerSocket != null)
+            if (ListeningSocket != null)
             {
-                ServerSocket.Close();
-                ServerSocket = null;
+                ListeningSocket.Close();
+                ListeningSocket = null;
             }
         }
 
     });
 }
 
-bool Read(Socket socket, string name)
+bool Read(ClientSocket socket, string name)
 {
     // 接收客户端消息
     byte[] buffer = new byte[2048];
-    int length = socket.Receive(buffer);
-    if (length > 0)
+    object[] read = socket.Receive();
+    SocketMessageType type = (SocketMessageType)read[0];
+    object[] objs = (object[])read[1];
+    if (type != SocketMessageType.Unknown)
     {
-        string msg = Config.DEFAULT_ENCODING.GetString(buffer, 0, length);
-        string typestring = EnumHelper.GetSocketTypeName(SocketHelper.GetType(msg));
-        msg = SocketHelper.GetMessage(msg);
-        if (typestring != SocketMessageType.Unknown.ToString())
-        {
-            ServerHelper.WriteLine("[" + typestring + "] " + SocketHelper.MakeClientName(name) + " -> " + msg);
-            return true;
-        }
-        ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
-        return false;
+        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(name) + " -> " + objs[0]);
+        return true;
     }
-    else
-        ServerHelper.WriteLine(SocketHelper.MakeClientName(name) + " 没有回应。");
+    ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
     return false;
 }
 
-bool Send(Socket socket, string name)
+bool Send(ClientSocket socket, string name)
 {
     // 发送消息给客户端
     string msg = Config.SERVER_NAME + ";" + Config.SERVER_NOTICE;
     byte[] buffer = new byte[2048];
     buffer = Config.DEFAULT_ENCODING.GetBytes($"1;{msg}");
-    if (socket.Send(buffer) > 0)
+    if (socket.Send(SocketMessageType.Connect, msg, Guid.NewGuid().ToString()) == SocketResult.Success)
     {
         ServerHelper.WriteLine(SocketHelper.MakeClientName(name) + " <- " + "已确认连接");
         return true;
