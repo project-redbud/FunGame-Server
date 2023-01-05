@@ -50,7 +50,7 @@ namespace Milimoe.FunGame.Server.Model
                 string msg = "";
                 if (type != SocketMessageType.HeartBeat)
                 {
-                    if (msg == "")
+                    if (msg.Trim() == "")
                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User));
                     else
                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User) + " -> " + msg);

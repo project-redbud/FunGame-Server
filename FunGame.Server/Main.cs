@@ -7,6 +7,7 @@ using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
+using Milimoe.FunGame.Core.Entity;
 
 Console.Title = Config.SERVER_NAME;
 Console.WriteLine(FunGameEnum.GetInfo((FunGameEnum.FunGame)Config.FunGameType));
@@ -99,28 +100,29 @@ void StartServer()
             while (Running)
             {
                 ClientSocket socket;
-                string clientIPaddress = "";
+                string ClientIPAddress = "";
                 try
                 {
                     socket = ListeningSocket.Accept();
-                    ServerHelper.WriteLine("客户端" + socket.ClientIP + "连接 . . .");
-                    if (Read(socket, clientIPaddress) && Send(socket, clientIPaddress))
+                    ClientIPAddress = socket.ClientIP;
+                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 正在连接服务器 . . .");
+                    if (Read(socket) && Send(socket))
                     {
-                        ServerModel cs = new(socket, Running);
+                        ServerModel ClientModel = new(socket, Running);
                         Task t = Task.Factory.StartNew(() =>
                         {
-                            cs.Start();
+                            ClientModel.Start();
                         });
-                        cs.Task = t;
-                        cs.ClientName = clientIPaddress;
-                        if (!Config.OnlineClients.ContainsKey(clientIPaddress)) Config.OnlineClients.Add(clientIPaddress, clientIPaddress);
+                        ClientModel.Task = t;
+                        ClientModel.ClientName = ClientIPAddress;
+                        if (!Config.OnlineClients.ContainsKey(ClientIPAddress)) Config.OnlineClients.Add(ClientIPAddress, ClientIPAddress);
                     }
                     else
-                        ServerHelper.WriteLine("客户端" + clientIPaddress + "连接失败。");
+                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 连接失败。");
                 }
                 catch (Exception e)
                 {
-                    ServerHelper.WriteLine("客户端" + clientIPaddress + "断开连接！");
+                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 断开连接！");
                     ServerHelper.Error(e);
                 }
             }
@@ -149,7 +151,7 @@ void StartServer()
     });
 }
 
-bool Read(ClientSocket socket, string name)
+bool Read(ClientSocket socket)
 {
     // 接收客户端消息
     byte[] buffer = new byte[2048];
@@ -158,14 +160,17 @@ bool Read(ClientSocket socket, string name)
     object[] objs = (object[])read[1];
     if (type != SocketMessageType.Unknown)
     {
-        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(name) + " -> " + objs[0]);
+        if (objs[0] != null && objs[0].GetType() == typeof(string) && objs[0].ToString()!.Trim() != "")
+            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(socket.ClientIP) + " -> " + objs[0]);
+        else
+            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(socket.ClientIP));
         return true;
     }
     ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
     return false;
 }
 
-bool Send(ClientSocket socket, string name)
+bool Send(ClientSocket socket)
 {
     // 发送消息给客户端
     string msg = Config.SERVER_NAME + ";" + Config.SERVER_NOTICE;
@@ -173,7 +178,7 @@ bool Send(ClientSocket socket, string name)
     buffer = Config.DEFAULT_ENCODING.GetBytes($"1;{msg}");
     if (socket.Send(SocketMessageType.Connect, msg, Guid.NewGuid().ToString()) == SocketResult.Success)
     {
-        ServerHelper.WriteLine(SocketHelper.MakeClientName(name) + " <- " + "已确认连接");
+        ServerHelper.WriteLine(SocketHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
         return true;
     }
     else
