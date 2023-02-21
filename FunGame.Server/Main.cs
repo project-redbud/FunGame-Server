@@ -1,16 +1,12 @@
-﻿using System.Text;
-using System.Text.RegularExpressions;
-using System;
-using Milimoe.FunGame.Server.Utility;
+﻿using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.Network;
+using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
-using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Core.Api.Utility;
-using Milimoe.FunGame.Core.Library.Common.Network;
-using Milimoe.FunGame.Core.Entity;
+using Milimoe.FunGame.Server.Utility;
 
 Console.Title = Config.SERVER_NAME;
-Console.WriteLine(FunGameEnum.GetInfo((FunGameEnum.FunGame)Config.FunGameType));
+Console.WriteLine(FunGameInfo.GetInfo((FunGameInfo.FunGame)Config.FunGameType));
 
 bool Running = true;
 ServerSocket? ListeningSocket = null;
@@ -64,7 +60,7 @@ void StartServer()
             if (!INIHelper.ExistINIFile())
             {
                 ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
-                INIHelper.Init((FunGameEnum.FunGame)Config.FunGameType);
+                INIHelper.Init((FunGameInfo.FunGame)Config.FunGameType);
                 ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
                 ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
                 return;
