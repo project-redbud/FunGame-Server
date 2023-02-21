@@ -72,7 +72,6 @@ namespace Milimoe.FunGame.Server.Model
                         break;
                 }
                 return Send(socket, type, msg);
-                throw new Exception();
             }
             catch (Exception e)
             {
@@ -97,7 +96,7 @@ namespace Milimoe.FunGame.Server.Model
                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User) + " <- " + obj);
                     return true;
                 }
-                throw new Exception("无法向客户端传输消息。");
+                throw new CanNotSendToClientException();
             }
             catch (Exception e)
             {

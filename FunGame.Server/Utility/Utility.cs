@@ -69,7 +69,7 @@ namespace Milimoe.FunGame.Server.Utility
                 }
                 else
                 {
-                    throw new Exception("MySQL服务启动失败：无法找到MySQL配置文件。");
+                    throw new MySQLConfigException();
                 }
             }
             catch (Exception e)

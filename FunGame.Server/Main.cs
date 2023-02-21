@@ -1,4 +1,5 @@
-﻿using Milimoe.FunGame.Core.Api.Utility;
+﻿using Milimoe.FunGame;
+using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Model;
@@ -77,7 +78,7 @@ void StartServer()
             if (!DataHelper.Connect())
             {
                 Running = false;
-                throw new Exception("服务器遇到问题需要关闭，请重新启动服务器！");
+                throw new ServerErrorException();
             }
             
             // 创建监听
