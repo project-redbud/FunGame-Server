@@ -21,6 +21,7 @@ namespace Milimoe.FunGame.Server.Model
          * Private
          */
         private User? User = null;
+        private Guid CheckLoginKey = Guid.Empty;
 
         public ServerModel(ClientSocket socket, bool running)
         {
@@ -37,6 +38,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 object[] objs = socket.Receive();
                 SocketMessageType type = (SocketMessageType)objs[0];
+                object[] args = (object[])objs[1];
                 string msg = "";
                 if (type != SocketMessageType.HeartBeat)
                 {
@@ -50,23 +52,37 @@ namespace Milimoe.FunGame.Server.Model
                     case SocketMessageType.GetNotice:
                         msg = Config.SERVER_NOTICE;
                         break;
+
                     case SocketMessageType.Login:
-                        break;
+                        CheckLoginKey = Guid.NewGuid();
+                        return Send(socket, type, CheckLoginKey);
+
                     case SocketMessageType.CheckLogin:
-                        // 添加至玩家列表
-                        User = (User)Factory.New<User>(msg);
-                        msg = "欢迎回来， " + msg + " 。";
-                        AddUser();
-                        GetUserCount();
-                        break;
+                        if (args != null && args.Length > 0)
+                        {
+                            Guid checkloginkey = NetworkUtility.ConvertJsonObject<Guid>(args[0]);
+                            if (CheckLoginKey.Equals(checkloginkey))
+                            {
+                                // 添加至玩家列表
+                                User = Factory.New<User>(msg);
+                                AddUser();
+                                GetUserCount();
+                                return Send(socket, type, msg);
+                            }
+                            ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
+                        }
+                        return false;
+
                     case SocketMessageType.Logout:
                         msg = "你已成功退出登录！ ";
                         GetUserCount();
                         break;
+
                     case SocketMessageType.Disconnect:
                         msg = "你已成功断开与服务器的连接: " + Config.SERVER_NAME + "。 ";
                         GetUserCount();
                         break;
+
                     case SocketMessageType.HeartBeat:
                         msg = "";
                         break;
