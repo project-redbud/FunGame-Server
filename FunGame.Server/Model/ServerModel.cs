@@ -118,7 +118,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (User != null)
             {
-                ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Userame + " 重复登录！");
+                ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 重复登录！");
             }
         }
 
@@ -126,12 +126,12 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (User != null)
             {
-                if (!Config.OnlinePlayers.ContainsKey(User.Userame))
+                if (!Config.OnlinePlayers.ContainsKey(User.Username))
                 {
                     if (Task != null)
                     {
-                        Config.OnlinePlayers.AddOrUpdate(User.Userame, Task, (key, value) => value);
-                        ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Userame + " 已添加");
+                        Config.OnlinePlayers.AddOrUpdate(User.Username, Task, (key, value) => value);
+                        ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
                         return true;
                     }
                 }
@@ -147,14 +147,14 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (Task != null && User != null)
             {
-                if (Config.OnlinePlayers.TryRemove(User.Userame, out Task))
+                if (Config.OnlinePlayers.TryRemove(User.Username, out Task))
                 {
-                    ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Userame + " 已移除");
+                    ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已移除");
                     Task = null;
                     User = null;
                     return true;
                 }
-                else ServerHelper.WriteLine("OnlinePlayers: 移除玩家 " + User.Userame + " 失败");
+                else ServerHelper.WriteLine("OnlinePlayers: 移除玩家 " + User.Username + " 失败");
             }
             return false;
         }

@@ -200,7 +200,7 @@ namespace Milimoe.FunGame.Server.Utility
         {
             if (user != null)
             {
-                return "玩家 " + user.Userame;
+                return "玩家 " + user.Username;
             }
             if (name != "") return "客户端(" + name + ")";
             return "客户端";
