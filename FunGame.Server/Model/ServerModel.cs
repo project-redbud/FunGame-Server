@@ -22,6 +22,8 @@ namespace Milimoe.FunGame.Server.Model
          */
         private User? User = null;
         private Guid CheckLoginKey = Guid.Empty;
+        private string UserName = "";
+        private string Password = "";
 
         public ServerModel(ClientSocket socket, bool running)
         {
@@ -40,13 +42,17 @@ namespace Milimoe.FunGame.Server.Model
                 SocketMessageType type = (SocketMessageType)objs[0];
                 object[] args = (object[])objs[1];
                 string msg = "";
-                if (type != SocketMessageType.HeartBeat)
+
+                // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
+                SocketMessageType ignoreType = SocketMessageType.HeartBeat | SocketMessageType.Login;
+                if (type != ignoreType)
                 {
                     if (msg.Trim() == "")
                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User));
                     else
                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User) + " -> " + msg);
                 }
+
                 switch (type)
                 {
                     case SocketMessageType.GetNotice:
@@ -54,7 +60,26 @@ namespace Milimoe.FunGame.Server.Model
                         break;
 
                     case SocketMessageType.Login:
-                        CheckLoginKey = Guid.NewGuid();
+                        CheckLoginKey = Guid.Empty;
+                        if (args != null)
+                        {
+                            string? username = "", password = "", autokey = "";
+                            if (args.Length > 0) username = NetworkUtility.ConvertJsonObject<string>(args[0]);
+                            if (args.Length > 1) password = NetworkUtility.ConvertJsonObject<string>(args[1]);
+                            if (args.Length > 2) autokey = NetworkUtility.ConvertJsonObject<string>(args[2]);
+                            if (username != null && password != null)
+                            {
+                                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
+                                if (username == "test" && password == "123456".Encrypt("test"))
+                                {
+                                    if (autokey != null) ServerHelper.WriteLine(autokey);
+                                    UserName = username;
+                                    Password = password;
+                                    CheckLoginKey = Guid.NewGuid();
+                                    return Send(socket, type, CheckLoginKey);
+                                }
+                            }
+                        }
                         return Send(socket, type, CheckLoginKey);
 
                     case SocketMessageType.CheckLogin:
@@ -64,14 +89,14 @@ namespace Milimoe.FunGame.Server.Model
                             if (CheckLoginKey.Equals(checkloginkey))
                             {
                                 // 添加至玩家列表
-                                User = Factory.New<User>(msg);
+                                User = Factory.New<User>(UserName, Password);
                                 AddUser();
                                 GetUserCount();
-                                return Send(socket, type, msg);
+                                return Send(socket, type, UserName, Password);
                             }
                             ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
                         }
-                        return false;
+                        return Send(socket, type, CheckLoginKey.ToString());
 
                     case SocketMessageType.Logout:
                         msg = "你已成功退出登录！ ";
