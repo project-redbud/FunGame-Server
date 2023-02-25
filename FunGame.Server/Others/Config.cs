@@ -1,4 +1,5 @@
 ﻿using Milimoe.FunGame.Core.Library.Constant;
+using Milimoe.FunGame.Server.Model;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Text;
@@ -29,13 +30,13 @@ namespace Milimoe.FunGame.Server.Others
         /// string: 玩家标识ID
         /// Task：玩家线程
         /// </summary>
-        public static ConcurrentDictionary<string, Task> OnlinePlayers { get; } = new ConcurrentDictionary<string, Task>();
+        public static ConcurrentDictionary<string, ServerModel> OnlinePlayers { get; } = new ConcurrentDictionary<string, ServerModel>();
 
         /**
          * string：房间号
          * Task：玩家线程
          */
-        public static ConcurrentDictionary<string, Task> PlayingPlayers { get; } = new ConcurrentDictionary<string, Task>();
+        public static ConcurrentDictionary<string, ServerModel> PlayingPlayers { get; } = new ConcurrentDictionary<string, ServerModel>();
 
     }
 }

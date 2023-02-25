@@ -24,6 +24,7 @@ namespace Milimoe.FunGame.Server.Model
         private Guid CheckLoginKey = Guid.Empty;
         private string UserName = "";
         private string Password = "";
+        private int FailedTimes = 0; // 超过一定次数断开连接
 
         public ServerModel(ClientSocket socket, bool running)
         {
@@ -31,9 +32,7 @@ namespace Milimoe.FunGame.Server.Model
             Running = running;
         }
 
-        private int FailedTimes = 0; // 超过一定次数断开连接
-
-        private bool Read(ClientSocket socket)
+        public bool Read(ClientSocket socket)
         {
             // 接收客户端消息
             try
@@ -91,8 +90,11 @@ namespace Milimoe.FunGame.Server.Model
                             Guid checkloginkey = NetworkUtility.ConvertJsonObject<Guid>(args[0]);
                             if (CheckLoginKey.Equals(checkloginkey))
                             {
-                                // 添加至玩家列表
+                                // 创建User对象
                                 User = Factory.New<User>(UserName, Password);
+                                // 检查有没有重复登录的情况
+                                KickUser();
+                                // 添加至玩家列表
                                 AddUser();
                                 GetUserCount();
                                 return Send(socket, type, UserName, Password);
@@ -113,7 +115,7 @@ namespace Milimoe.FunGame.Server.Model
                                 GetUserCount();
                                 CheckLoginKey = Guid.Empty;
                                 msg = "你已成功退出登录！ ";
-                                return Send(socket, type, checklogoutkey, msg);
+                                return  Send(socket, type, checklogoutkey, msg);
                             }
                         }
                         ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登出。");
@@ -138,7 +140,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        private bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
+        public bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
         {
             // 发送消息给客户端
             try
@@ -173,9 +175,11 @@ namespace Milimoe.FunGame.Server.Model
 
         private void KickUser()
         {
-            if (User != null)
+            if (User != null && Config.OnlinePlayers.ContainsKey(User.Username))
             {
                 ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 重复登录！");
+                Config.OnlinePlayers.TryGetValue(User.Username, out ServerModel? serverTask);
+                serverTask?.Send(serverTask.Socket!, SocketMessageType.Logout, serverTask.CheckLoginKey, "您的账号在别处登录，已强制下线。");
             }
         }
 
@@ -183,18 +187,11 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (User != null)
             {
-                if (!Config.OnlinePlayers.ContainsKey(User.Username))
+                if (this != null)
                 {
-                    if (Task != null)
-                    {
-                        Config.OnlinePlayers.AddOrUpdate(User.Username, Task, (key, value) => value);
-                        ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
-                        return true;
-                    }
-                }
-                else
-                {
-                    KickUser();
+                    Config.OnlinePlayers.AddOrUpdate(User.Username, this, (key, value) => value);
+                    ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
+                    return true;
                 }
             }
             return false;
@@ -202,9 +199,9 @@ namespace Milimoe.FunGame.Server.Model
 
         private bool RemoveUser()
         {
-            if (Task != null && User != null)
+            if (this != null && User != null)
             {
-                if (Config.OnlinePlayers.TryRemove(User.Username, out Task))
+                if (Config.OnlinePlayers.TryRemove(User.Username, out _))
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已移除");
                     User = null;
