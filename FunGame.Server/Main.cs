@@ -5,6 +5,7 @@ using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
+using Milimoe.FunGame.Server.Utility.DataUtility;
 
 Console.Title = Config.SERVER_NAME;
 Console.WriteLine(FunGameInfo.GetInfo((FunGameInfo.FunGame)Config.FunGameType));
@@ -72,10 +73,10 @@ void StartServer()
                 Console.Title = Config.SERVER_NAME + " - FunGame Server Port: " + Config.SERVER_PORT;
             }
 
-            DataHelper.Close();
+            MySQLConnection.Close();
 
             // 连接MySQL服务器
-            if (!DataHelper.Connect())
+            if (!MySQLConnection.Connect(out _))
             {
                 Running = false;
                 throw new ServerErrorException();

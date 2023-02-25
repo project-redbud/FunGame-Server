@@ -33,15 +33,19 @@
   <ItemGroup>
     <Reference Include="FunGame.Core">
       <HintPath>..\..\FunGame\bin\Server\Debug\net7.0\FunGame.Core.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="MySql.Data">
       <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\MySql.Data.dll</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
     <Reference Include="System.Configuration.ConfigurationManager">
       <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\System.Configuration.ConfigurationManager.dll</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
     <Reference Include="System.Security.Permissions">
       <HintPath>..\..\FunGame\bin\Server\Debug\net6.0\System.Security.Permissions.dll</HintPath>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
   </ItemGroup>
 
