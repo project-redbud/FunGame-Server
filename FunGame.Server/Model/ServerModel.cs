@@ -45,7 +45,7 @@ namespace Milimoe.FunGame.Server.Model
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
                 SocketMessageType ignoreType = SocketMessageType.HeartBeat | SocketMessageType.Login;
-                if (type != ignoreType)
+                if ((type & ignoreType) == 0)
                 {
                     if (msg.Trim() == "")
                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User));
@@ -72,15 +72,18 @@ namespace Milimoe.FunGame.Server.Model
                                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
                                 if (username == "test" && password == "123456".Encrypt("test"))
                                 {
-                                    if (autokey != null) ServerHelper.WriteLine(autokey);
+                                    if (autokey != null && autokey.Trim() != "")
+                                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] AutoKey: 已确认");
                                     UserName = username;
                                     Password = password;
                                     CheckLoginKey = Guid.NewGuid();
                                     return Send(socket, type, CheckLoginKey);
                                 }
+                                msg = "用户名或密码不正确。";
+                                ServerHelper.WriteLine(msg);
                             }
                         }
-                        return Send(socket, type, CheckLoginKey);
+                        return Send(socket, type, CheckLoginKey, msg);
 
                     case SocketMessageType.CheckLogin:
                         if (args != null && args.Length > 0)
@@ -99,9 +102,22 @@ namespace Milimoe.FunGame.Server.Model
                         return Send(socket, type, CheckLoginKey.ToString());
 
                     case SocketMessageType.Logout:
-                        msg = "你已成功退出登录！ ";
-                        GetUserCount();
-                        break;
+                        Guid checklogoutkey = Guid.Empty;
+                        if (args != null && args.Length > 0)
+                        {
+                            checklogoutkey = NetworkUtility.ConvertJsonObject<Guid>(args[0]);
+                            if (CheckLoginKey.Equals(checklogoutkey))
+                            {
+                                // 从玩家列表移除
+                                RemoveUser();
+                                GetUserCount();
+                                CheckLoginKey = Guid.Empty;
+                                msg = "你已成功退出登录！ ";
+                                return Send(socket, type, checklogoutkey, msg);
+                            }
+                        }
+                        ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登出。");
+                        return Send(socket, type, checklogoutkey);
 
                     case SocketMessageType.Disconnect:
                         msg = "你已成功断开与服务器的连接: " + Config.SERVER_NAME + "。 ";
@@ -191,7 +207,6 @@ namespace Milimoe.FunGame.Server.Model
                 if (Config.OnlinePlayers.TryRemove(User.Username, out Task))
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已移除");
-                    Task = null;
                     User = null;
                     return true;
                 }
