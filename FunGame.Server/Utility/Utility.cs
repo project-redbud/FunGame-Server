@@ -1,8 +1,8 @@
-﻿using Milimoe.FunGame.Core.Api.Utility;
+﻿using System.Collections;
+using MySql.Data.MySqlClient;
+using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Server.Others;
-using MySql.Data.MySqlClient;
-using System.Collections;
 
 namespace Milimoe.FunGame.Server.Utility
 {

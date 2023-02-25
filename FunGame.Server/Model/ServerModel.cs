@@ -2,20 +2,21 @@
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
+using Milimoe.FunGame.Core.Library.Server;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
 namespace Milimoe.FunGame.Server.Model
 {
-    public class ServerModel
+    public class ServerModel : BaseModel
     {
         /**
          * Public
          */
-        public bool Running = false;
-        public ClientSocket? Socket = null;
-        public Task? Task = null;
-        public string ClientName = "";
+        public new bool Running = false;
+        public new ClientSocket? Socket = null;
+        public new Task? Task = null;
+        public new string ClientName = "";
 
         /**
          * Private
@@ -32,7 +33,7 @@ namespace Milimoe.FunGame.Server.Model
             Running = running;
         }
 
-        public bool Read(ClientSocket socket)
+        public override bool Read(ClientSocket socket)
         {
             // 接收客户端消息
             try
@@ -140,7 +141,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
+        public override bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
         {
             // 发送消息给客户端
             try
@@ -165,7 +166,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public void Start()
+        public override void Start()
         {
             Task StreamReader = Task.Factory.StartNew(() =>
             {
