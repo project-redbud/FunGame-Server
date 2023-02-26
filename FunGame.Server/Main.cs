@@ -5,7 +5,6 @@ using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
-using Milimoe.FunGame.Server.Utility.DataUtility;
 
 Console.Title = Config.SERVER_NAME;
 Console.WriteLine(FunGameInfo.GetInfo((FunGameInfo.FunGame)Config.FunGameType));
@@ -64,7 +63,6 @@ void StartServer()
                 ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
                 INIHelper.Init((FunGameInfo.FunGame)Config.FunGameType);
                 ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
-                ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
                 return;
             }
             else
@@ -72,21 +70,19 @@ void StartServer()
                 ServerHelper.GetServerSettings();
                 Console.Title = Config.SERVER_NAME + " - FunGame Server Port: " + Config.SERVER_PORT;
             }
+            ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
 
-            MySQLConnection.Close();
-
-            // 连接MySQL服务器
-            if (!MySQLConnection.Connect(out _))
+            // 测试MySQL服务器连接
+            if (TestSQLConnection() != SQLResult.Success)
             {
                 Running = false;
-                throw new ServerErrorException();
+                throw new SQLQueryException();
             }
             
             // 创建监听
             ListeningSocket = ServerSocket.StartListening();
 
             // 开始监听连接
-            //ServerSocket.Listen(Config.MAX_PLAYERS);
             ServerHelper.WriteLine("Listen -> " + Config.SERVER_PORT);
             ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
 
@@ -127,7 +123,7 @@ void StartServer()
         }
         catch (Exception e)
         {
-            if (e.Message.Equals("服务器遇到问题需要关闭，请重新启动服务器！"))
+            if (e.Message.Equals(new ServerErrorException().Message))
             {
                 if (ListeningSocket != null)
                 {
@@ -182,4 +178,13 @@ bool Send(ClientSocket socket)
     else
         ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
     return false;
+}
+
+SQLResult TestSQLConnection()
+{
+    SQLResult TestResult = SQLResult.Success;
+    MySQLHelper SQLHelper = MySQLHelper.GetHelper();
+    SQLHelper.Script = SQLConstant.Insert_ServerLoginLogs(Config.SERVER_NAME, Config.SERVER_KEY);
+    SQLHelper.Execute(out TestResult);
+    return TestResult;
 }

@@ -1,83 +1,140 @@
 ﻿using System.Data;
-using System.Text;
-using Milimoe.FunGame.Core.Api.Data;
+using MySql.Data.MySqlClient;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Service;
 
 namespace Milimoe.FunGame.Server.Utility
 {
-    public class MySQLManager : SQLManager
+    public class MySQLManager
     {
-        public new SQLHelper SQLHelper { get; }
-
-        public MySQLManager(SQLHelper SQLHelper)
+        /// <summary>
+        /// 执行Script命令
+        /// </summary>
+        /// <param name="Helper">MySQLHelper</param>
+        /// <param name="Result">执行结果</param>
+        /// <returns>影响的行数</returns>
+        public static int Execute(MySQLHelper Helper, out SQLResult Result)
         {
-            this.SQLHelper = SQLHelper;
+            MySqlCommand cmd = new();
+            int updaterow;
+
+            try
+            {
+                PrepareCommand(Helper, cmd);
+                updaterow = cmd.ExecuteNonQuery();
+                if (updaterow > 0)
+                {
+                    Result = SQLResult.Success;
+                }
+                else Result = SQLResult.NotFound;
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+                updaterow = -1;
+                Result = SQLResult.Fail;
+            }
+
+            return updaterow;
         }
 
-        public override int Add(StringBuilder sql, ref SQLResult result)
+        /// <summary>
+        /// 返回DataSet
+        /// </summary>
+        /// <param name="Helper">MySQLHelper</param>
+        /// <param name="Result">执行结果</param>
+        /// <returns>结果集</returns>
+        public static DataSet ExecuteDataSet(MySQLHelper Helper, out SQLResult Result)
         {
-            return 0;
+            MySqlCommand cmd = new();
+            DataSet ds = new();
+
+            try
+            {
+                PrepareCommand(Helper, cmd);
+
+                MySqlDataAdapter adapter = new()
+                {
+                    SelectCommand = cmd
+                };
+                adapter.Fill(ds);
+
+                //清除参数
+                cmd.Parameters.Clear();
+                Result = SQLResult.Success;
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+                Result = SQLResult.Fail;
+            }
+
+            return ds;
         }
 
-        public override int Add(string sql, ref SQLResult result)
+        /// <summary>
+        /// 返回插入值ID
+        /// </summary>
+        /// <param name="Helper">MySQLHelper</param>
+        /// <param name="Result">执行结果</param>
+        /// <returns>插入值ID</returns>
+        public static object ExecuteAndGetLastInsertedID(MySQLHelper Helper, out SQLResult Result)
         {
-            return 0;
+            MySqlCommand cmd = new();
+            int updaterow;
+
+            try
+            {
+                PrepareCommand(Helper, cmd);
+                updaterow = cmd.ExecuteNonQuery();
+                if (updaterow > 0)
+                {
+                    Result = SQLResult.Success;
+                }
+                else Result = SQLResult.NotFound;
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+                Result = SQLResult.Fail;
+            }
+
+            return cmd.LastInsertedId;
         }
 
-        public override SQLResult Execute()
+        /// <summary>
+        /// 准备执行一个命令
+        /// </summary>
+        /// <param name="Helper">MySQLHelper</param>
+        /// <param name="cmd">命令对象</param>
+        /// <param name="trans">事务</param>
+        public static void PrepareCommand(MySQLHelper Helper, MySqlCommand cmd, MySqlTransaction? trans = null)
         {
-            return SQLResult.NotFound;
-        }
+            if (Helper.Connection != null)
+            {
+                MySqlConnection? conn = Helper.Connection.Connection;
 
-        public override SQLResult Execute(StringBuilder sql)
-        {
-            return SQLResult.NotFound;
-        }
+                if (conn != null && conn.State != ConnectionState.Open)
+                    conn.Open();
 
-        public override SQLResult Execute(string sql)
-        {
-            return SQLResult.NotFound;
-        }
+                cmd.Connection = conn;
+                cmd.CommandText = Helper.Script;
 
-        public override DataSet ExecuteDataSet(StringBuilder sql)
-        {
-            return new DataSet();
-        }
+                if (trans != null)
+                {
+                    cmd.Transaction = trans;
+                }
 
-        public override DataSet ExecuteDataSet(string sql)
-        {
-            return new DataSet();
-        }
+                cmd.CommandType = Helper.CommandType;
 
-        public override object Query(EntityType type, StringBuilder sql)
-        {
-            return General.EntityInstance;
-        }
-
-        public override object Query(EntityType type, string sql)
-        {
-            return General.EntityInstance;
-        }
-
-        public override int Remove(StringBuilder sql, ref SQLResult result)
-        {
-            return 0;
-        }
-
-        public override int Remove(string sql, ref SQLResult result)
-        {
-            return 0;
-        }
-
-        public override int Update(StringBuilder sql, ref SQLResult result)
-        {
-            return 0;
-        }
-
-        public override int Update(string sql, ref SQLResult result)
-        {
-            return 0;
+                if (Helper.Parameters != null)
+                {
+                    foreach (MySqlParameter parm in Helper.Parameters)
+                    {
+                        cmd.Parameters.Add(parm);
+                    }
+                }
+            }
         }
     }
 }

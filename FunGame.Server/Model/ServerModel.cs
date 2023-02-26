@@ -5,6 +5,7 @@ using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.Server;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
+using System.Data;
 
 namespace Milimoe.FunGame.Server.Model
 {
@@ -26,6 +27,7 @@ namespace Milimoe.FunGame.Server.Model
         private string UserName = "";
         private string Password = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
+        private MySQLHelper SQLHelper = MySQLHelper.GetHelper();
 
         public ServerModel(ClientSocket socket, bool running)
         {
@@ -70,8 +72,11 @@ namespace Milimoe.FunGame.Server.Model
                             if (username != null && password != null)
                             {
                                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
-                                if (username == "test" && password == "123456".Encrypt("test"))
+                                SQLHelper.Script = $"{SQLConstant.Select_Users} {SQLConstant.Command_Where} Username = '{username}' And Password = '{password}'";
+                                SQLHelper.ExecuteDataSet(out SQLResult result);
+                                if (result == SQLResult.Success && SQLHelper.UpdateRows > 0)
                                 {
+                                    DataRow UserRow = SQLHelper.DataSet.Tables[0].Rows[0];
                                     if (autokey != null && autokey.Trim() != "")
                                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] AutoKey: 已确认");
                                     UserName = username;
