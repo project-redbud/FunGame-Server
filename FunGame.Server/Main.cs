@@ -151,7 +151,7 @@ bool Read(ClientSocket socket)
     byte[] buffer = new byte[2048];
     object[] read = socket.Receive();
     SocketMessageType type = (SocketMessageType)read[0];
-    object[] objs = (object[])read[1];
+    object[] objs = (object[])read[2];
     if (type != SocketMessageType.Unknown)
     {
         if (objs[0] != null && objs[0].GetType() == typeof(string) && objs[0].ToString()!.Trim() != "")
@@ -170,7 +170,7 @@ bool Send(ClientSocket socket)
     string msg = Config.SERVER_NAME + ";" + Config.SERVER_NOTICE;
     byte[] buffer = new byte[2048];
     buffer = Config.DEFAULT_ENCODING.GetBytes($"1;{msg}");
-    if (socket.Send(SocketMessageType.Connect, msg, Guid.NewGuid().ToString()) == SocketResult.Success)
+    if (socket.Send(SocketMessageType.Connect, msg, Guid.NewGuid()) == SocketResult.Success)
     {
         ServerHelper.WriteLine(SocketHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
         return true;
@@ -182,9 +182,6 @@ bool Send(ClientSocket socket)
 
 SQLResult TestSQLConnection()
 {
-    SQLResult TestResult = SQLResult.Success;
-    MySQLHelper SQLHelper = MySQLHelper.GetHelper();
-    SQLHelper.Script = SQLConstant.Insert_ServerLoginLogs(Config.SERVER_NAME, Config.SERVER_KEY);
-    SQLHelper.Execute(out TestResult);
+    new MySQLHelper(true, SQLConstant.Insert_ServerLoginLogs(Config.SERVER_NAME, Config.SERVER_KEY)).Execute(out SQLResult TestResult);
     return TestResult;
 }

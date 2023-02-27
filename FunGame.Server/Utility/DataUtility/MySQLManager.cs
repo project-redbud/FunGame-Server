@@ -44,10 +44,11 @@ namespace Milimoe.FunGame.Server.Utility
         /// <param name="Helper">MySQLHelper</param>
         /// <param name="Result">执行结果</param>
         /// <returns>结果集</returns>
-        public static DataSet ExecuteDataSet(MySQLHelper Helper, out SQLResult Result)
+        public static DataSet ExecuteDataSet(MySQLHelper Helper, out SQLResult Result, out int Rows)
         {
             MySqlCommand cmd = new();
             DataSet ds = new();
+            Rows = 0;
 
             try
             {
@@ -61,7 +62,10 @@ namespace Milimoe.FunGame.Server.Utility
 
                 //清除参数
                 cmd.Parameters.Clear();
-                Result = SQLResult.Success;
+
+                Rows = ds.Tables[0].Rows.Count;
+                if (Rows > 0) Result = SQLResult.Success;
+                else Result = SQLResult.NotFound;
             }
             catch (Exception e)
             {

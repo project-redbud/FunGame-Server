@@ -2,6 +2,7 @@
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
+using Milimoe.FunGame.Core.Library.Exception;
 using Milimoe.FunGame.Core.Library.Server;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
@@ -27,12 +28,13 @@ namespace Milimoe.FunGame.Server.Model
         private string UserName = "";
         private string Password = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
-        private MySQLHelper SQLHelper = MySQLHelper.GetHelper();
+        private readonly MySQLHelper SQLHelper;
 
         public ServerModel(ClientSocket socket, bool running)
         {
             Socket = socket;
             Running = running;
+            SQLHelper = new(SocketHelper.MakeClientName(socket.ClientIP));
         }
 
         public override bool Read(ClientSocket socket)
@@ -42,7 +44,8 @@ namespace Milimoe.FunGame.Server.Model
             {
                 object[] objs = socket.Receive();
                 SocketMessageType type = (SocketMessageType)objs[0];
-                object[] args = (object[])objs[1];
+                Guid token = (Guid)objs[1];
+                object[] args = (object[])objs[2];
                 string msg = "";
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
@@ -135,6 +138,11 @@ namespace Milimoe.FunGame.Server.Model
                     case SocketMessageType.HeartBeat:
                         msg = "";
                         break;
+
+                    case SocketMessageType.IntoRoom:
+                        msg = "-1";
+                        if (args != null && args.Length > 0) msg = NetworkUtility.ConvertJsonObject<string>(args[0])!;
+                        break;
                 }
                 return Send(socket, type, msg);
             }
@@ -154,8 +162,15 @@ namespace Milimoe.FunGame.Server.Model
                 if (socket.Send(type, objs) == SocketResult.Success)
                 {
                     // Logout和Disconnect需要移除User与其线程
-                    if (type == SocketMessageType.Logout || type == SocketMessageType.Disconnect)
+                    if (type == SocketMessageType.Logout)
+                    {
                         RemoveUser();
+                    }
+                    if (type == SocketMessageType.Disconnect)
+                    {
+                        RemoveUser();
+                        Close();
+                    }
                     object obj = objs[0];
                     if (obj.GetType() == typeof(string) && (string)obj != "")
                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User) + " <- " + obj);
@@ -238,8 +253,8 @@ namespace Milimoe.FunGame.Server.Model
                         {
                             RemoveUser();
                             GetUserCount();
-                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " ERROR -> Too Many Faileds.");
-                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " CLOSE -> StreamReader is Closed.");
+                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Error -> Too Many Faileds.");
+                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Close -> StreamReader is Closed.");
                             break;
                         }
                     }
@@ -249,11 +264,30 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     RemoveUser();
                     GetUserCount();
-                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " ERROR -> Socket is Closed.");
-                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " CLOSE -> StringStream is Closed.");
+                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Error -> Socket is Closed.");
+                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Close -> StringStream is Closed.");
                     break;
                 }
             }
         }
+
+        private void Close()
+        {
+            try
+            {
+                SQLHelper.Close();
+                if (Socket != null)
+                {
+                    Socket.Close();
+                    Socket = null;
+                }
+                Running = false;
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+            }
+        }
+
     }
 }
