@@ -6,7 +6,7 @@ using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
-Console.Title = Config.SERVER_NAME;
+Console.Title = Config.ServerName;
 Console.WriteLine(FunGameInfo.GetInfo((FunGameInfo.FunGame)Config.FunGameType));
 
 bool Running = true;
@@ -68,7 +68,7 @@ void StartServer()
             else
             {
                 ServerHelper.GetServerSettings();
-                Console.Title = Config.SERVER_NAME + " - FunGame Server Port: " + Config.SERVER_PORT;
+                Console.Title = Config.ServerName + " - FunGame Server Port: " + Config.ServerPort;
             }
             ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
 
@@ -83,11 +83,11 @@ void StartServer()
             ListeningSocket = ServerSocket.StartListening();
 
             // 开始监听连接
-            ServerHelper.WriteLine("Listen -> " + Config.SERVER_PORT);
+            ServerHelper.WriteLine("Listen -> " + Config.ServerPort);
             ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
 
-            if (Config.SERVER_NOTICE != "")
-                ServerHelper.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.SERVER_NOTICE + "\n");
+            if (Config.ServerNotice != "")
+                ServerHelper.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
             else
                 ServerHelper.WriteLine("无法读取服务器公告");
 
@@ -102,13 +102,12 @@ void StartServer()
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 正在连接服务器 . . .");
                     if (Read(socket) && Send(socket))
                     {
-                        ServerModel ClientModel = new(socket, Running);
+                        ServerModel ClientModel = new(ListeningSocket, socket, Running);
                         Task t = Task.Factory.StartNew(() =>
                         {
                             ClientModel.Start();
                         });
-                        ClientModel.Task = t;
-                        ClientModel.ClientName = ClientIPAddress;
+                        ClientModel.SetTaskAndClientName(t, ClientIPAddress);
                         if (!Config.OnlineClients.ContainsKey(ClientIPAddress)) Config.OnlineClients.Add(ClientIPAddress, ClientIPAddress);
                     }
                     else
@@ -167,9 +166,9 @@ bool Read(ClientSocket socket)
 bool Send(ClientSocket socket)
 {
     // 发送消息给客户端
-    string msg = Config.SERVER_NAME + ";" + Config.SERVER_NOTICE;
+    string msg = Config.ServerName + ";" + Config.ServerNotice;
     byte[] buffer = new byte[2048];
-    buffer = Config.DEFAULT_ENCODING.GetBytes($"1;{msg}");
+    buffer = Config.DefaultEncoding.GetBytes($"1;{msg}");
     if (socket.Send(SocketMessageType.Connect, msg, Guid.NewGuid()) == SocketResult.Success)
     {
         ServerHelper.WriteLine(SocketHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
@@ -182,6 +181,6 @@ bool Send(ClientSocket socket)
 
 SQLResult TestSQLConnection()
 {
-    new MySQLHelper(true, SQLConstant.Insert_ServerLoginLogs(Config.SERVER_NAME, Config.SERVER_KEY)).Execute(out SQLResult TestResult);
+    new MySQLHelper(SQLConstant.Insert_ServerLoginLogs(Config.ServerName, Config.ServerKey)).Execute(out SQLResult TestResult);
     return TestResult;
 }

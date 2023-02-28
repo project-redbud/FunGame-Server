@@ -11,7 +11,7 @@ namespace Milimoe.FunGame.Server.Utility
         public static string GetPrefix()
         {
             DateTime now = System.DateTime.Now;
-            return now.AddMilliseconds(-now.Millisecond).ToString() + " " + Config.SERVER_NAME + "：";
+            return now.AddMilliseconds(-now.Millisecond).ToString() + " " + Config.ServerName + "：";
         }
 
         public static void Error(Exception e)
@@ -59,19 +59,19 @@ namespace Milimoe.FunGame.Server.Utility
                     string? Describe = (string?)settings["Describe"];
                     string? Notice = (string?)settings["Notice"];
                     string? Key = (string?)settings["Key"];
-                    if (Name != null) Config.SERVER_NAME = Name;
-                    if (Password != null) Config.SERVER_PASSWORD = Password;
-                    if (Describe != null) Config.SERVER_DESCRIBE = Describe;
-                    if (Notice != null) Config.SERVER_NOTICE = Notice;
-                    if (Key != null) Config.SERVER_KEY = Key;
+                    if (Name != null) Config.ServerName = Name;
+                    if (Password != null) Config.ServerPassword = Password;
+                    if (Describe != null) Config.ServerDescription = Describe;
+                    if (Notice != null) Config.ServerNotice = Notice;
+                    if (Key != null) Config.ServerKey = Key;
                     int? Status = (int?)settings["Status"];
                     int? Port = (int?)settings["Port"];
                     int? MaxPlayer = (int?)settings["MaxPlayer"];
                     int? MaxConnectFailed = (int?)settings["MaxConnectFailed"];
-                    if (Status != null) Config.SERVER_STATUS = (int)Status;
-                    if (Port != null) Config.SERVER_PORT = (int)Port;
-                    if (MaxPlayer != null) Config.MAX_PLAYERS = (int)MaxPlayer;
-                    if (MaxConnectFailed != null) Config.MAX_CONNECTFAILED = (int)MaxConnectFailed;
+                    if (Status != null) Config.ServerStatus = (int)Status;
+                    if (Port != null) Config.ServerPort = (int)Port;
+                    if (MaxPlayer != null) Config.MaxPlayers = (int)MaxPlayer;
+                    if (MaxConnectFailed != null) Config.MaxConnectionFaileds = (int)MaxConnectFailed;
                 }
             }
             catch (Exception e)

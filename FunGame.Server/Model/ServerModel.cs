@@ -1,12 +1,11 @@
-﻿using Milimoe.FunGame.Core.Api.Utility;
+﻿using System.Data;
+using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Core.Library.Exception;
 using Milimoe.FunGame.Core.Library.Server;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
-using System.Data;
 
 namespace Milimoe.FunGame.Server.Model
 {
@@ -15,26 +14,35 @@ namespace Milimoe.FunGame.Server.Model
         /**
          * Public
          */
-        public new bool Running = false;
-        public new ClientSocket? Socket = null;
-        public new Task? Task = null;
-        public new string ClientName = "";
+        public override bool Running => _Running;
+        public override ClientSocket? Socket => _Socket;
+        public override Task? Task => _Task;
+        public override string ClientName => _ClientName;
+        public override User? User => _User;
 
         /**
          * Private
          */
-        private User? User = null;
+        private ClientSocket? _Socket = null;
+        private bool _Running = false;
+        private User? _User = null;
+        private Task? _Task = null;
+        private string _ClientName = "";
+
         private Guid CheckLoginKey = Guid.Empty;
+        private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
         private string Password = "";
-        private int FailedTimes = 0; // 超过一定次数断开连接
+        private string RoomID = ""; 
+        private readonly ServerSocket Server;
         private readonly MySQLHelper SQLHelper;
 
-        public ServerModel(ClientSocket socket, bool running)
+        public ServerModel(ServerSocket server, ClientSocket socket, bool running)
         {
-            Socket = socket;
-            Running = running;
-            SQLHelper = new(SocketHelper.MakeClientName(socket.ClientIP));
+            Server = server;
+            _Socket = socket;
+            _Running = running;
+            SQLHelper = new(this);
         }
 
         public override bool Read(ClientSocket socket)
@@ -49,8 +57,7 @@ namespace Milimoe.FunGame.Server.Model
                 string msg = "";
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
-                SocketMessageType ignoreType = SocketMessageType.HeartBeat | SocketMessageType.Login;
-                if ((type & ignoreType) == 0)
+                if (type != SocketMessageType.HeartBeat && type != SocketMessageType.Login)
                 {
                     if (msg.Trim() == "")
                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User));
@@ -61,7 +68,7 @@ namespace Milimoe.FunGame.Server.Model
                 switch (type)
                 {
                     case SocketMessageType.GetNotice:
-                        msg = Config.SERVER_NOTICE;
+                        msg = Config.ServerNotice;
                         break;
 
                     case SocketMessageType.Login:
@@ -77,7 +84,7 @@ namespace Milimoe.FunGame.Server.Model
                                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
                                 SQLHelper.Script = $"{SQLConstant.Select_Users} {SQLConstant.Command_Where} Username = '{username}' And Password = '{password}'";
                                 SQLHelper.ExecuteDataSet(out SQLResult result);
-                                if (result == SQLResult.Success && SQLHelper.UpdateRows > 0)
+                                if (result == SQLResult.Success)
                                 {
                                     DataRow UserRow = SQLHelper.DataSet.Tables[0].Rows[0];
                                     if (autokey != null && autokey.Trim() != "")
@@ -100,12 +107,12 @@ namespace Milimoe.FunGame.Server.Model
                             if (CheckLoginKey.Equals(checkloginkey))
                             {
                                 // 创建User对象
-                                User = Factory.New<User>(UserName, Password);
+                                _User = Factory.New<User>(UserName, Password);
                                 // 检查有没有重复登录的情况
                                 KickUser();
                                 // 添加至玩家列表
                                 AddUser();
-                                GetUserCount();
+                                GetUsersCount();
                                 return Send(socket, type, UserName, Password);
                             }
                             ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
@@ -121,18 +128,18 @@ namespace Milimoe.FunGame.Server.Model
                             {
                                 // 从玩家列表移除
                                 RemoveUser();
-                                GetUserCount();
+                                GetUsersCount();
                                 CheckLoginKey = Guid.Empty;
                                 msg = "你已成功退出登录！ ";
-                                return  Send(socket, type, checklogoutkey, msg);
+                                return Send(socket, type, checklogoutkey, msg);
                             }
                         }
                         ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登出。");
                         return Send(socket, type, checklogoutkey);
 
                     case SocketMessageType.Disconnect:
-                        msg = "你已成功断开与服务器的连接: " + Config.SERVER_NAME + "。 ";
-                        GetUserCount();
+                        msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
+                        GetUsersCount();
                         break;
 
                     case SocketMessageType.HeartBeat:
@@ -142,7 +149,23 @@ namespace Milimoe.FunGame.Server.Model
                     case SocketMessageType.IntoRoom:
                         msg = "-1";
                         if (args != null && args.Length > 0) msg = NetworkUtility.ConvertJsonObject<string>(args[0])!;
+                        RoomID = msg;
                         break;
+
+                    case SocketMessageType.Chat:
+                        if (args != null && args.Length > 0) msg = NetworkUtility.ConvertJsonObject<string>(args[0])!;
+                        ServerHelper.WriteLine(msg);
+                        foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
+                        {
+                            if (RoomID == Client.RoomID)
+                            {
+                                if (Client != null && User != null)
+                                {
+                                    Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, msg);
+                                }
+                            }
+                        }
+                        return true;
                 }
                 return Send(socket, type, msg);
             }
@@ -161,15 +184,17 @@ namespace Milimoe.FunGame.Server.Model
             {
                 if (socket.Send(type, objs) == SocketResult.Success)
                 {
-                    // Logout和Disconnect需要移除User与其线程
-                    if (type == SocketMessageType.Logout)
+                    switch (type)
                     {
-                        RemoveUser();
-                    }
-                    if (type == SocketMessageType.Disconnect)
-                    {
-                        RemoveUser();
-                        Close();
+                        case SocketMessageType.Logout:
+                            RemoveUser();
+                            break;
+                        case SocketMessageType.Disconnect:
+                            RemoveUser();
+                            Close();
+                            break;
+                        case SocketMessageType.Chat:
+                            return true;
                     }
                     object obj = objs[0];
                     if (obj.GetType() == typeof(string) && (string)obj != "")
@@ -194,38 +219,45 @@ namespace Milimoe.FunGame.Server.Model
             });
         }
 
+        public void SetTaskAndClientName(Task t, string ClientName)
+        {
+            _Task = t;
+            _ClientName = ClientName;
+        }
+
         private void KickUser()
         {
-            if (User != null && Config.OnlinePlayers.ContainsKey(User.Username))
+            if (User != null)
             {
-                ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 重复登录！");
-                Config.OnlinePlayers.TryGetValue(User.Username, out ServerModel? serverTask);
-                serverTask?.Send(serverTask.Socket!, SocketMessageType.Logout, serverTask.CheckLoginKey, "您的账号在别处登录，已强制下线。");
+                string user = User.Username;
+                if (Server.ContainsUser(user))
+                {
+                    ServerHelper.WriteLine("OnlinePlayers: 玩家 " + user + " 重复登录！");
+                    ServerModel serverTask = (ServerModel)Server.GetUser(user);
+                    serverTask?.Send(serverTask.Socket!, SocketMessageType.Logout, serverTask.CheckLoginKey, "您的账号在别处登录，已强制下线。");
+                }
             }
         }
 
         private bool AddUser()
         {
-            if (User != null)
+            if (User != null && this != null)
             {
-                if (this != null)
-                {
-                    Config.OnlinePlayers.AddOrUpdate(User.Username, this, (key, value) => value);
-                    ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
-                    return true;
-                }
+                Server.AddUser(User.Username, this);
+                ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
+                return true;
             }
             return false;
         }
 
         private bool RemoveUser()
         {
-            if (this != null && User != null)
+            if (User != null && this != null)
             {
-                if (Config.OnlinePlayers.TryRemove(User.Username, out _))
+                if (Server.RemoveUser(User.Username))
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已移除");
-                    User = null;
+                    _User = null;
                     return true;
                 }
                 else ServerHelper.WriteLine("OnlinePlayers: 移除玩家 " + User.Username + " 失败");
@@ -233,9 +265,9 @@ namespace Milimoe.FunGame.Server.Model
             return false;
         }
 
-        private void GetUserCount()
+        private void GetUsersCount()
         {
-            ServerHelper.WriteLine("目前在线玩家数量: " + Config.OnlinePlayers.Count);
+            ServerHelper.WriteLine("目前在线玩家数量: " + Server.UsersCount);
         }
 
         private void CreateStreamReader()
@@ -249,10 +281,11 @@ namespace Milimoe.FunGame.Server.Model
                     if (!Read(Socket))
                     {
                         FailedTimes++;
-                        if (FailedTimes >= Config.MAX_CONNECTFAILED)
+                        if (FailedTimes >= Config.MaxConnectionFaileds)
                         {
                             RemoveUser();
-                            GetUserCount();
+                            Close();
+                            GetUsersCount();
                             ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Error -> Too Many Faileds.");
                             ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Close -> StreamReader is Closed.");
                             break;
@@ -263,7 +296,8 @@ namespace Milimoe.FunGame.Server.Model
                 else
                 {
                     RemoveUser();
-                    GetUserCount();
+                    Close();
+                    GetUsersCount();
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Error -> Socket is Closed.");
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Close -> StringStream is Closed.");
                     break;
@@ -279,9 +313,9 @@ namespace Milimoe.FunGame.Server.Model
                 if (Socket != null)
                 {
                     Socket.Close();
-                    Socket = null;
+                    _Socket = null;
                 }
-                Running = false;
+                _Running = false;
             }
             catch (Exception e)
             {

@@ -4,11 +4,14 @@ using Milimoe.FunGame.Core.Api.Data;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.Server;
 using Milimoe.FunGame.Server.Utility.DataUtility;
+using Milimoe.FunGame.Server.Others;
+using Milimoe.FunGame.Server.Model;
 
 namespace Milimoe.FunGame.Server.Utility
 {
     public class MySQLHelper : SQLHelper
     {
+        public override FunGameInfo.FunGame FunGameType => Config.FunGameType;
         public override string Script { get; set; } = "";
         public override CommandType CommandType { get; set; } = CommandType.Text;
         public override SQLResult Result => _Result;
@@ -23,8 +26,8 @@ namespace Milimoe.FunGame.Server.Utility
         private int _UpdateRows = 0;
         private DataSet _DataSet = new();
         private MySQLConnection? _Connection;
-        private bool _IsOneTime = false;
-        private string _ClientName = "";
+        private readonly ServerModel? ServerModel;
+        private readonly bool _IsOneTime = false;
 
         /// <summary>
         /// 执行一个命令
@@ -64,40 +67,40 @@ namespace Milimoe.FunGame.Server.Utility
         {
             // _IsOneTime = false需要手动调用此方法
             _Connection?.Close();
-            ServerHelper.WriteLine($"{(_ClientName != "" ? _ClientName : "")} 已释放MySQL连接");
+            ServerHelper.WriteLine($"{GetClientName()} 已释放MySQL连接");
         }
 
         /// <summary>
-        /// 创建SQLHelper
+        /// 创建单次使用的SQLHelper(执行完毕会自动Close连接)
         /// </summary>
-        /// <param name="IsOneTime">是否是单次使用的(执行完毕会自动Close连接)</param>
         /// <param name="script">存储过程名称或者script语句</param> 
         /// <param name="type">存储过程, 文本, 等等</param> 
         /// <param name="parameters">执行命令所用参数的集合</param> 
-        public MySQLHelper(bool IsOneTime = false, string script = "", CommandType type = CommandType.Text, params MySqlParameter[] parameters)
+        public MySQLHelper(string script = "", CommandType type = CommandType.Text, params MySqlParameter[] parameters)
         {
-            _IsOneTime = IsOneTime;
+            _IsOneTime = true;
             Script = script;
             CommandType = type;
             Parameters = parameters;
-            if (!IsOneTime)
-            {
-                _Connection = new MySQLConnection(out _ServerInfo);
-            }
         }
 
         /// <summary>
         /// 创建为SocketModel服务的SQLHelper
         /// </summary>
-        /// <param name="ClientName">Socket客户端名称</param>
-        public MySQLHelper(string ClientName)
+        /// <param name="ServerModel">SocketModel</param>
+        public MySQLHelper(ServerModel ServerModel)
         {
-            _ClientName = ClientName;
-            _IsOneTime = false;
+            this.ServerModel = ServerModel;
             Script = "";
             CommandType = CommandType.Text;
-            Parameters = new MySqlParameter[] { };
+            Parameters = Array.Empty<MySqlParameter>();
             _Connection = new MySQLConnection(out _ServerInfo);
+        }
+
+        private string GetClientName()
+        {
+            if (ServerModel is null) return "";
+            return SocketHelper.MakeClientName(ServerModel.ClientName, ServerModel.User);
         }
     }
 }
