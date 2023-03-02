@@ -57,7 +57,9 @@ namespace Milimoe.FunGame.Server.Model
                 string msg = "";
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
-                if (type != SocketMessageType.HeartBeat && type != SocketMessageType.Login)
+                SocketMessageType[] IgnoreType = new SocketMessageType[] { SocketMessageType.HeartBeat, SocketMessageType.Login, SocketMessageType.IntoRoom,
+                    SocketMessageType.Chat};
+                if (!IgnoreType.Contains(type))
                 {
                     if (msg.Trim() == "")
                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User));
