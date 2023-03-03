@@ -22,4 +22,10 @@ namespace Milimoe.FunGame.Server.Others
         public static Hashtable OrderList { get; } = new();
         public static Hashtable OnlineClients { get; } = new Hashtable();
     }
+
+    public static class OfficialEmail
+    {
+        public static string Email { get; set; } = "";
+        public static string SupportEmail { get; set; } = "";
+    }
 }

@@ -1,9 +1,11 @@
 ﻿using System.Data;
+using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.Server;
+using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
@@ -30,12 +32,14 @@ namespace Milimoe.FunGame.Server.Model
         private string _ClientName = "";
 
         private Guid CheckLoginKey = Guid.Empty;
+        private string RegVerify = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
         private string Password = "";
         private string RoomID = ""; 
         private readonly ServerSocket Server;
         private readonly MySQLHelper SQLHelper;
+        private readonly MailSender? MailSender;
 
         public ServerModel(ServerSocket server, ClientSocket socket, bool running)
         {
@@ -43,6 +47,7 @@ namespace Milimoe.FunGame.Server.Model
             _Socket = socket;
             _Running = running;
             SQLHelper = new(this);
+            MailSender = SmtpHelper.GetMailSender();
         }
 
         public override bool Read(ClientSocket socket)
@@ -84,7 +89,7 @@ namespace Milimoe.FunGame.Server.Model
                             if (username != null && password != null)
                             {
                                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
-                                SQLHelper.Script = $"{SQLConstant.Select_Users} {SQLConstant.Command_Where} Username = '{username}' And Password = '{password}'";
+                                SQLHelper.Script = Core.Library.SQLScript.Entity.UserQuery.Select_Users_LoginQuery(username, password);
                                 SQLHelper.ExecuteDataSet(out SQLResult result);
                                 if (result == SQLResult.Success)
                                 {
@@ -168,6 +173,74 @@ namespace Milimoe.FunGame.Server.Model
                             }
                         }
                         return true;
+
+                    case SocketMessageType.Reg:
+                        if (args != null)
+                        {
+                            string? username = "", email = "";
+                            if (args.Length > 0) username = NetworkUtility.ConvertJsonObject<string>(args[0]);
+                            if (args.Length > 1) email = NetworkUtility.ConvertJsonObject<string>(args[1]);
+                            if (username != null && email != null)
+                            {
+                                RegVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
+                                SQLHelper.Script = RegVerifyCodes.Insert_RegVerifyCodes(username, email, RegVerify);
+                                SQLHelper.Execute(out SQLResult result);
+                                if (result == SQLResult.Success && MailSender != null)
+                                {
+                                    string ServerName = Config.ServerName;
+                                    string Subject = $"[{ServerName}] FunGame 注册验证码";
+                                    string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {RegVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
+                                    string[] To = new string[] { email };
+                                    string[] CC = new string[] { OfficialEmail.SupportEmail };
+                                    if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To, CC)) == MailSendResult.Success)
+                                    {
+                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 已向{email}发送验证码：{RegVerify}");
+                                    }
+                                    else
+                                    {
+                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 无法发送验证码。");
+                                        ServerHelper.WriteLine(MailSender.ErrorMsg);
+                                    }
+                                }
+                            }
+                        }
+                        return true;
+
+                    case SocketMessageType.CheckReg:
+                        if (args != null)
+                        {
+                            string? username = "", password = "", email = "", verifycode = "";
+                            if (args.Length > 0) username = NetworkUtility.ConvertJsonObject<string>(args[0]);
+                            if (args.Length > 1) password = NetworkUtility.ConvertJsonObject<string>(args[1]);
+                            if (args.Length > 2) email = NetworkUtility.ConvertJsonObject<string>(args[2]);
+                            if (args.Length > 3) verifycode = NetworkUtility.ConvertJsonObject<string>(args[3]);
+                            if (username != null && password != null && email != null && verifycode != null)
+                            {
+                                // 先检查验证码
+                                SQLHelper.Script = RegVerifyCodes.Select_RegVerifyCode(username, email, verifycode);
+                                SQLHelper.ExecuteDataSet(out SQLResult result);
+                                if (result == SQLResult.Success)
+                                {
+                                    if (RegVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
+                                    {
+                                        // 注册
+                                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username + " Email: " + email);
+                                        SQLHelper.Script = Core.Library.SQLScript.Entity.UserQuery.Register(username, password, email);
+                                        SQLHelper.Execute(out result);
+                                        if (result == SQLResult.Success)
+                                        {
+                                            msg = "注册成功！请牢记您的账号与密码！";
+                                            return Send(socket, type, true, msg);
+                                        }
+                                        else msg = "服务器无法处理您的注册，注册失败！";
+                                    }
+                                    else msg = "验证码不正确，请重新输入！";
+                                }
+                                else msg = "服务器无法处理您的注册，注册失败！";
+                            }
+                        }
+                        else msg = "注册失败！";
+                        return Send(socket, type, false, msg);
                 }
                 return Send(socket, type, msg);
             }
@@ -312,6 +385,7 @@ namespace Milimoe.FunGame.Server.Model
             try
             {
                 SQLHelper.Close();
+                MailSender?.Dispose();
                 if (Socket != null)
                 {
                     Socket.Close();

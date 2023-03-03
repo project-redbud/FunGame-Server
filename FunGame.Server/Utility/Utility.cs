@@ -3,6 +3,8 @@ using MySql.Data.MySqlClient;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Server.Others;
+using Milimoe.FunGame.Core.Api.Transmittal;
+using System.Xml.Linq;
 
 namespace Milimoe.FunGame.Server.Utility
 {
@@ -40,6 +42,8 @@ namespace Milimoe.FunGame.Server.Utility
                 settings.Add("Notice", INIHelper.ReadINI("Server", "Notice"));
                 settings.Add("Key", INIHelper.ReadINI("Server", "Key"));
                 settings.Add("Status", Convert.ToInt32(INIHelper.ReadINI("Server", "Status")));
+                settings.Add("OfficialMail", INIHelper.ReadINI("ServerMail", "OfficialMail"));
+                settings.Add("SupportMail", INIHelper.ReadINI("ServerMail", "SupportMail"));
                 settings.Add("Port", Convert.ToInt32(INIHelper.ReadINI("Socket", "Port")));
                 settings.Add("MaxPlayer", Convert.ToInt32(INIHelper.ReadINI("Socket", "MaxPlayer")));
                 settings.Add("MaxConnectFailed", Convert.ToInt32(INIHelper.ReadINI("Socket", "MaxConnectFailed")));
@@ -64,6 +68,10 @@ namespace Milimoe.FunGame.Server.Utility
                     if (Describe != null) Config.ServerDescription = Describe;
                     if (Notice != null) Config.ServerNotice = Notice;
                     if (Key != null) Config.ServerKey = Key;
+                    string? OfficialMail = (string?)settings["OfficialMail"];
+                    string? SupportMail = (string?)settings["SupportMail"];
+                    if (OfficialMail != null) OfficialEmail.Email = OfficialMail;
+                    if (SupportMail != null) OfficialEmail.SupportEmail = SupportMail;
                     int? Status = (int?)settings["Status"];
                     int? Port = (int?)settings["Port"];
                     int? MaxPlayer = (int?)settings["MaxPlayer"];
@@ -121,6 +129,51 @@ namespace Milimoe.FunGame.Server.Utility
             }
             if (name != "") return "客户端(" + name + ")";
             return "客户端";
+        }
+    }
+
+    public class SmtpHelper
+    {
+        public static string SenderMailAddress { get; set; } = "";
+        public static string SenderName { get; set; } = "";
+        public static string SenderPassword { get; set; } = "";
+        public static string SmtpHost { get; set; } = "";
+        public static int SmtpPort { get; set; } = 587;
+        public static bool OpenSSL { get; set; } = true;
+
+        public static MailSender? GetMailSender()
+        {
+            try
+            {
+                if (SenderMailAddress == "" && SenderName == "" && SenderPassword == "" && SmtpHost == "")
+                {
+                    if (INIHelper.ExistINIFile())
+                    {
+                        if (bool.TryParse(INIHelper.ReadINI("Mailer", "UseMailSender").ToLower(), out bool use))
+                        {
+                            if (use)
+                            {
+                                SenderMailAddress = INIHelper.ReadINI("Mailer", "MailAddress");
+                                SenderName = INIHelper.ReadINI("Mailer", "Name");
+                                SenderPassword = INIHelper.ReadINI("Mailer", "Password");
+                                SmtpHost = INIHelper.ReadINI("Mailer", "Host");
+                                if (int.TryParse(INIHelper.ReadINI("Mailer", "Port"), out int Port))
+                                    SmtpPort = Port;
+                                if (bool.TryParse(INIHelper.ReadINI("Mailer", "OpenSSL").ToLower(), out bool SSL))
+                                    OpenSSL = SSL;
+                                if (SmtpPort > 0) return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, OpenSSL);
+                            }
+                        }
+                    }
+                    throw new SmtpHelperException();
+                }
+                return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, OpenSSL);
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+            }
+            return null;
         }
     }
 }
