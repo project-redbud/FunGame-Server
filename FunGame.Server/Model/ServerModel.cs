@@ -6,6 +6,7 @@ using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.Server;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
+using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
@@ -89,7 +90,7 @@ namespace Milimoe.FunGame.Server.Model
                             if (username != null && password != null)
                             {
                                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
-                                SQLHelper.Script = Core.Library.SQLScript.Entity.UserQuery.Select_Users_LoginQuery(username, password);
+                                SQLHelper.Script = UserQuery.Select_Users_LoginQuery(username, password);
                                 SQLHelper.ExecuteDataSet(out SQLResult result);
                                 if (result == SQLResult.Success)
                                 {
@@ -120,6 +121,8 @@ namespace Milimoe.FunGame.Server.Model
                                 // 添加至玩家列表
                                 AddUser();
                                 GetUsersCount();
+                                // CheckLogin
+                                SQLHelper.Script = UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]);
                                 return Send(socket, type, UserName, Password);
                             }
                             ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
@@ -225,17 +228,19 @@ namespace Milimoe.FunGame.Server.Model
                                     {
                                         // 注册
                                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username + " Email: " + email);
-                                        SQLHelper.Script = Core.Library.SQLScript.Entity.UserQuery.Register(username, password, email);
+                                        SQLHelper.Script = UserQuery.Insert_Register(username, password, email);
                                         SQLHelper.Execute(out result);
                                         if (result == SQLResult.Success)
                                         {
                                             msg = "注册成功！请牢记您的账号与密码！";
+                                            SQLHelper.Script = RegVerifyCodes.Delete_RegVerifyCode(username, email);
                                             return Send(socket, type, true, msg);
                                         }
                                         else msg = "服务器无法处理您的注册，注册失败！";
                                     }
                                     else msg = "验证码不正确，请重新输入！";
                                 }
+                                else if (result == SQLResult.NotFound) msg = "验证码不正确，请重新输入！";
                                 else msg = "服务器无法处理您的注册，注册失败！";
                             }
                         }
@@ -386,11 +391,8 @@ namespace Milimoe.FunGame.Server.Model
             {
                 SQLHelper.Close();
                 MailSender?.Dispose();
-                if (Socket != null)
-                {
-                    Socket.Close();
-                    _Socket = null;
-                }
+                Socket?.Close();
+                _Socket = null;
                 _Running = false;
             }
             catch (Exception e)
