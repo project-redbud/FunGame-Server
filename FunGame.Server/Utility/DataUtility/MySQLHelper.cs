@@ -41,6 +41,7 @@ namespace Milimoe.FunGame.Server.Utility
             ServerHelper.WriteLine("SQLQuery -> " + Script);
             _DataSet = new DataSet();
             _UpdateRows = MySQLManager.Execute(this, out Result);
+            _Result = Result;
             if (_IsOneTime) Close();
             return _UpdateRows;
         }
@@ -56,6 +57,7 @@ namespace Milimoe.FunGame.Server.Utility
             if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
             _DataSet = MySQLManager.ExecuteDataSet(this, out Result, out _UpdateRows);
+            _Result = Result;
             if (_IsOneTime) Close();
             return DataSet;
         }

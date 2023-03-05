@@ -164,6 +164,8 @@ namespace Milimoe.FunGame.Server.Utility
                                 if (SmtpPort > 0) return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, OpenSSL);
                             }
                         }
+                        ServerHelper.WriteLine("Smtp服务处于关闭状态");
+                        return null;
                     }
                     throw new SmtpHelperException();
                 }

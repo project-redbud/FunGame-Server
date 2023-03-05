@@ -123,6 +123,7 @@ namespace Milimoe.FunGame.Server.Model
                                 GetUsersCount();
                                 // CheckLogin
                                 SQLHelper.Script = UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]);
+                                SQLHelper.Execute(out _);
                                 return Send(socket, type, UserName, Password);
                             }
                             ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
@@ -185,25 +186,65 @@ namespace Milimoe.FunGame.Server.Model
                             if (args.Length > 1) email = NetworkUtility.ConvertJsonObject<string>(args[1]);
                             if (username != null && email != null)
                             {
+                                // 先检查账号是否重复
+                                SQLHelper.Script = UserQuery.Select_DuplicateUsername(username);
+                                SQLHelper.ExecuteDataSet(out SQLResult result);
+                                if (result == SQLResult.Success)
+                                {
+                                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 账号已被注册");
+                                    return Send(socket, type, RegInvokeType.DuplicateUserName);
+                                }
+                                // 检查邮箱是否重复
+                                SQLHelper.Script = UserQuery.Select_DuplicateEmail(email);
+                                SQLHelper.ExecuteDataSet(out result);
+                                if (result == SQLResult.Success)
+                                {
+                                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 邮箱已被注册");
+                                    return Send(socket, type, RegInvokeType.DuplicateEmail);
+                                }
+                                // 检查验证码是否发送过
+                                SQLHelper.Script = RegVerifyCodes.Select_HasSentRegVerifyCode(username, email);
+                                SQLHelper.ExecuteDataSet(out result);
+                                if (result == SQLResult.Success)
+                                {
+                                    DateTime RegTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime];
+                                    string RegVerifyCode = (string)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode];
+                                    if ((DateTime.Now - RegTime).TotalMinutes < 10)
+                                    {
+                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 十分钟内已向{email}发送过验证码：{RegVerifyCode}");
+                                    }
+                                    return Send(socket, type, RegInvokeType.InputVerifyCode);
+                                }
+                                // 发送验证码，需要先删除之前过期的验证码
+                                SQLHelper.Script = RegVerifyCodes.Delete_RegVerifyCode(username, email);
+                                SQLHelper.Execute(out _);
                                 RegVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
                                 SQLHelper.Script = RegVerifyCodes.Insert_RegVerifyCodes(username, email, RegVerify);
-                                SQLHelper.Execute(out SQLResult result);
-                                if (result == SQLResult.Success && MailSender != null)
+                                SQLHelper.Execute(out result);
+                                if (result == SQLResult.Success)
                                 {
-                                    string ServerName = Config.ServerName;
-                                    string Subject = $"[{ServerName}] FunGame 注册验证码";
-                                    string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {RegVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
-                                    string[] To = new string[] { email };
-                                    string[] CC = new string[] { OfficialEmail.SupportEmail };
-                                    if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To, CC)) == MailSendResult.Success)
+                                    if (MailSender != null)
                                     {
-                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 已向{email}发送验证码：{RegVerify}");
+                                        // 发送验证码
+                                        string ServerName = Config.ServerName;
+                                        string Subject = $"[{ServerName}] FunGame 注册验证码";
+                                        string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {RegVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
+                                        string[] To = new string[] { email };
+                                        if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
+                                        {
+                                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 已向{email}发送验证码：{RegVerify}");
+                                        }
+                                        else
+                                        {
+                                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 无法发送验证码");
+                                            ServerHelper.WriteLine(MailSender.ErrorMsg);
+                                        }
                                     }
-                                    else
+                                    else // 不使用MailSender的情况
                                     {
-                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 无法发送验证码。");
-                                        ServerHelper.WriteLine(MailSender.ErrorMsg);
+                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 验证码为：{RegVerify}，请服务器管理员告知此用户");
                                     }
+                                    return Send(socket, type, RegInvokeType.InputVerifyCode);
                                 }
                             }
                         }
@@ -224,9 +265,17 @@ namespace Milimoe.FunGame.Server.Model
                                 SQLHelper.ExecuteDataSet(out SQLResult result);
                                 if (result == SQLResult.Success)
                                 {
+                                    // 检查验证码是否过期
+                                    DateTime RegTime = (DateTime)(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime]);
+                                    if ((DateTime.Now - RegTime).TotalMinutes >= 10)
+                                    {
+                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 验证码已过期");
+                                        msg = "此验证码已过期，请重新注册。";
+                                        return Send(socket, type, false, msg);
+                                    }
+                                    // 注册
                                     if (RegVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
                                     {
-                                        // 注册
                                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username + " Email: " + email);
                                         SQLHelper.Script = UserQuery.Insert_Register(username, password, email);
                                         SQLHelper.Execute(out result);
@@ -234,6 +283,7 @@ namespace Milimoe.FunGame.Server.Model
                                         {
                                             msg = "注册成功！请牢记您的账号与密码！";
                                             SQLHelper.Script = RegVerifyCodes.Delete_RegVerifyCode(username, email);
+                                            SQLHelper.Execute(out _);
                                             return Send(socket, type, true, msg);
                                         }
                                         else msg = "服务器无法处理您的注册，注册失败！";
