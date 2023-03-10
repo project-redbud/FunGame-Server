@@ -8,7 +8,7 @@ using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
 Console.Title = Config.ServerName;
-Console.WriteLine(FunGameInfo.GetInfo((FunGameInfo.FunGame)Config.FunGameType));
+Console.WriteLine(FunGameInfo.GetInfo(Config.FunGameType));
 
 bool Running = true;
 ServerSocket? ListeningSocket = null;
@@ -148,10 +148,10 @@ void StartServer()
 bool Read(ClientSocket socket)
 {
     // 接收客户端消息
-    byte[] buffer = new byte[2048];
-    object[] read = socket.Receive();
-    SocketMessageType type = (SocketMessageType)read[0];
-    object[] objs = (object[])read[2];
+    byte[] buffer = new byte[General.SocketByteSize];
+    SocketObject read = socket.Receive();
+    SocketMessageType type = read.SocketType;
+    object[] objs = read.Parameters;
     if (type != SocketMessageType.Unknown)
     {
         if (objs[0] != null && objs[0].GetType() == typeof(string) && objs[0].ToString()!.Trim() != "")

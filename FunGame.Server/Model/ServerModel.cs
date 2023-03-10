@@ -56,10 +56,10 @@ namespace Milimoe.FunGame.Server.Model
             // 接收客户端消息
             try
             {
-                object[] objs = socket.Receive();
-                SocketMessageType type = (SocketMessageType)objs[0];
-                Guid token = (Guid)objs[1];
-                object[] args = (object[])objs[2];
+                SocketObject SocketObject = socket.Receive();
+                SocketMessageType type = SocketObject.SocketType;
+                Guid token = SocketObject.Token;
+                object[] args = SocketObject.Parameters;
                 string msg = "";
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
@@ -84,9 +84,9 @@ namespace Milimoe.FunGame.Server.Model
                         if (args != null)
                         {
                             string? username = "", password = "", autokey = "";
-                            if (args.Length > 0) username = NetworkUtility.ConvertJsonObject<string>(args[0]);
-                            if (args.Length > 1) password = NetworkUtility.ConvertJsonObject<string>(args[1]);
-                            if (args.Length > 2) autokey = NetworkUtility.ConvertJsonObject<string>(args[2]);
+                            if (args.Length > 0) username = SocketObject.GetParam<string>(0);
+                            if (args.Length > 1) password = SocketObject.GetParam<string>(1);
+                            if (args.Length > 2) autokey = SocketObject.GetParam<string>(2);
                             if (username != null && password != null)
                             {
                                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
@@ -111,7 +111,7 @@ namespace Milimoe.FunGame.Server.Model
                     case SocketMessageType.CheckLogin:
                         if (args != null && args.Length > 0)
                         {
-                            Guid checkloginkey = NetworkUtility.ConvertJsonObject<Guid>(args[0]);
+                            Guid checkloginkey = SocketObject.GetParam<Guid>(0);
                             if (CheckLoginKey.Equals(checkloginkey))
                             {
                                 // 创建User对象
@@ -134,7 +134,7 @@ namespace Milimoe.FunGame.Server.Model
                         Guid checklogoutkey = Guid.Empty;
                         if (args != null && args.Length > 0)
                         {
-                            checklogoutkey = NetworkUtility.ConvertJsonObject<Guid>(args[0]);
+                            checklogoutkey = SocketObject.GetParam<Guid>(0);
                             if (CheckLoginKey.Equals(checklogoutkey))
                             {
                                 // 从玩家列表移除
@@ -159,12 +159,12 @@ namespace Milimoe.FunGame.Server.Model
 
                     case SocketMessageType.IntoRoom:
                         msg = "-1";
-                        if (args != null && args.Length > 0) msg = NetworkUtility.ConvertJsonObject<string>(args[0])!;
+                        if (args != null && args.Length > 0) msg = SocketObject.GetParam<string>(0)!;
                         RoomID = msg;
                         break;
 
                     case SocketMessageType.Chat:
-                        if (args != null && args.Length > 0) msg = NetworkUtility.ConvertJsonObject<string>(args[0])!;
+                        if (args != null && args.Length > 0) msg = SocketObject.GetParam<string>(0)!;
                         ServerHelper.WriteLine(msg);
                         foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
                         {
@@ -182,8 +182,8 @@ namespace Milimoe.FunGame.Server.Model
                         if (args != null)
                         {
                             string? username = "", email = "";
-                            if (args.Length > 0) username = NetworkUtility.ConvertJsonObject<string>(args[0]);
-                            if (args.Length > 1) email = NetworkUtility.ConvertJsonObject<string>(args[1]);
+                            if (args.Length > 0) username = SocketObject.GetParam<string>(0);
+                            if (args.Length > 1) email = SocketObject.GetParam<string>(1);
                             if (username != null && email != null)
                             {
                                 // 先检查账号是否重复
@@ -254,10 +254,10 @@ namespace Milimoe.FunGame.Server.Model
                         if (args != null)
                         {
                             string? username = "", password = "", email = "", verifycode = "";
-                            if (args.Length > 0) username = NetworkUtility.ConvertJsonObject<string>(args[0]);
-                            if (args.Length > 1) password = NetworkUtility.ConvertJsonObject<string>(args[1]);
-                            if (args.Length > 2) email = NetworkUtility.ConvertJsonObject<string>(args[2]);
-                            if (args.Length > 3) verifycode = NetworkUtility.ConvertJsonObject<string>(args[3]);
+                            if (args.Length > 0) username = SocketObject.GetParam<string>(0);
+                            if (args.Length > 1) password = SocketObject.GetParam<string>(1);
+                            if (args.Length > 2) email = SocketObject.GetParam<string>(2);
+                            if (args.Length > 3) verifycode = SocketObject.GetParam<string>(3);
                             if (username != null && password != null && email != null && verifycode != null)
                             {
                                 // 先检查验证码
