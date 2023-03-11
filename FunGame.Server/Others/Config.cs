@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using System.Collections;
 using Milimoe.FunGame.Core.Library.Constant;
+using Milimoe.FunGame.Core.Library.Server;
 
 namespace Milimoe.FunGame.Server.Others
 {
@@ -21,6 +22,7 @@ namespace Milimoe.FunGame.Server.Others
         public static FunGameInfo.FunGame FunGameType { get; } = FunGameInfo.FunGame.FunGame_Server;
         public static Hashtable OrderList { get; } = new();
         public static Hashtable BannedList { get; } = new();
+        public static RoomList? RoomList { get; set; }
     }
 
     public static class OfficialEmail

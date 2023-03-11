@@ -1,10 +1,8 @@
 ﻿using System.Collections;
-using MySql.Data.MySqlClient;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Core.Api.Transmittal;
-using System.Xml.Linq;
 
 namespace Milimoe.FunGame.Server.Utility
 {
@@ -12,7 +10,7 @@ namespace Milimoe.FunGame.Server.Utility
     {
         public static string GetPrefix()
         {
-            DateTime now = System.DateTime.Now;
+            DateTime now = DateTime.Now;
             return now.AddMilliseconds(-now.Millisecond).ToString() + " " + Config.ServerName + "：";
         }
 

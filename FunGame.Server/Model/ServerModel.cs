@@ -32,13 +32,13 @@ namespace Milimoe.FunGame.Server.Model
         private Task? _Task = null;
         private string _ClientName = "";
 
-        private Guid Token = Guid.Empty;
         private Guid CheckLoginKey = Guid.Empty;
         private string RegVerify = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
         private string Password = "";
         private string RoomID = ""; 
+        private readonly Guid Token;
         private readonly ServerSocket Server;
         private readonly MySQLHelper SQLHelper;
         private readonly MailSender? MailSender;
@@ -298,7 +298,12 @@ namespace Milimoe.FunGame.Server.Model
                         return Send(socket, type, false, msg);
 
                     case SocketMessageType.UpdateRoom:
-                        break;
+                        List<Room> list = new();
+                        if (Config.RoomList != null)
+                        {
+                            list = Config.RoomList.GetList();
+                        }
+                        return Send(socket, type, list);
 
                     case SocketMessageType.CreateRoom:
                         break;
@@ -409,8 +414,7 @@ namespace Milimoe.FunGame.Server.Model
 
         private void GetUsersCount()
         {
-            ServerHelper.WriteLine($"目前在线客户端数量: {Config.OnlinePlayersCount}");
-            ServerHelper.WriteLine($"目前在线玩家数量: {Server.UsersCount}");
+            ServerHelper.WriteLine($"目前在线客户端数量: {Config.OnlinePlayersCount}（已登录的玩家数量：{Server.UsersCount}）");
         }
 
         private void CreateStreamReader()
