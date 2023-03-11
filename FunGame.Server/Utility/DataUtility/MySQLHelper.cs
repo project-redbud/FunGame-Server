@@ -47,6 +47,25 @@ namespace Milimoe.FunGame.Server.Utility
         }
 
         /// <summary>
+        /// 执行一个指定的命令
+        /// </summary>
+        /// <param name="Script">命令</param>
+        /// <param name="Result">执行结果</param>
+        /// <returns>影响的行数</returns>
+        public override int Execute(string Script, out SQLResult Result)
+        {
+            // _IsOneTime = true需要手动创建连接和关闭
+            if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
+            ServerHelper.WriteLine("SQLQuery -> " + Script);
+            this.Script = Script;
+            _DataSet = new DataSet();
+            _UpdateRows = MySQLManager.Execute(this, out Result);
+            _Result = Result;
+            if (_IsOneTime) Close();
+            return _UpdateRows;
+        }
+
+        /// <summary>
         /// 查询DataSet
         /// </summary>
         /// <param name="Result">执行结果</param>
@@ -56,6 +75,24 @@ namespace Milimoe.FunGame.Server.Utility
             // _IsOneTime = true需要手动创建连接和关闭
             if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
+            _DataSet = MySQLManager.ExecuteDataSet(this, out Result, out _UpdateRows);
+            _Result = Result;
+            if (_IsOneTime) Close();
+            return DataSet;
+        }
+        
+        /// <summary>
+        /// 执行指定的命令查询DataSet
+        /// </summary>
+        /// <param name="Script">命令</param>
+        /// <param name="Result">执行结果</param>
+        /// <returns>结果集</returns>
+        public override DataSet ExecuteDataSet(string Script, out SQLResult Result)
+        {
+            // _IsOneTime = true需要手动创建连接和关闭
+            if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
+            ServerHelper.WriteLine("SQLQuery -> " + Script);
+            this.Script = Script;
             _DataSet = MySQLManager.ExecuteDataSet(this, out Result, out _UpdateRows);
             _Result = Result;
             if (_IsOneTime) Close();
