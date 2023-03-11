@@ -62,7 +62,7 @@ void StartServer()
             if (!INIHelper.ExistINIFile())
             {
                 ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
-                INIHelper.Init((FunGameInfo.FunGame)Config.FunGameType);
+                INIHelper.Init(Config.FunGameType);
                 ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
                 return;
             }
@@ -98,10 +98,25 @@ void StartServer()
                 string ClientIPAddress = "";
                 try
                 {
-                    socket = ListeningSocket.Accept();
+                    Guid Token = Guid.NewGuid();
+                    socket = ListeningSocket.Accept(Token);
                     ClientIPAddress = socket.ClientIP;
+                    if (Config.ConnectingPlayersCount + Config.OnlinePlayersCount + 1 > Config.MaxPlayers)
+                    {
+                        SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
+                        ServerHelper.WriteLine("服务器可接受的连接数量已上限！");
+                        continue;
+                    }
+                    Config.ConnectingPlayersCount++;
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 正在连接服务器 . . .");
-                    if (Read(socket) && Send(socket))
+                    if (Config.BannedList.ContainsKey(ClientIPAddress))
+                    {
+                        SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
+                        ServerHelper.WriteLine("检测到 " + SocketHelper.MakeClientName(ClientIPAddress) + " 为黑名单用户，已禁止其连接！");
+                        Config.ConnectingPlayersCount--;
+                        continue;
+                    }
+                    if (Read(socket) && Send(socket, Token))
                     {
                         ServerModel ClientModel = new(ListeningSocket, socket, Running);
                         Task t = Task.Factory.StartNew(() =>
@@ -109,13 +124,14 @@ void StartServer()
                             ClientModel.Start();
                         });
                         ClientModel.SetTaskAndClientName(t, ClientIPAddress);
-                        if (!Config.OnlineClients.ContainsKey(ClientIPAddress)) Config.OnlineClients.Add(ClientIPAddress, ClientIPAddress);
                     }
                     else
                         ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 连接失败。");
+                    Config.ConnectingPlayersCount--;
                 }
                 catch (Exception e)
                 {
+                    if (--Config.ConnectingPlayersCount < 0) Config.ConnectingPlayersCount = 0;
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 断开连接！");
                     ServerHelper.Error(e);
                 }
@@ -148,7 +164,6 @@ void StartServer()
 bool Read(ClientSocket socket)
 {
     // 接收客户端消息
-    byte[] buffer = new byte[General.SocketByteSize];
     SocketObject read = socket.Receive();
     SocketMessageType type = read.SocketType;
     object[] objs = read.Parameters;
@@ -164,15 +179,27 @@ bool Read(ClientSocket socket)
     return false;
 }
 
-bool Send(ClientSocket socket)
+bool Send(ClientSocket socket, Guid Token)
 {
     // 发送消息给客户端
     string msg = Config.ServerName + ";" + Config.ServerNotice;
-    byte[] buffer = new byte[2048];
-    buffer = Config.DefaultEncoding.GetBytes($"1;{msg}");
-    if (socket.Send(SocketMessageType.Connect, msg, Guid.NewGuid()) == SocketResult.Success)
+    if (socket.Send(SocketMessageType.Connect, msg, Token) == SocketResult.Success)
     {
         ServerHelper.WriteLine(SocketHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
+        return true;
+    }
+    else
+        ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
+    return false;
+}
+
+bool SendRefuseConnect(ClientSocket socket, string msg)
+{
+    // 发送消息给客户端
+    msg = $"连接被拒绝，如有疑问请联系服务器管理员：{msg}";
+    if (socket.Send(SocketMessageType.Connect, msg) == SocketResult.Success)
+    {
+        ServerHelper.WriteLine(SocketHelper.MakeClientName(socket.ClientIP) + " <- " + "已拒绝连接");
         return true;
     }
     else

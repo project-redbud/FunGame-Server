@@ -32,6 +32,7 @@ namespace Milimoe.FunGame.Server.Model
         private Task? _Task = null;
         private string _ClientName = "";
 
+        private Guid Token = Guid.Empty;
         private Guid CheckLoginKey = Guid.Empty;
         private string RegVerify = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
@@ -47,8 +48,11 @@ namespace Milimoe.FunGame.Server.Model
             Server = server;
             _Socket = socket;
             _Running = running;
+            Token = socket.Token;
             SQLHelper = new(this);
             MailSender = SmtpHelper.GetMailSender();
+            Config.OnlinePlayersCount++;
+            GetUsersCount();
         }
 
         public override bool Read(ClientSocket socket)
@@ -61,6 +65,13 @@ namespace Milimoe.FunGame.Server.Model
                 Guid token = SocketObject.Token;
                 object[] args = SocketObject.Parameters;
                 string msg = "";
+
+                // 验证Token
+                if (token != Token)
+                {
+                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + ServerSocket.GetTypeString(type) + "] ");
+                    return false;
+                }
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
                 SocketMessageType[] IgnoreType = new SocketMessageType[] { SocketMessageType.HeartBeat, SocketMessageType.Login, SocketMessageType.IntoRoom,
@@ -148,7 +159,6 @@ namespace Milimoe.FunGame.Server.Model
 
                     case SocketMessageType.Disconnect:
                         msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
-                        GetUsersCount();
                         break;
 
                     case SocketMessageType.HeartBeat:
@@ -188,14 +198,14 @@ namespace Milimoe.FunGame.Server.Model
                                 SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateUsername(username), out SQLResult result);
                                 if (result == SQLResult.Success)
                                 {
-                                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 账号已被注册");
+                                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 账号已被注册");
                                     return Send(socket, type, RegInvokeType.DuplicateUserName);
                                 }
                                 // 检查邮箱是否重复
                                 SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateEmail(email), out result);
                                 if (result == SQLResult.Success)
                                 {
-                                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 邮箱已被注册");
+                                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 邮箱已被注册");
                                     return Send(socket, type, RegInvokeType.DuplicateEmail);
                                 }
                                 // 检查验证码是否发送过
@@ -261,7 +271,7 @@ namespace Milimoe.FunGame.Server.Model
                                     DateTime RegTime = (DateTime)(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime]);
                                     if ((DateTime.Now - RegTime).TotalMinutes >= 10)
                                     {
-                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 验证码已过期");
+                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 验证码已过期");
                                         msg = "此验证码已过期，请重新注册。";
                                         return Send(socket, type, false, msg);
                                     }
@@ -399,7 +409,8 @@ namespace Milimoe.FunGame.Server.Model
 
         private void GetUsersCount()
         {
-            ServerHelper.WriteLine("目前在线玩家数量: " + Server.UsersCount);
+            ServerHelper.WriteLine($"目前在线客户端数量: {Config.OnlinePlayersCount}");
+            ServerHelper.WriteLine($"目前在线玩家数量: {Server.UsersCount}");
         }
 
         private void CreateStreamReader()
@@ -417,7 +428,6 @@ namespace Milimoe.FunGame.Server.Model
                         {
                             RemoveUser();
                             Close();
-                            GetUsersCount();
                             ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Error -> Too Many Faileds.");
                             ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Close -> StreamReader is Closed.");
                             break;
@@ -429,7 +439,6 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     RemoveUser();
                     Close();
-                    GetUsersCount();
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Error -> Socket is Closed.");
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Close -> StringStream is Closed.");
                     break;
@@ -446,6 +455,8 @@ namespace Milimoe.FunGame.Server.Model
                 Socket?.Close();
                 _Socket = null;
                 _Running = false;
+                Config.OnlinePlayersCount--;
+                GetUsersCount();
             }
             catch (Exception e)
             {
