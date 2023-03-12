@@ -40,6 +40,7 @@ namespace Milimoe.FunGame.Server.Utility
                 settings.Add("Notice", INIHelper.ReadINI("Server", "Notice"));
                 settings.Add("Key", INIHelper.ReadINI("Server", "Key"));
                 settings.Add("Status", Convert.ToInt32(INIHelper.ReadINI("Server", "Status")));
+                settings.Add("BannedList", INIHelper.ReadINI("Server", "BannedList"));
                 settings.Add("OfficialMail", INIHelper.ReadINI("ServerMail", "OfficialMail"));
                 settings.Add("SupportMail", INIHelper.ReadINI("ServerMail", "SupportMail"));
                 settings.Add("Port", Convert.ToInt32(INIHelper.ReadINI("Socket", "Port")));
@@ -61,19 +62,26 @@ namespace Milimoe.FunGame.Server.Utility
                     string? Describe = (string?)settings["Describe"];
                     string? Notice = (string?)settings["Notice"];
                     string? Key = (string?)settings["Key"];
+                    string? BannedList = (string?)settings["BannedList"];
+
                     if (Name != null) Config.ServerName = Name;
                     if (Password != null) Config.ServerPassword = Password;
                     if (Describe != null) Config.ServerDescription = Describe;
                     if (Notice != null) Config.ServerNotice = Notice;
                     if (Key != null) Config.ServerKey = Key;
+                    if (BannedList != null) Config.ServerBannedList = BannedList;
+
                     string? OfficialMail = (string?)settings["OfficialMail"];
                     string? SupportMail = (string?)settings["SupportMail"];
+
                     if (OfficialMail != null) OfficialEmail.Email = OfficialMail;
                     if (SupportMail != null) OfficialEmail.SupportEmail = SupportMail;
+
                     int? Status = (int?)settings["Status"];
                     int? Port = (int?)settings["Port"];
                     int? MaxPlayer = (int?)settings["MaxPlayer"];
                     int? MaxConnectFailed = (int?)settings["MaxConnectFailed"];
+
                     if (Status != null) Config.ServerStatus = (int)Status;
                     if (Port != null) Config.ServerPort = (int)Port;
                     if (MaxPlayer != null) Config.MaxPlayers = (int)MaxPlayer;

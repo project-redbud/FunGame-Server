@@ -84,6 +84,7 @@ void StartServer()
             ListeningSocket = ServerSocket.StartListening();
 
             // 开始监听连接
+            AddBannedList(ListeningSocket);
             Config.RoomList = new(ListeningSocket);
             ServerHelper.WriteLine("Listen -> " + Config.ServerPort);
             ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
@@ -110,7 +111,7 @@ void StartServer()
                     }
                     Config.ConnectingPlayersCount++;
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 正在连接服务器 . . .");
-                    if (Config.BannedList.ContainsKey(ClientIPAddress))
+                    if (ListeningSocket.BannedList.Contains(ClientIPAddress))
                     {
                         SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
                         ServerHelper.WriteLine("检测到 " + SocketHelper.MakeClientName(ClientIPAddress) + " 为黑名单用户，已禁止其连接！");
@@ -212,4 +213,13 @@ SQLResult TestSQLConnection()
 {
     new MySQLHelper(ServerLoginLogs.Insert_ServerLoginLogs(Config.ServerName, Config.ServerKey)).Execute(out SQLResult TestResult);
     return TestResult;
+}
+
+void AddBannedList(ServerSocket server)
+{
+    string[] bans = Config.ServerBannedList.Split(',');
+    foreach (string banned in bans)
+    {
+        server.BannedList.Add(banned);
+    }
 }
