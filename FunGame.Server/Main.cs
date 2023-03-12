@@ -111,7 +111,7 @@ void StartServer()
                     }
                     Config.ConnectingPlayersCount++;
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 正在连接服务器 . . .");
-                    if (ListeningSocket.BannedList.Contains(ClientIPAddress))
+                    if (IsIPBanned(ListeningSocket, ClientIPAddress))
                     {
                         SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
                         ServerHelper.WriteLine("检测到 " + SocketHelper.MakeClientName(ClientIPAddress) + " 为黑名单用户，已禁止其连接！");
@@ -222,4 +222,14 @@ void AddBannedList(ServerSocket server)
     {
         server.BannedList.Add(banned);
     }
+}
+
+bool IsIPBanned(ServerSocket server, string ip)
+{
+    string[] strs = ip.Split(":");
+    if (strs.Length == 2 && server.BannedList.Contains(strs[0]))
+    {
+        return true;
+    }
+    return false;
 }
