@@ -67,7 +67,7 @@ namespace Milimoe.FunGame.Server.Model
                 string msg = "";
 
                 // 验证Token
-                if (token != Token)
+                if (type != SocketMessageType.HeartBeat && token != Token)
                 {
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + ServerSocket.GetTypeString(type) + "] ");
                     return false;

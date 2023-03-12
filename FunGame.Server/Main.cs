@@ -220,7 +220,7 @@ void AddBannedList(ServerSocket server)
     string[] bans = Config.ServerBannedList.Split(',');
     foreach (string banned in bans)
     {
-        server.BannedList.Add(banned);
+        server.BannedList.Add(banned.Trim());
     }
 }
 
