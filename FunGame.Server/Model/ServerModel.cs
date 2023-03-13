@@ -367,6 +367,10 @@ namespace Milimoe.FunGame.Server.Model
             {
                 CreateStreamReader();
             });
+            Task PeriodicalQuerier = Task.Factory.StartNew(() =>
+            {
+                CreatePeriodicalQuerier();
+            });
         }
 
         public void SetTaskAndClientName(Task t, string ClientName)
@@ -458,6 +462,18 @@ namespace Milimoe.FunGame.Server.Model
                     ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Close -> StringStream is Closed.");
                     break;
                 }
+            }
+        }
+        
+        private void CreatePeriodicalQuerier()
+        {
+            Thread.Sleep(100);
+            ServerHelper.WriteLine("Creating: PeriodicalQuerier -> " + SocketHelper.MakeClientName(ClientName, User) + " ...OK");
+            while (Running)
+            {
+                // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
+                Thread.Sleep(2 * 1000 * 3600);
+                SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateUsername(UserName), out _);
             }
         }
 
