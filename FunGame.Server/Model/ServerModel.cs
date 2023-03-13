@@ -42,6 +42,8 @@ namespace Milimoe.FunGame.Server.Model
         private readonly ServerSocket Server;
         private readonly MySQLHelper SQLHelper;
         private readonly MailSender? MailSender;
+        private long LoginTime;
+        private long LogoutTime;
 
         public ServerModel(ServerSocket server, ClientSocket socket, bool running)
         {
@@ -132,6 +134,7 @@ namespace Milimoe.FunGame.Server.Model
                                 AddUser();
                                 GetUsersCount();
                                 // CheckLogin
+                                LoginTime = DateTime.Now.Ticks;
                                 SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]), out _);
                                 return Send(socket, type, UserName, Password);
                             }
@@ -180,7 +183,7 @@ namespace Milimoe.FunGame.Server.Model
                             {
                                 if (Client != null && User != null)
                                 {
-                                    Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, msg);
+                                    Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + msg);
                                 }
                             }
                         }
@@ -401,6 +404,14 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (User != null && this != null)
             {
+                LogoutTime = DateTime.Now.Ticks;
+                int TotalMinutes = Convert.ToInt32((new DateTime(LogoutTime) - new DateTime(LoginTime)).TotalMinutes);
+                SQLHelper.Execute(UserQuery.Update_GameTime(User.Username, TotalMinutes), out SQLResult result);
+                if (SQLHelper.Result == SQLResult.Success)
+                {
+                    ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 本次已游玩" + TotalMinutes + "分钟");
+                }
+                else ServerHelper.WriteLine("OnlinePlayers: 无法更新玩家 " + User.Username + " 的游戏时长");
                 if (Server.RemoveUser(User.Username))
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已移除");
