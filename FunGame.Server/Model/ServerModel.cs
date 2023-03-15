@@ -36,7 +36,7 @@ namespace Milimoe.FunGame.Server.Model
         private string RegVerify = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
-        private string Password = "";
+        private DataSet UserDataSet = new();
         private string RoomID = ""; 
         private readonly Guid Token;
         private readonly ServerSocket Server;
@@ -106,11 +106,23 @@ namespace Milimoe.FunGame.Server.Model
                                 SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password), out SQLResult result);
                                 if (result == SQLResult.Success)
                                 {
-                                    DataRow UserRow = SQLHelper.DataSet.Tables[0].Rows[0];
+                                    UserDataSet = SQLHelper.DataSet;
+                                    DataRow UserRow = UserDataSet.Tables[0].Rows[0];
                                     if (autokey != null && autokey.Trim() != "")
-                                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] AutoKey: 已确认");
+                                    {
+                                        SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey), out result);
+                                        if (result == SQLResult.Success)
+                                        {
+                                            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] AutoKey: 已确认");
+                                        }
+                                        else
+                                        {
+                                            msg = "AutoKey不正确，拒绝自动登录！";
+                                            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + msg);
+                                            return Send(socket, type, CheckLoginKey, msg);
+                                        }
+                                    }
                                     UserName = username;
-                                    Password = password;
                                     CheckLoginKey = Guid.NewGuid();
                                     return Send(socket, type, CheckLoginKey);
                                 }
@@ -127,7 +139,7 @@ namespace Milimoe.FunGame.Server.Model
                             if (CheckLoginKey.Equals(checkloginkey))
                             {
                                 // 创建User对象
-                                _User = Factory.New<User>(UserName, Password);
+                                _User = Factory.GetInstance<User>(UserDataSet);
                                 // 检查有没有重复登录的情况
                                 KickUser();
                                 // 添加至玩家列表
@@ -136,7 +148,7 @@ namespace Milimoe.FunGame.Server.Model
                                 // CheckLogin
                                 LoginTime = DateTime.Now.Ticks;
                                 SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]), out _);
-                                return Send(socket, type, UserName, Password);
+                                return Send(socket, type, UserDataSet);
                             }
                             ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
                         }
