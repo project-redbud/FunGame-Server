@@ -313,12 +313,20 @@ namespace Milimoe.FunGame.Server.Model
                         return Send(socket, type, false, msg);
 
                     case SocketMessageType.UpdateRoom:
-                        List<Room> list = new();
-                        if (Config.RoomList != null)
+                        Config.RoomList = new(Server);
+                        DataSet DsRoom = SQLHelper.ExecuteDataSet(RoomQuery.Select_Rooms, out SQLResult TestResult);
+                        if (TestResult == SQLResult.Success)
                         {
-                            list = Config.RoomList.GetList();
+                            for (int i = 0; i < DsRoom.Tables[0].Rows.Count; )
+                            {
+                                DataRow row = DsRoom.Tables[0].Rows[0];
+                                DataSet DsUser = SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateUsername((string)row[RoomQuery.Column_RoomMasterName]), out TestResult);
+                                Room room = Factory.GetInstance<Room>(DsRoom, DsUser);
+                                Config.RoomList.AddRoom(room);
+                                DsRoom.Tables[0].Rows.Remove(row);
+                            }
                         }
-                        return Send(socket, type, list);
+                        return Send(socket, type, Config.RoomList.GetList());
 
                     case SocketMessageType.CreateRoom:
                         break;

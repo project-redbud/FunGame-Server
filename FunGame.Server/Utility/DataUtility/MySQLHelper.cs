@@ -15,6 +15,10 @@ namespace Milimoe.FunGame.Server.Utility
         public override string Script { get; set; } = "";
         public override CommandType CommandType { get; set; } = CommandType.Text;
         public override SQLResult Result => _Result;
+        public override bool Success
+        {
+            get => Result == SQLResult.Success;
+        }
         public override SQLServerInfo ServerInfo => _ServerInfo ?? SQLServerInfo.Create();
         public override int UpdateRows => _UpdateRows;
         public override DataSet DataSet => _DataSet;
@@ -110,15 +114,16 @@ namespace Milimoe.FunGame.Server.Utility
         }
 
         /// <summary>
-        /// 创建单次使用的SQLHelper(执行完毕会自动Close连接)
+        /// 创建SQLHelper
         /// </summary>
+        /// <param name="IsOneTime">是否是单次使用(执行完毕会自动Close连接)</param>
         /// <param name="script">存储过程名称或者script语句</param> 
         /// <param name="type">存储过程, 文本, 等等</param> 
         /// <param name="parameters">执行命令所用参数的集合</param> 
-        public MySQLHelper(string script = "", CommandType type = CommandType.Text, params MySqlParameter[] parameters)
+        public MySQLHelper(string script = "", bool IsOneTime = true, CommandType type = CommandType.Text, params MySqlParameter[] parameters)
         {
-            _IsOneTime = true;
             Script = script;
+            _IsOneTime = IsOneTime;
             CommandType = type;
             Parameters = parameters;
         }
