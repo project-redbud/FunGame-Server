@@ -36,7 +36,7 @@ namespace Milimoe.FunGame.Server.Model
         private string RegVerify = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
-        private DataSet UserDataSet = new();
+        private DataRow DrUser = new DataTable().NewRow();
         private string RoomID = ""; 
         private readonly Guid Token;
         private readonly ServerSocket Server;
@@ -106,8 +106,7 @@ namespace Milimoe.FunGame.Server.Model
                                 SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password), out SQLResult result);
                                 if (result == SQLResult.Success)
                                 {
-                                    UserDataSet = SQLHelper.DataSet;
-                                    DataRow UserRow = UserDataSet.Tables[0].Rows[0];
+                                    DrUser = SQLHelper.DataSet.Tables[0].Rows[0];
                                     if (autokey != null && autokey.Trim() != "")
                                     {
                                         SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey), out result);
@@ -139,7 +138,7 @@ namespace Milimoe.FunGame.Server.Model
                             if (CheckLoginKey.Equals(checkloginkey))
                             {
                                 // 创建User对象
-                                _User = Factory.GetInstance<User>(UserDataSet);
+                                _User = Factory.GetInstance<User>(DrUser);
                                 // 检查有没有重复登录的情况
                                 KickUser();
                                 // 添加至玩家列表
@@ -148,7 +147,7 @@ namespace Milimoe.FunGame.Server.Model
                                 // CheckLogin
                                 LoginTime = DateTime.Now.Ticks;
                                 SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]), out _);
-                                return Send(socket, type, UserDataSet);
+                                return Send(socket, type, DrUser);
                             }
                             ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
                         }
@@ -317,16 +316,11 @@ namespace Milimoe.FunGame.Server.Model
                         DataSet DsRoom = SQLHelper.ExecuteDataSet(RoomQuery.Select_Rooms, out SQLResult TestResult);
                         if (TestResult == SQLResult.Success)
                         {
-                            for (int i = 0; i < DsRoom.Tables[0].Rows.Count; )
-                            {
-                                DataRow row = DsRoom.Tables[0].Rows[0];
-                                DataSet DsUser = SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateUsername((string)row[RoomQuery.Column_RoomMasterName]), out TestResult);
-                                Room room = Factory.GetInstance<Room>(DsRoom, DsUser);
-                                Config.RoomList.AddRoom(room);
-                                DsRoom.Tables[0].Rows.Remove(row);
-                            }
+                            DataSet DsUser = SQLHelper.ExecuteDataSet(UserQuery.Select_Users, out TestResult);
+                            List<Room> rooms = Factory.GetList<Room>(DsRoom, DsUser);
+                            Config.RoomList.AddRooms(rooms);
                         }
-                        return Send(socket, type, Config.RoomList.GetList());
+                        return Send(socket, type, Config.RoomList.GetRoomIDList());
 
                     case SocketMessageType.CreateRoom:
                         break;
