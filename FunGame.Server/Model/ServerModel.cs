@@ -36,7 +36,7 @@ namespace Milimoe.FunGame.Server.Model
         private string RegVerify = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
-        private DataRow DrUser = new DataTable().NewRow();
+        private DataSet DsUser = new();
         private string RoomID = ""; 
         private readonly Guid Token;
         private readonly ServerSocket Server;
@@ -106,7 +106,7 @@ namespace Milimoe.FunGame.Server.Model
                                 SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password), out SQLResult result);
                                 if (result == SQLResult.Success)
                                 {
-                                    DrUser = SQLHelper.DataSet.Tables[0].Rows[0];
+                                    DsUser = SQLHelper.DataSet;
                                     if (autokey != null && autokey.Trim() != "")
                                     {
                                         SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey), out result);
@@ -138,7 +138,7 @@ namespace Milimoe.FunGame.Server.Model
                             if (CheckLoginKey.Equals(checkloginkey))
                             {
                                 // 创建User对象
-                                _User = Factory.GetInstance<User>(DrUser);
+                                _User = Factory.GetInstance<User>(DsUser);
                                 // 检查有没有重复登录的情况
                                 KickUser();
                                 // 添加至玩家列表
@@ -147,7 +147,7 @@ namespace Milimoe.FunGame.Server.Model
                                 // CheckLogin
                                 LoginTime = DateTime.Now.Ticks;
                                 SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]), out _);
-                                return Send(socket, type, DrUser);
+                                return Send(socket, type, DsUser);
                             }
                             ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
                         }
