@@ -294,7 +294,7 @@ namespace Milimoe.FunGame.Server.Model
                                     if (RegVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
                                     {
                                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username + " Email: " + email);
-                                        SQLHelper.Execute(UserQuery.Insert_Register(username, password, email), out result);
+                                        SQLHelper.Execute(UserQuery.Insert_Register(username, password, email, socket.ClientIP), out result);
                                         if (result == SQLResult.Success)
                                         {
                                             msg = "注册成功！请牢记您的账号与密码！";
