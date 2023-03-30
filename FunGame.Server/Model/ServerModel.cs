@@ -287,6 +287,7 @@ namespace Milimoe.FunGame.Server.Model
                                     {
                                         ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 验证码已过期");
                                         msg = "此验证码已过期，请重新注册。";
+                                        SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email), out _);
                                         return Send(socket, type, false, msg);
                                     }
                                     // 注册
