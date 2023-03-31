@@ -31,18 +31,20 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\FunGame.Implement\FunGame.Implement.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Reference Include="FunGame.Core">
       <HintPath>..\..\FunGame.Core\bin\Debug\net7.0\FunGame.Core.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="MySql.Data">
       <HintPath>..\bin\Debug\net7.0\MySql.Data.dll</HintPath>
-    </Reference>
-    <Reference Include="Newtonsoft.Json">
-      <HintPath>..\bin\Debug\net7.0\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System.Configuration.ConfigurationManager">
       <HintPath>..\bin\Debug\net7.0\System.Configuration.ConfigurationManager.dll</HintPath>
