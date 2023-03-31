@@ -4,7 +4,7 @@
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <BaseOutputPath>C:\milimoe\FunGame\bin\Server</BaseOutputPath>
+    <BaseOutputPath>..\bin</BaseOutputPath>
     <Title>FunGameServer</Title>
     <Authors>Milimoe</Authors>
     <Product>$(AssemblyName)</Product>
@@ -12,7 +12,7 @@
     <PackageOutputPath>C:\milimoe\FunGame\bin</PackageOutputPath>
     <AssemblyVersion>1.0</AssemblyVersion>
     <FileVersion>1.0</FileVersion>
-    <RootNamespace>Milimoe.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+    <RootNamespace>Milimoe.FunGame.Core.Implement</RootNamespace>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -25,8 +25,7 @@
 
   <ItemGroup>
     <Reference Include="FunGame.Core">
-      <HintPath>..\..\FunGame\bin\Debug\net7.0\FunGame.Core.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\FunGame.Core\bin\Debug\net7.0\FunGame.Core.dll</HintPath>
     </Reference>
   </ItemGroup>
 

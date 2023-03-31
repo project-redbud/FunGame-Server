@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ApplicationIcon>logo.ico</ApplicationIcon>
     <PackageIcon>logo.ico</PackageIcon>
-    <BaseOutputPath>C:\milimoe\FunGame\bin\Server</BaseOutputPath>
+    <BaseOutputPath>..\bin</BaseOutputPath>
     <Title>FunGameServer</Title>
     <Company>Milimoe</Company>
     <Authors>Milimoe</Authors>
@@ -31,25 +31,24 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FunGame.Implement\FunGame.Implement.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="FunGame.Core">
-      <HintPath>..\..\FunGame\bin\Debug\net7.0-windows\FunGame.Core.dll</HintPath>
-		<Private>True</Private>
+      <HintPath>..\..\FunGame.Core\bin\Debug\net7.0\FunGame.Core.dll</HintPath>
     </Reference>
     <Reference Include="MySql.Data">
-      <HintPath>..\..\FunGame\bin\Server\Debug\net7.0\MySql.Data.dll</HintPath>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <HintPath>..\bin\Debug\net7.0\MySql.Data.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>..\..\FunGame\bin\Debug\net7.0-windows\Newtonsoft.Json.dll</HintPath>
-		<Private>True</Private>
+      <HintPath>..\bin\Debug\net7.0\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System.Configuration.ConfigurationManager">
-      <HintPath>..\..\FunGame\bin\Server\Debug\net7.0\System.Configuration.ConfigurationManager.dll</HintPath>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <HintPath>..\bin\Debug\net7.0\System.Configuration.ConfigurationManager.dll</HintPath>
     </Reference>
     <Reference Include="System.Security.Permissions">
-      <HintPath>..\..\FunGame\bin\Server\Debug\net7.0\System.Security.Permissions.dll</HintPath>
-      <EmbedInteropTypes>False</EmbedInteropTypes>
+      <HintPath>..\bin\Debug\net7.0\System.Security.Permissions.dll</HintPath>
     </Reference>
   </ItemGroup>
 
