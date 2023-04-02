@@ -403,7 +403,7 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + user + " 重复登录！");
                     ServerModel serverTask = (ServerModel)Server.GetUser(user);
-                    serverTask?.Send(serverTask.Socket!, SocketMessageType.Logout, serverTask.CheckLoginKey, "您的账号在别处登录，已强制下线。");
+                    serverTask?.Send(serverTask.Socket!, SocketMessageType.ForceLogout, serverTask.CheckLoginKey, "您的账号在别处登录，已强制下线。");
                 }
             }
         }
