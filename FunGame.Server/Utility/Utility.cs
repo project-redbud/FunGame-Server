@@ -29,6 +29,16 @@ namespace Milimoe.FunGame.Server.Utility
             Console.Write("\r> ");
         }
 
+        public static string MakeClientName(string name, User? user = null)
+        {
+            if (user != null)
+            {
+                return "玩家 " + user.Username;
+            }
+            if (name != "") return "客户端(" + name + ")";
+            return "客户端";
+        }
+
         private static Hashtable GetServerSettingHashtable()
         {
             Hashtable settings = new();
@@ -102,39 +112,6 @@ namespace Milimoe.FunGame.Server.Utility
             Config.OrderList.Add(OrderDictionary.Exit, "关闭服务器");
             Config.OrderList.Add(OrderDictionary.Close, "关闭服务器");
             Config.OrderList.Add(OrderDictionary.Restart, "重启服务器");
-        }
-    }
-
-    public class SocketHelper
-    {
-        public static int GetType(string msg)
-        {
-            int index = msg.IndexOf(';') - 1;
-            if (index > 0)
-                return Convert.ToInt32(msg[..index]);
-            else
-                return Convert.ToInt32(msg[..1]);
-        }
-
-        public static string GetMessage(string msg)
-        {
-            int index = msg.IndexOf(';') + 1;
-            return msg[index..];
-        }
-
-        public static string MakeMessage(int type, string msg)
-        {
-            return type + ";" + msg;
-        }
-
-        public static string MakeClientName(string name, User? user = null)
-        {
-            if (user != null)
-            {
-                return "玩家 " + user.Username;
-            }
-            if (name != "") return "客户端(" + name + ")";
-            return "客户端";
         }
     }
 
