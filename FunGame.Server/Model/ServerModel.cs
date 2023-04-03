@@ -71,7 +71,7 @@ namespace Milimoe.FunGame.Server.Model
                 // 验证Token
                 if (type != SocketMessageType.HeartBeat && token != Token)
                 {
-                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + ServerSocket.GetTypeString(type) + "] ");
+                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + ServerSocket.GetTypeString(type) + "] ");
                     return false;
                 }
 
@@ -81,9 +81,9 @@ namespace Milimoe.FunGame.Server.Model
                 if (!IgnoreType.Contains(type))
                 {
                     if (msg.Trim() == "")
-                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User));
+                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(ClientName, User));
                     else
-                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User) + " -> " + msg);
+                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(ClientName, User) + " -> " + msg);
                 }
 
                 switch (type)
@@ -212,14 +212,14 @@ namespace Milimoe.FunGame.Server.Model
                                 SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateUsername(username), out SQLResult result);
                                 if (result == SQLResult.Success)
                                 {
-                                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 账号已被注册");
+                                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 账号已被注册");
                                     return Send(socket, type, RegInvokeType.DuplicateUserName);
                                 }
                                 // 检查邮箱是否重复
                                 SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateEmail(email), out result);
                                 if (result == SQLResult.Success)
                                 {
-                                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 邮箱已被注册");
+                                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 邮箱已被注册");
                                     return Send(socket, type, RegInvokeType.DuplicateEmail);
                                 }
                                 // 检查验证码是否发送过
@@ -230,7 +230,7 @@ namespace Milimoe.FunGame.Server.Model
                                     string RegVerifyCode = (string)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode];
                                     if ((DateTime.Now - RegTime).TotalMinutes < 10)
                                     {
-                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 十分钟内已向{email}发送过验证码：{RegVerifyCode}");
+                                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 十分钟内已向{email}发送过验证码：{RegVerifyCode}");
                                     }
                                     return Send(socket, type, RegInvokeType.InputVerifyCode);
                                 }
@@ -249,17 +249,17 @@ namespace Milimoe.FunGame.Server.Model
                                         string[] To = new string[] { email };
                                         if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
                                         {
-                                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 已向{email}发送验证码：{RegVerify}");
+                                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 已向{email}发送验证码：{RegVerify}");
                                         }
                                         else
                                         {
-                                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 无法发送验证码");
+                                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 无法发送验证码");
                                             ServerHelper.WriteLine(MailSender.ErrorMsg);
                                         }
                                     }
                                     else // 不使用MailSender的情况
                                     {
-                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + $" 验证码为：{RegVerify}，请服务器管理员告知此用户");
+                                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 验证码为：{RegVerify}，请服务器管理员告知此用户");
                                     }
                                     return Send(socket, type, RegInvokeType.InputVerifyCode);
                                 }
@@ -285,7 +285,7 @@ namespace Milimoe.FunGame.Server.Model
                                     DateTime RegTime = (DateTime)(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime]);
                                     if ((DateTime.Now - RegTime).TotalMinutes >= 10)
                                     {
-                                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 验证码已过期");
+                                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 验证码已过期");
                                         msg = "此验证码已过期，请重新注册。";
                                         SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email), out _);
                                         return Send(socket, type, false, msg);
@@ -336,7 +336,7 @@ namespace Milimoe.FunGame.Server.Model
             }
             catch (Exception e)
             {
-                ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 没有回应。");
+                ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 没有回应。");
                 ServerHelper.Error(e);
                 return false;
             }
@@ -363,14 +363,14 @@ namespace Milimoe.FunGame.Server.Model
                     }
                     object obj = objs[0];
                     if (obj.GetType() == typeof(string) && (string)obj != "")
-                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(ClientName, User) + " <- " + obj);
+                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(ClientName, User) + " <- " + obj);
                     return true;
                 }
                 throw new CanNotSendToClientException();
             }
             catch (Exception e)
             {
-                ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " 没有回应。");
+                ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 没有回应。");
                 ServerHelper.Error(e);
                 return false;
             }
@@ -450,7 +450,7 @@ namespace Milimoe.FunGame.Server.Model
         private void CreateStreamReader()
         {
             Thread.Sleep(100);
-            ServerHelper.WriteLine("Creating: StreamReader -> " + SocketHelper.MakeClientName(ClientName, User) + " ...OK");
+            ServerHelper.WriteLine("Creating: StreamReader -> " + ServerHelper.MakeClientName(ClientName, User) + " ...OK");
             while (Running)
             {
                 if (Socket != null)
@@ -462,8 +462,8 @@ namespace Milimoe.FunGame.Server.Model
                         {
                             RemoveUser();
                             Close();
-                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Error -> Too Many Faileds.");
-                            ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Close -> StreamReader is Closed.");
+                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " Error -> Too Many Faileds.");
+                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " Close -> StreamReader is Closed.");
                             break;
                         }
                     }
@@ -473,8 +473,8 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     RemoveUser();
                     Close();
-                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Error -> Socket is Closed.");
-                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientName, User) + " Close -> StringStream is Closed.");
+                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " Error -> Socket is Closed.");
+                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " Close -> StringStream is Closed.");
                     break;
                 }
             }
@@ -483,7 +483,7 @@ namespace Milimoe.FunGame.Server.Model
         private void CreatePeriodicalQuerier()
         {
             Thread.Sleep(100);
-            ServerHelper.WriteLine("Creating: PeriodicalQuerier -> " + SocketHelper.MakeClientName(ClientName, User) + " ...OK");
+            ServerHelper.WriteLine("Creating: PeriodicalQuerier -> " + ServerHelper.MakeClientName(ClientName, User) + " ...OK");
             while (Running)
             {
                 // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线

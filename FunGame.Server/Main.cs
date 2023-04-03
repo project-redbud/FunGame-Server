@@ -110,11 +110,11 @@ void StartServer()
                         continue;
                     }
                     Config.ConnectingPlayersCount++;
-                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 正在连接服务器 . . .");
+                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientIPAddress) + " 正在连接服务器 . . .");
                     if (IsIPBanned(ListeningSocket, ClientIPAddress))
                     {
                         SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
-                        ServerHelper.WriteLine("检测到 " + SocketHelper.MakeClientName(ClientIPAddress) + " 为黑名单用户，已禁止其连接！");
+                        ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(ClientIPAddress) + " 为黑名单用户，已禁止其连接！");
                         Config.ConnectingPlayersCount--;
                         continue;
                     }
@@ -128,13 +128,13 @@ void StartServer()
                         ClientModel.SetTaskAndClientName(t, ClientIPAddress);
                     }
                     else
-                        ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 连接失败。");
+                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientIPAddress) + " 连接失败。");
                     Config.ConnectingPlayersCount--;
                 }
                 catch (Exception e)
                 {
                     if (--Config.ConnectingPlayersCount < 0) Config.ConnectingPlayersCount = 0;
-                    ServerHelper.WriteLine(SocketHelper.MakeClientName(ClientIPAddress) + " 断开连接！");
+                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientIPAddress) + " 断开连接！");
                     ServerHelper.Error(e);
                 }
             }
@@ -172,9 +172,9 @@ bool Read(ClientSocket socket)
     if (type != SocketMessageType.Unknown)
     {
         if (objs[0] != null && objs[0].GetType() == typeof(string) && objs[0].ToString()!.Trim() != "")
-            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(socket.ClientIP) + " -> " + objs[0]);
+            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(socket.ClientIP) + " -> " + objs[0]);
         else
-            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + SocketHelper.MakeClientName(socket.ClientIP));
+            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
         return true;
     }
     ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
@@ -187,7 +187,7 @@ bool Send(ClientSocket socket, Guid Token)
     string msg = Config.ServerName + ";" + Config.ServerNotice;
     if (socket.Send(SocketMessageType.Connect, msg, Token) == SocketResult.Success)
     {
-        ServerHelper.WriteLine(SocketHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
+        ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
         return true;
     }
     else
@@ -201,7 +201,7 @@ bool SendRefuseConnect(ClientSocket socket, string msg)
     msg = $"连接被拒绝，如有疑问请联系服务器管理员：{msg}";
     if (socket.Send(SocketMessageType.Connect, msg) == SocketResult.Success)
     {
-        ServerHelper.WriteLine(SocketHelper.MakeClientName(socket.ClientIP) + " <- " + "已拒绝连接");
+        ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已拒绝连接");
         return true;
     }
     else
