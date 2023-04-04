@@ -327,7 +327,17 @@ namespace Milimoe.FunGame.Server.Model
                         break;
 
                     case SocketMessageType.QuitRoom:
-                        break;
+                        if (args != null)
+                        {
+                            string? roomid = "";
+                            if (args.Length > 0) roomid = SocketObject.GetParam<string>(0);
+                            if (roomid != null && roomid.Trim() != "")
+                            {
+                                RoomID = "-1";
+                                return Send(socket, type, true);
+                            }
+                        }
+                        return Send(socket, type, false);
 
                     case SocketMessageType.ChangeRoomSetting:
                         break;
