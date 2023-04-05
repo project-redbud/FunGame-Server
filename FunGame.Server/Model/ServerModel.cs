@@ -183,6 +183,20 @@ namespace Milimoe.FunGame.Server.Model
                         msg = "-1";
                         if (args != null && args.Length > 0) msg = SocketObject.GetParam<string>(0)!;
                         RoomID = msg;
+                        if (RoomID != "-1")
+                        {
+                            // 昭告天下
+                            foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
+                            {
+                                if (RoomID == Client.RoomID)
+                                {
+                                    if (Client != null && User != null)
+                                    {
+                                        Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 进入了房间。");
+                                    }
+                                }
+                            }
+                        }
                         break;
 
                     case SocketMessageType.Chat:
@@ -359,6 +373,17 @@ namespace Milimoe.FunGame.Server.Model
                             if (args.Length > 0) roomid = SocketObject.GetParam<string>(0);
                             if (roomid != null && roomid.Trim() != "")
                             {
+                                // 昭告天下
+                                foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
+                                {
+                                    if (RoomID == Client.RoomID)
+                                    {
+                                        if (Client != null && User != null)
+                                        {
+                                            Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
+                                        }
+                                    }
+                                }
                                 RoomID = "-1";
                                 return Send(socket, type, true);
                             }
