@@ -183,6 +183,20 @@ namespace Milimoe.FunGame.Server.Model
                         msg = "-1";
                         if (args != null && args.Length > 0) msg = SocketObject.GetParam<string>(0)!;
                         RoomID = msg;
+                        if (RoomID != "-1")
+                        {
+                            // 昭告天下
+                            foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
+                            {
+                                if (RoomID == Client.RoomID)
+                                {
+                                    if (Client != null && User != null)
+                                    {
+                                        Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 进入了房间。");
+                                    }
+                                }
+                            }
+                        }
                         break;
 
                     case SocketMessageType.Chat:
@@ -209,14 +223,14 @@ namespace Milimoe.FunGame.Server.Model
                             if (username != null && email != null)
                             {
                                 // 先检查账号是否重复
-                                SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateUsername(username), out SQLResult result);
+                                SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(username), out SQLResult result);
                                 if (result == SQLResult.Success)
                                 {
                                     ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 账号已被注册");
                                     return Send(socket, type, RegInvokeType.DuplicateUserName);
                                 }
                                 // 检查邮箱是否重复
-                                SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateEmail(email), out result);
+                                SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistEmail(email), out result);
                                 if (result == SQLResult.Success)
                                 {
                                     ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 邮箱已被注册");
@@ -324,10 +338,57 @@ namespace Milimoe.FunGame.Server.Model
                         return Send(socket, type, Config.RoomList.GetRoomIDList());
 
                     case SocketMessageType.CreateRoom:
+                        msg = "-1";
+                        if (args != null)
+                        {
+                            string? roomtype_string = "";
+                            long userid = 0;
+                            string? password = "";
+                            if (args.Length > 0) roomtype_string = SocketObject.GetParam<string>(0);
+                            if (args.Length > 1) userid = SocketObject.GetParam<long>(1);
+                            if (args.Length > 2) password = SocketObject.GetParam<string>(2);
+                            if (!string.IsNullOrWhiteSpace(roomtype_string) && userid != 0)
+                            {
+                                RoomType roomtype = roomtype_string switch
+                                {
+                                    GameMode.GameMode_Team => RoomType.Team,
+                                    GameMode.GameMode_MixHasPass => RoomType.MixHasPass,
+                                    GameMode.GameMode_TeamHasPass => RoomType.TeamHasPass,
+                                    _ => RoomType.Mix,
+                                };
+                                string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
+                                SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, userid, roomtype, password ?? ""), out SQLResult result);
+                                if (result == SQLResult.Success)
+                                {
+                                    msg = roomid;
+                                }
+                            }
+                        }
                         break;
 
                     case SocketMessageType.QuitRoom:
-                        break;
+                        if (args != null)
+                        {
+                            string? roomid = "";
+                            if (args.Length > 0) roomid = SocketObject.GetParam<string>(0);
+                            if (roomid != null && roomid.Trim() != "")
+                            {
+                                // 昭告天下
+                                foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
+                                {
+                                    if (RoomID == Client.RoomID)
+                                    {
+                                        if (Client != null && User != null)
+                                        {
+                                            Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
+                                        }
+                                    }
+                                }
+                                RoomID = "-1";
+                                return Send(socket, type, true);
+                            }
+                        }
+                        return Send(socket, type, false);
 
                     case SocketMessageType.ChangeRoomSetting:
                         break;
@@ -488,7 +549,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
                 Thread.Sleep(2 * 1000 * 3600);
-                SQLHelper.ExecuteDataSet(UserQuery.Select_DuplicateUsername(UserName), out _);
+                SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(UserName), out _);
             }
         }
 
