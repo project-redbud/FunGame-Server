@@ -327,15 +327,18 @@ namespace Milimoe.FunGame.Server.Model
                         return Send(socket, type, false, msg);
 
                     case SocketMessageType.UpdateRoom:
-                        Config.RoomList = new(Server);
-                        DataSet DsRoom = SQLHelper.ExecuteDataSet(RoomQuery.Select_Rooms, out SQLResult TestResult);
+                        Config.RoomList ??= new(Server);
+                        Config.RoomList.Clear();
+                        DataSet DsRoomTemp = new(), DsUserTemp = new();
+                        DsRoomTemp = SQLHelper.ExecuteDataSet(RoomQuery.Select_Rooms, out SQLResult TestResult);
                         if (TestResult == SQLResult.Success)
                         {
-                            DataSet DsUser = SQLHelper.ExecuteDataSet(UserQuery.Select_Users, out TestResult);
-                            List<Room> rooms = Factory.GetList<Room>(DsRoom, DsUser);
-                            Config.RoomList.AddRooms(rooms);
+                            DsUserTemp = SQLHelper.ExecuteDataSet(UserQuery.Select_Users, out TestResult);
+                            List<Room> rooms = Factory.GetList<Room>(DsRoomTemp, DsUserTemp);
+                            Config.RoomList.AddRoom(General.HallInstance); // 添加空房间
+                            Config.RoomList.AddRooms(rooms); // 更新服务器中的房间列表
                         }
-                        return Send(socket, type, Config.RoomList.GetRoomIDList());
+                        return Send(socket, type, DsRoomTemp, DsUserTemp); // 将Ds传递给客户端，在客户端中构建Room
 
                     case SocketMessageType.CreateRoom:
                         msg = "-1";
@@ -351,10 +354,11 @@ namespace Milimoe.FunGame.Server.Model
                             {
                                 RoomType roomtype = roomtype_string switch
                                 {
+                                    GameMode.GameMode_Mix => RoomType.Mix,
                                     GameMode.GameMode_Team => RoomType.Team,
                                     GameMode.GameMode_MixHasPass => RoomType.MixHasPass,
                                     GameMode.GameMode_TeamHasPass => RoomType.TeamHasPass,
-                                    _ => RoomType.Mix,
+                                    _ => RoomType.None
                                 };
                                 string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
                                 SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, userid, roomtype, password ?? ""), out SQLResult result);
@@ -389,6 +393,9 @@ namespace Milimoe.FunGame.Server.Model
                             }
                         }
                         return Send(socket, type, false);
+
+                    case SocketMessageType.MatchRoom:
+                        break;
 
                     case SocketMessageType.ChangeRoomSetting:
                         break;
