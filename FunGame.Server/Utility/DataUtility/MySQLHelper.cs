@@ -144,7 +144,7 @@ namespace Milimoe.FunGame.Server.Utility
         private string GetClientName()
         {
             if (ServerModel is null) return "";
-            return SocketHelper.MakeClientName(ServerModel.ClientName, ServerModel.User) + " ";
+            return ServerHelper.MakeClientName(ServerModel.ClientName, ServerModel.User) + " ";
         }
     }
 }
