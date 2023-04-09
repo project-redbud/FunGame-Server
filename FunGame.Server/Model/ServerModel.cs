@@ -2,9 +2,9 @@
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
+using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Core.Library.Server;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Others;
@@ -12,16 +12,16 @@ using Milimoe.FunGame.Server.Utility;
 
 namespace Milimoe.FunGame.Server.Model
 {
-    public class ServerModel : BaseModel
+    public class ServerModel : IServerModel
     {
         /**
          * Public
          */
-        public override bool Running => _Running;
-        public override ClientSocket? Socket => _Socket;
-        public override Task? Task => _Task;
-        public override string ClientName => _ClientName;
-        public override User? User => _User;
+        public bool Running => _Running;
+        public ClientSocket? Socket => _Socket;
+        public Task? Task => _Task;
+        public string ClientName => _ClientName;
+        public User? User => _User;
 
         /**
          * Private
@@ -57,7 +57,7 @@ namespace Milimoe.FunGame.Server.Model
             GetUsersCount();
         }
 
-        public override bool Read(ClientSocket socket)
+        public bool Read(ClientSocket socket)
         {
             // 接收客户端消息
             try
@@ -410,7 +410,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public override bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
+        public bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
         {
             // 发送消息给客户端
             try
@@ -444,7 +444,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public override void Start()
+        public void Start()
         {
             Task StreamReader = Task.Factory.StartNew(() =>
             {
