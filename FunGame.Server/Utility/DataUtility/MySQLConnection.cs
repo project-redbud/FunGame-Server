@@ -1,6 +1,6 @@
 ﻿using MySql.Data.MySqlClient;
 using Milimoe.FunGame.Core.Api.Utility;
-using Milimoe.FunGame.Core.Library.Server;
+using Milimoe.FunGame.Core.Library.Common.Architecture;
 
 namespace Milimoe.FunGame.Server.Utility.DataUtility
 {
