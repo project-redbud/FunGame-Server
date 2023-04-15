@@ -21,14 +21,14 @@ namespace Milimoe.FunGame.Server.Model
         public ClientSocket? Socket => _Socket;
         public Task? Task => _Task;
         public string ClientName => _ClientName;
-        public User? User => _User;
+        public User User => _User;
 
         /**
          * Private
          */
         private ClientSocket? _Socket = null;
         private bool _Running = false;
-        private User? _User = null;
+        private User _User = General.UnknownUserInstance;
         private Task? _Task = null;
         private string _ClientName = "";
 
@@ -183,6 +183,7 @@ namespace Milimoe.FunGame.Server.Model
                         msg = "-1";
                         if (args != null && args.Length > 0) msg = SocketObject.GetParam<string>(0)!;
                         RoomID = msg;
+                        Config.RoomList.IntoRoom(RoomID, User);
                         if (RoomID != "-1")
                         {
                             // 昭告天下
@@ -190,7 +191,7 @@ namespace Milimoe.FunGame.Server.Model
                             {
                                 if (RoomID == Client.RoomID)
                                 {
-                                    if (Client != null && User != null)
+                                    if (Client != null && User.Id != 0)
                                     {
                                         Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 进入了房间。");
                                     }
@@ -206,7 +207,7 @@ namespace Milimoe.FunGame.Server.Model
                         {
                             if (RoomID == Client.RoomID)
                             {
-                                if (Client != null && User != null)
+                                if (Client != null && User.Id != 0)
                                 {
                                     Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + msg);
                                 }
@@ -373,17 +374,49 @@ namespace Milimoe.FunGame.Server.Model
                         if (args != null)
                         {
                             string? roomid = "";
+                            bool isMaster = false;
                             if (args.Length > 0) roomid = SocketObject.GetParam<string>(0);
+                            if (args.Length > 1) isMaster = SocketObject.GetParam<bool>(1);
                             if (roomid != null && roomid.Trim() != "")
                             {
+                                Config.RoomList.QuitRoom(roomid, User);
+                                Room Room = Config.RoomList[roomid] ?? General.HallInstance;
+                                User UpdateRoomMaster = General.UnknownUserInstance;
+                                DataSet DsUser = new(), DsRoom = new();
+                                // 是否是房主
+                                if (isMaster)
+                                {
+                                    List<User> users = GetRoomPlayerList(roomid);
+                                    if (users.Count > 0) // 如果此时房间还有人，更新房主
+                                    {
+                                        UpdateRoomMaster = users[0];
+                                        Room.RoomMaster = UpdateRoomMaster;
+                                        SQLHelper.Execute(RoomQuery.Update_QuitRoom(roomid, User.Id, UpdateRoomMaster.Id), out _);
+                                        DsUser = SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(UpdateRoomMaster.Username), out _);
+                                        DsRoom = SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(roomid), out _);
+                                    }
+                                    else // 没人了就解散房间
+                                    {
+                                        Config.RoomList.RemoveRoom(roomid);
+                                        SQLHelper.Execute(RoomQuery.Delete_QuitRoom(roomid, User.Id), out SQLResult result);
+                                        if (result == SQLResult.Success)
+                                        {
+                                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 解散了房间 " + roomid);
+                                        }
+                                    }
+                                }
                                 // 昭告天下
                                 foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
                                 {
-                                    if (RoomID == Client.RoomID)
+                                    if (roomid == Client.RoomID)
                                     {
-                                        if (Client != null && User != null)
+                                        if (Client != null && User.Id != 0)
                                         {
                                             Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
+                                            if (UpdateRoomMaster.Id != 0 && Room.Roomid != "-1")
+                                            {
+                                                Client.Send(Client.Socket!, SocketMessageType.UpdateRoomMaster, DsUser, DsRoom);
+                                            }
                                         }
                                     }
                                 }
@@ -398,6 +431,19 @@ namespace Milimoe.FunGame.Server.Model
 
                     case SocketMessageType.ChangeRoomSetting:
                         break;
+
+                    case SocketMessageType.GetRoomPlayerCount:
+                        if (args != null)
+                        {
+                            string? roomid = "-1";
+                            if (args.Length > 0) roomid = SocketObject.GetParam<string>(0);
+                            if (roomid != null && roomid != "-1")
+                            {
+                                int count = GetRoomPlayerCount(roomid);
+                                return Send(socket, type, count);
+                            }
+                        }
+                        return Send(socket, type, 0);
                 }
                 return Send(socket, type, msg);
             }
@@ -463,7 +509,7 @@ namespace Milimoe.FunGame.Server.Model
 
         private void KickUser()
         {
-            if (User != null)
+            if (User.Id != 0)
             {
                 string user = User.Username;
                 if (Server.ContainsUser(user))
@@ -477,7 +523,7 @@ namespace Milimoe.FunGame.Server.Model
 
         private bool AddUser()
         {
-            if (User != null && this != null)
+            if (User.Id != 0 && this != null)
             {
                 Server.AddUser(User.Username, this);
                 ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
@@ -488,7 +534,7 @@ namespace Milimoe.FunGame.Server.Model
 
         private bool RemoveUser()
         {
-            if (User != null && this != null)
+            if (User.Id != 0 && this != null)
             {
                 LogoutTime = DateTime.Now.Ticks;
                 int TotalMinutes = Convert.ToInt32((new DateTime(LogoutTime) - new DateTime(LoginTime)).TotalMinutes);
@@ -501,7 +547,7 @@ namespace Milimoe.FunGame.Server.Model
                 if (Server.RemoveUser(User.Username))
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已移除");
-                    _User = null;
+                    _User = General.UnknownUserInstance;
                     return true;
                 }
                 else ServerHelper.WriteLine("OnlinePlayers: 移除玩家 " + User.Username + " 失败");
@@ -577,5 +623,14 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
+        private static int GetRoomPlayerCount(string roomid)
+        {
+            return Config.RoomList.GetPlayerCount(roomid);
+        }
+
+        private static List<User> GetRoomPlayerList(string roomid)
+        {
+            return Config.RoomList.GetPlayerList(roomid);
+        }
     }
 }

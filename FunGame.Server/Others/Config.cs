@@ -22,7 +22,7 @@ namespace Milimoe.FunGame.Server.Others
         public static Encoding DefaultEncoding { get; } = General.DefaultEncoding; // 默认传输字符集
         public static FunGameInfo.FunGame FunGameType { get; } = FunGameInfo.FunGame.FunGame_Server;
         public static Hashtable OrderList { get; } = new();
-        public static RoomList? RoomList { get; set; }
+        public static RoomList RoomList { get; set; } = new();
     }
 
     public static class OfficialEmail
