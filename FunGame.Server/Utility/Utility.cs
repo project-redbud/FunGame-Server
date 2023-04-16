@@ -31,7 +31,7 @@ namespace Milimoe.FunGame.Server.Utility
 
         public static string MakeClientName(string name, User? user = null)
         {
-            if (user != null)
+            if (user != null && user.Id != 0)
             {
                 return "玩家 " + user.Username;
             }
