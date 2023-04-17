@@ -410,7 +410,7 @@ namespace Milimoe.FunGame.Server.Model
                                 {
                                     if (roomid == Client.RoomID)
                                     {
-                                        if (Client != null && User.Id != 0)
+                                        if (Client != null && User.Id != Client.User.Id)
                                         {
                                             Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
                                             if (UpdateRoomMaster.Id != 0 && Room.Roomid != "-1")
