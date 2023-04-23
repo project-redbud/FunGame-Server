@@ -1,7 +1,7 @@
 ﻿using System.Text;
 using System.Collections;
 using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Core.Library.Common.Architecture;
+using Milimoe.FunGame.Core.Model;
 
 namespace Milimoe.FunGame.Server.Others
 {
