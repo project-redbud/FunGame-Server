@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using MySql.Data.MySqlClient;
 using Milimoe.FunGame.Core.Library.Constant;
+using System.Diagnostics;
 
 namespace Milimoe.FunGame.Server.Utility
 {
@@ -20,18 +21,22 @@ namespace Milimoe.FunGame.Server.Utility
             try
             {
                 PrepareCommand(Helper, cmd);
+                Helper.NewTransaction();
+
                 updaterow = cmd.ExecuteNonQuery();
                 if (updaterow > 0)
                 {
                     Result = SQLResult.Success;
                 }
                 else Result = SQLResult.NotFound;
+                Helper.Commit();
             }
             catch (Exception e)
             {
                 ServerHelper.Error(e);
                 updaterow = -1;
                 Result = SQLResult.Fail;
+                Helper.Rollback();
             }
 
             return updaterow;
@@ -89,17 +94,21 @@ namespace Milimoe.FunGame.Server.Utility
             try
             {
                 PrepareCommand(Helper, cmd);
+                Helper.NewTransaction();
+
                 updaterow = cmd.ExecuteNonQuery();
                 if (updaterow > 0)
                 {
                     Result = SQLResult.Success;
                 }
                 else Result = SQLResult.NotFound;
+                Helper.Commit();
             }
             catch (Exception e)
             {
                 ServerHelper.Error(e);
                 Result = SQLResult.Fail;
+                Helper.Rollback();
             }
 
             return cmd.LastInsertedId;
@@ -110,31 +119,26 @@ namespace Milimoe.FunGame.Server.Utility
         /// </summary>
         /// <param name="Helper">MySQLHelper</param>
         /// <param name="cmd">命令对象</param>
-        /// <param name="trans">事务</param>
-        public static void PrepareCommand(MySQLHelper Helper, MySqlCommand cmd, MySqlTransaction? trans = null)
+        public static void PrepareCommand(MySQLHelper Helper, MySqlCommand cmd)
         {
             if (Helper.Connection != null)
             {
                 MySqlConnection? conn = Helper.Connection.Connection;
 
-                if (conn != null && conn.State != ConnectionState.Open)
-                    conn.Open();
-
-                cmd.Connection = conn;
-                cmd.CommandText = Helper.Script;
-
-                if (trans != null)
+                if (conn != null)
                 {
-                    cmd.Transaction = trans;
-                }
+                    if (conn.State != ConnectionState.Open) conn.Open();
 
-                cmd.CommandType = Helper.CommandType;
+                    cmd.Connection = conn;
+                    cmd.CommandText = Helper.Script;
+                    cmd.CommandType = Helper.CommandType;
 
-                if (Helper.Parameters != null)
-                {
-                    foreach (MySqlParameter parm in Helper.Parameters)
+                    if (Helper.Parameters != null)
                     {
-                        cmd.Parameters.Add(parm);
+                        foreach (MySqlParameter parm in Helper.Parameters)
+                        {
+                            cmd.Parameters.Add(parm);
+                        }
                     }
                 }
             }
