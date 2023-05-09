@@ -1,7 +1,6 @@
 ﻿using System.Data;
 using MySql.Data.MySqlClient;
 using Milimoe.FunGame.Core.Library.Constant;
-using System.Diagnostics;
 
 namespace Milimoe.FunGame.Server.Utility
 {
