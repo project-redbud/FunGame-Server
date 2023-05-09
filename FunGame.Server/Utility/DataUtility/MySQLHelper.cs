@@ -165,6 +165,7 @@ namespace Milimoe.FunGame.Server.Utility
         public void Rollback()
         {
             _Transaction?.Rollback();
+            _Transaction = null;
         }
 
         /// <summary>
