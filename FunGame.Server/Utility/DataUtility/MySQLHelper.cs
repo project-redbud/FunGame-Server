@@ -30,6 +30,7 @@ namespace Milimoe.FunGame.Server.Utility
         private int _UpdateRows = 0;
         private DataSet _DataSet = new();
         private MySQLConnection? _Connection;
+        private MySqlTransaction? _Transaction;
         private readonly ServerModel? ServerModel;
         private readonly bool _IsOneTime = false;
 
@@ -141,6 +142,36 @@ namespace Milimoe.FunGame.Server.Utility
             _Connection = new MySQLConnection(out _ServerInfo);
         }
 
+        /// <summary>
+        /// 创建一个SQL事务
+        /// </summary>
+        public void NewTransaction()
+        {
+            _Transaction ??= _Connection?.Connection?.BeginTransaction();
+        }
+
+        /// <summary>
+        /// 提交事务
+        /// </summary>
+        public void Commit()
+        {
+            _Transaction?.Commit();
+            _Transaction = null;
+        }
+        
+        /// <summary>
+        /// 回滚事务
+        /// </summary>
+        public void Rollback()
+        {
+            _Transaction?.Rollback();
+            _Transaction = null;
+        }
+
+        /// <summary>
+        /// 获取客户端名称
+        /// </summary>
+        /// <returns></returns>
         private string GetClientName()
         {
             if (ServerModel is null) return "";
