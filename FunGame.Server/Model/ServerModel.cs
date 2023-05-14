@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System.Collections;
+using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
@@ -73,6 +74,11 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + ServerSocket.GetTypeString(type) + "] ");
                     return false;
+                }
+
+                if (type == SocketMessageType.DataRequest)
+                {
+                    return DataRequestHandler(socket, SocketObject);
                 }
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
@@ -505,6 +511,32 @@ namespace Milimoe.FunGame.Server.Model
         {
             _Task = t;
             _ClientName = ClientName;
+        }
+
+        private bool DataRequestHandler(ClientSocket socket, SocketObject SocketObject)
+        {
+            Hashtable ResultData = new();
+            DataRequestType type = DataRequestType.UnKnown;
+
+            if (SocketObject.Parameters.Length > 0)
+            {
+                try
+                {
+                    type = SocketObject.GetParam<DataRequestType>(0);
+                    switch (type)
+                    {
+                        case DataRequestType.UnKnown:
+                            break;
+                    }
+                }
+                catch (Exception e)
+                {
+                    ServerHelper.Error(e);
+                    return false;
+                }
+            }
+
+            return Send(socket, SocketMessageType.DataRequest, type, ResultData);
         }
 
         private void KickUser()
