@@ -35,6 +35,7 @@ namespace Milimoe.FunGame.Server.Model
         private string _ClientName = "";
 
         private Guid CheckLoginKey = Guid.Empty;
+        private string RegVerify = "";
         private string ForgetVerify = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
@@ -258,8 +259,8 @@ namespace Milimoe.FunGame.Server.Model
                                 }
                                 // 发送验证码，需要先删除之前过期的验证码
                                 SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email), out _);
-                                ForgetVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCodes(username, email, ForgetVerify), out result);
+                                RegVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
+                                SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCodes(username, email, RegVerify), out result);
                                 if (result == SQLResult.Success)
                                 {
                                     if (MailSender != null)
@@ -267,11 +268,11 @@ namespace Milimoe.FunGame.Server.Model
                                         // 发送验证码
                                         string ServerName = Config.ServerName;
                                         string Subject = $"[{ServerName}] FunGame 注册验证码";
-                                        string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {ForgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
+                                        string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {RegVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
                                         string[] To = new string[] { email };
                                         if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
                                         {
-                                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 已向{email}发送验证码：{ForgetVerify}");
+                                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 已向{email}发送验证码：{RegVerify}");
                                         }
                                         else
                                         {
@@ -281,7 +282,7 @@ namespace Milimoe.FunGame.Server.Model
                                     }
                                     else // 不使用MailSender的情况
                                     {
-                                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 验证码为：{ForgetVerify}，请服务器管理员告知此用户");
+                                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 验证码为：{RegVerify}，请服务器管理员告知此用户");
                                     }
                                     return Send(socket, type, RegInvokeType.InputVerifyCode);
                                 }
@@ -313,7 +314,7 @@ namespace Milimoe.FunGame.Server.Model
                                         return Send(socket, type, false, msg);
                                     }
                                     // 注册
-                                    if (ForgetVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
+                                    if (RegVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
                                     {
                                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username + " Email: " + email);
                                         SQLHelper.Execute(UserQuery.Insert_Register(username, password, email, socket.ClientIP), out result);
