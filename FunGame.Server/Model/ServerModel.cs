@@ -498,14 +498,8 @@ namespace Milimoe.FunGame.Server.Model
 
         public void Start()
         {
-            Task StreamReader = Task.Factory.StartNew(() =>
-            {
-                CreateStreamReader();
-            });
-            Task PeriodicalQuerier = Task.Factory.StartNew(() =>
-            {
-                CreatePeriodicalQuerier();
-            });
+            Task StreamReader = Task.Factory.StartNew(CreateStreamReader);
+            Task PeriodicalQuerier = Task.Factory.StartNew(CreatePeriodicalQuerier);
         }
 
         public void SetTaskAndClientName(Task t, string ClientName)
