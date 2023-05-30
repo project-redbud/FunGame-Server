@@ -10,7 +10,6 @@ using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
-using MySqlX.XDevAPI.Common;
 
 namespace Milimoe.FunGame.Server.Model
 {
