@@ -260,7 +260,7 @@ namespace Milimoe.FunGame.Server.Model
                                 // 发送验证码，需要先删除之前过期的验证码
                                 SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email), out _);
                                 RegVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCodes(username, email, RegVerify), out result);
+                                SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCode(username, email, RegVerify), out result);
                                 if (result == SQLResult.Success)
                                 {
                                     if (MailSender != null)
@@ -591,7 +591,7 @@ namespace Milimoe.FunGame.Server.Model
                                             // 发送验证码，需要先删除之前过期的验证码
                                             SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email), out _);
                                             ForgetVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                            SQLHelper.Execute(ForgetVerifyCodes.Insert_ForgetVerifyCodes(username, email, ForgetVerify), out result);
+                                            SQLHelper.Execute(ForgetVerifyCodes.Insert_ForgetVerifyCode(username, email, ForgetVerify), out result);
                                             if (result == SQLResult.Success)
                                             {
                                                 if (MailSender != null)
