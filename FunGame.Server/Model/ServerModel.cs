@@ -35,6 +35,7 @@ namespace Milimoe.FunGame.Server.Model
 
         private Guid CheckLoginKey = Guid.Empty;
         private string RegVerify = "";
+        private string ForgetVerify = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
         private DataSet DsUser = new();
@@ -258,7 +259,7 @@ namespace Milimoe.FunGame.Server.Model
                                 // 发送验证码，需要先删除之前过期的验证码
                                 SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email), out _);
                                 RegVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCodes(username, email, RegVerify), out result);
+                                SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCode(username, email, RegVerify), out result);
                                 if (result == SQLResult.Success)
                                 {
                                     if (MailSender != null)
@@ -303,7 +304,7 @@ namespace Milimoe.FunGame.Server.Model
                                 if (result == SQLResult.Success)
                                 {
                                     // 检查验证码是否过期
-                                    DateTime RegTime = (DateTime)(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime]);
+                                    DateTime RegTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime];
                                     if ((DateTime.Now - RegTime).TotalMinutes >= 10)
                                     {
                                         ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 验证码已过期");
@@ -497,14 +498,8 @@ namespace Milimoe.FunGame.Server.Model
 
         public void Start()
         {
-            Task StreamReader = Task.Factory.StartNew(() =>
-            {
-                CreateStreamReader();
-            });
-            Task PeriodicalQuerier = Task.Factory.StartNew(() =>
-            {
-                CreatePeriodicalQuerier();
-            });
+            Task StreamReader = Task.Factory.StartNew(CreateStreamReader);
+            Task PeriodicalQuerier = Task.Factory.StartNew(CreatePeriodicalQuerier);
         }
 
         public void SetTaskAndClientName(Task t, string ClientName)
@@ -515,6 +510,7 @@ namespace Milimoe.FunGame.Server.Model
 
         private bool DataRequestHandler(ClientSocket socket, SocketObject SocketObject)
         {
+            Hashtable RequestData = new();
             Hashtable ResultData = new();
             DataRequestType type = DataRequestType.UnKnown;
 
@@ -523,9 +519,104 @@ namespace Milimoe.FunGame.Server.Model
                 try
                 {
                     type = SocketObject.GetParam<DataRequestType>(0);
+                    RequestData = SocketObject.GetParam<Hashtable>(1) ?? new();
                     switch (type)
                     {
                         case DataRequestType.UnKnown:
+                            break;
+
+                        case DataRequestType.GetFindPasswordVerifyCode:
+                            if (RequestData.Count >= 2)
+                            {
+                                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + ServerHelper.MakeClientName(ClientName, User) + " -> ForgetPassword");
+                                string username = (string?)(RequestData[ForgetVerifyCodes.Column_Username]) ?? "";
+                                string email = (string?)(RequestData[ForgetVerifyCodes.Column_Email]) ?? "";
+                                string verifycode = (string?)RequestData[ForgetVerifyCodes.Column_ForgetVerifyCode] ?? "";
+                                string msg = ""; // 返回错误信息
+                                // 客户端发来了验证码就进行验证，没有发就生成
+                                if (verifycode.Trim() != "")
+                                {
+                                    // 先检查验证码
+                                    SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_ForgetVerifyCode(username, email, verifycode), out SQLResult result);
+                                    if (result == SQLResult.Success)
+                                    {
+                                        // 检查验证码是否过期
+                                        DateTime SendTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime];
+                                        if ((DateTime.Now - SendTime).TotalMinutes >= 10)
+                                        {
+                                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 验证码已过期");
+                                            msg = "此验证码已过期，请重新找回密码。";
+                                            SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email), out _);
+                                        }
+                                        else
+                                        {
+                                            // 找回密码
+                                            if (ForgetVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode]))
+                                            {
+                                                ServerHelper.WriteLine("[ForgerPassword] UserName: " + username + " Email: " + email);
+                                                // TODO. 等更新UpdatePassword
+                                                if (true)
+                                                {
+                                                    //msg = "找回密码！请牢记您的新密码！";
+                                                    //SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email), out _);
+                                                }
+                                                //else msg = "服务器无法处理您的注册，注册失败！";
+                                            }
+                                            else msg = "验证码不正确，请重新输入！";
+                                        }
+                                    }
+                                    else msg = "无法找回您的密码，请稍后再试。";
+                                }
+                                else
+                                {
+                                    // 检查验证码是否发送过
+                                    SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_HasSentForgetVerifyCode(username, email), out SQLResult result);
+                                    if (result == SQLResult.Success)
+                                    {
+                                        DateTime SendTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime];
+                                        string ForgetVerifyCode = (string)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode];
+                                        if ((DateTime.Now - SendTime).TotalMinutes < 10)
+                                        {
+                                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 十分钟内已向{email}发送过验证码：{ForgetVerifyCode}");
+                                        }
+                                        else
+                                        {
+                                            // 发送验证码，需要先删除之前过期的验证码
+                                            SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email), out _);
+                                            ForgetVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
+                                            SQLHelper.Execute(ForgetVerifyCodes.Insert_ForgetVerifyCode(username, email, ForgetVerify), out result);
+                                            if (result == SQLResult.Success)
+                                            {
+                                                if (MailSender != null)
+                                                {
+                                                    // 发送验证码
+                                                    string ServerName = Config.ServerName;
+                                                    string Subject = $"[{ServerName}] FunGame 找回密码验证码";
+                                                    string Body = $"亲爱的 {username}， <br/>    您正在找回[{ServerName}]账号的密码，您的验证码是 {ForgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
+                                                    string[] To = new string[] { email };
+                                                    if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
+                                                    {
+                                                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 已向{email}发送验证码：{ForgetVerify}");
+                                                    }
+                                                    else
+                                                    {
+                                                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 无法发送验证码");
+                                                        ServerHelper.WriteLine(MailSender.ErrorMsg);
+                                                    }
+                                                }
+                                                else // 不使用MailSender的情况
+                                                {
+                                                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 验证码为：{ForgetVerify}，请服务器管理员告知此用户");
+                                                }
+                                            }
+                                            else msg = "无法找回您的密码，请稍后再试。";
+                                        }
+                                    }
+                                    else msg = "无法找回您的密码，请稍后再试。";
+                                }
+                                ResultData.Add("msg", msg);
+                            }
+                            else ResultData.Add("msg", "无法找回您的密码，请稍后再试。");
                             break;
                     }
                 }
