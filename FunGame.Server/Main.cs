@@ -3,6 +3,7 @@ using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
+using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
@@ -166,17 +167,21 @@ void StartServer()
 bool Read(ClientSocket socket)
 {
     // 接收客户端消息
-    SocketObject read = socket.Receive();
-    SocketMessageType type = read.SocketType;
-    object[] objs = read.Parameters;
-    if (type != SocketMessageType.Unknown)
+    foreach (SocketObject read in socket.ReceiveArray())
     {
-        if (objs[0] != null && objs[0].GetType() == typeof(string) && objs[0].ToString()!.Trim() != "")
-            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(socket.ClientIP) + " -> " + objs[0]);
-        else
-            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
-        return true;
+        SocketMessageType type = read.SocketType;
+        if (type == SocketMessageType.Connect)
+        {
+            if (read.Parameters.Length > 0)
+            {
+                string str = (read.GetParam<string>(0) ?? "").Trim();
+                if (str != "") ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(socket.ClientIP) + " -> " + str);
+            }
+            else ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
+            return true;
+        }
     }
+
     ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
     return false;
 }
