@@ -339,12 +339,9 @@ namespace Milimoe.FunGame.Server.Model
                         Config.RoomList.Clear();
                         DataSet DsRoomTemp = new(), DsUserTemp = new();
                         DsRoomTemp = SQLHelper.ExecuteDataSet(RoomQuery.Select_Rooms, out SQLResult TestResult);
-                        if (TestResult == SQLResult.Success)
-                        {
-                            DsUserTemp = SQLHelper.ExecuteDataSet(UserQuery.Select_Users, out TestResult);
-                            List<Room> rooms = Factory.GetList<Room>(DsRoomTemp, DsUserTemp);
-                            Config.RoomList.AddRooms(rooms); // 更新服务器中的房间列表
-                        }
+                        DsUserTemp = SQLHelper.ExecuteDataSet(UserQuery.Select_Users, out TestResult);
+                        List<Room> rooms = Factory.GetList<Room>(DsRoomTemp, DsUserTemp);
+                        Config.RoomList.AddRooms(rooms); // 更新服务器中的房间列表
                         return Send(socket, type, DsRoomTemp, DsUserTemp); // 将Ds传递给客户端，在客户端中构建Room
 
                     case SocketMessageType.CreateRoom:
