@@ -39,14 +39,13 @@ namespace Milimoe.FunGame.Server.Utility
         /// </summary>
         /// <param name="Result">执行结果</param>
         /// <returns>影响的行数</returns>
-        public override int Execute(out SQLResult Result)
+        public override int Execute()
         {
             // _IsOneTime = true需要手动创建连接和关闭
             if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
             _DataSet = new DataSet();
-            _UpdateRows = MySQLManager.Execute(this, out Result);
-            _Result = Result;
+            _UpdateRows = MySQLManager.Execute(this, out _Result);
             if (_IsOneTime) Close();
             return _UpdateRows;
         }
@@ -57,15 +56,14 @@ namespace Milimoe.FunGame.Server.Utility
         /// <param name="Script">命令</param>
         /// <param name="Result">执行结果</param>
         /// <returns>影响的行数</returns>
-        public override int Execute(string Script, out SQLResult Result)
+        public override int Execute(string Script)
         {
             // _IsOneTime = true需要手动创建连接和关闭
             if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
             this.Script = Script;
             _DataSet = new DataSet();
-            _UpdateRows = MySQLManager.Execute(this, out Result);
-            _Result = Result;
+            _UpdateRows = MySQLManager.Execute(this, out _Result);
             if (_IsOneTime) Close();
             return _UpdateRows;
         }
@@ -75,13 +73,12 @@ namespace Milimoe.FunGame.Server.Utility
         /// </summary>
         /// <param name="Result">执行结果</param>
         /// <returns>结果集</returns>
-        public override DataSet ExecuteDataSet(out SQLResult Result)
+        public override DataSet ExecuteDataSet()
         {
             // _IsOneTime = true需要手动创建连接和关闭
             if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
-            _DataSet = MySQLManager.ExecuteDataSet(this, out Result, out _UpdateRows);
-            _Result = Result;
+            _DataSet = MySQLManager.ExecuteDataSet(this, out _Result, out _UpdateRows);
             if (_IsOneTime) Close();
             return DataSet;
         }
@@ -92,14 +89,13 @@ namespace Milimoe.FunGame.Server.Utility
         /// <param name="Script">命令</param>
         /// <param name="Result">执行结果</param>
         /// <returns>结果集</returns>
-        public override DataSet ExecuteDataSet(string Script, out SQLResult Result)
+        public override DataSet ExecuteDataSet(string Script)
         {
             // _IsOneTime = true需要手动创建连接和关闭
             if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
             this.Script = Script;
-            _DataSet = MySQLManager.ExecuteDataSet(this, out Result, out _UpdateRows);
-            _Result = Result;
+            _DataSet = MySQLManager.ExecuteDataSet(this, out _Result, out _UpdateRows);
             if (_IsOneTime) Close();
             return DataSet;
         }
