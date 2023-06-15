@@ -216,8 +216,9 @@ bool SendRefuseConnect(ClientSocket socket, string msg)
 
 SQLResult TestSQLConnection()
 {
-    new MySQLHelper(ServerLoginLogs.Insert_ServerLoginLogs(Config.ServerName, Config.ServerKey)).Execute(out SQLResult TestResult);
-    return TestResult;
+    MySQLHelper sql = new(ServerLoginLogs.Insert_ServerLoginLogs(Config.ServerName, Config.ServerKey));
+    sql.Execute();
+    return sql.Result;
 }
 
 void AddBannedList(ServerSocket server)
