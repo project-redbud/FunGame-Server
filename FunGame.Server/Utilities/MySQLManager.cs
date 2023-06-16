@@ -28,14 +28,12 @@ namespace Milimoe.FunGame.Server.Utility
                     Result = SQLResult.Success;
                 }
                 else Result = SQLResult.NotFound;
-                Helper.Commit();
             }
             catch (Exception e)
             {
                 ServerHelper.Error(e);
                 updaterow = -1;
                 Result = SQLResult.Fail;
-                Helper.Rollback();
             }
 
             return updaterow;
@@ -85,7 +83,7 @@ namespace Milimoe.FunGame.Server.Utility
         /// <param name="Helper">MySQLHelper</param>
         /// <param name="Result">执行结果</param>
         /// <returns>插入值ID</returns>
-        public static object ExecuteAndGetLastInsertedID(MySQLHelper Helper, out SQLResult Result)
+        public static long ExecuteAndGetLastInsertedID(MySQLHelper Helper, out SQLResult Result)
         {
             MySqlCommand cmd = new();
             int updaterow;
@@ -101,13 +99,11 @@ namespace Milimoe.FunGame.Server.Utility
                     Result = SQLResult.Success;
                 }
                 else Result = SQLResult.NotFound;
-                Helper.Commit();
             }
             catch (Exception e)
             {
                 ServerHelper.Error(e);
                 Result = SQLResult.Fail;
-                Helper.Rollback();
             }
 
             return cmd.LastInsertedId;

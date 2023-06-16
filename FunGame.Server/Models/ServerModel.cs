@@ -316,14 +316,20 @@ namespace Milimoe.FunGame.Server.Model
                                     if (RegVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
                                     {
                                         ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username + " Email: " + email);
+                                        SQLHelper.NewTransaction();
                                         SQLHelper.Execute(UserQuery.Insert_Register(username, password, email, socket.ClientIP));
                                         if (SQLHelper.Result == SQLResult.Success)
                                         {
                                             msg = "注册成功！请牢记您的账号与密码！";
                                             SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
+                                            SQLHelper.Commit();
                                             return Send(socket, type, true, msg);
                                         }
-                                        else msg = "服务器无法处理您的注册，注册失败！";
+                                        else
+                                        {
+                                            msg = "服务器无法处理您的注册，注册失败！";
+                                            SQLHelper.Rollback();
+                                        }
                                     }
                                     else msg = "验证码不正确，请重新输入！";
                                 }
