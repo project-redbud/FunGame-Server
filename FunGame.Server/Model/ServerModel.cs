@@ -362,7 +362,7 @@ namespace Milimoe.FunGame.Server.Model
                                     GameMode.GameMode_Team => RoomType.Team,
                                     GameMode.GameMode_MixHasPass => RoomType.MixHasPass,
                                     GameMode.GameMode_TeamHasPass => RoomType.TeamHasPass,
-                                    _ => RoomType.None
+                                    _ => RoomType.All
                                 };
                                 string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
                                 SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, userid, roomtype, password ?? ""));
