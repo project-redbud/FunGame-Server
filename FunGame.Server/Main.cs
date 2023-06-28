@@ -170,7 +170,7 @@ bool Read(ClientSocket socket)
     foreach (SocketObject read in socket.ReceiveArray())
     {
         SocketMessageType type = read.SocketType;
-        if (type == SocketMessageType.Connect)
+        if (type == SocketMessageType.RunTime_Connect)
         {
             if (read.Parameters.Length > 0)
             {
@@ -190,7 +190,7 @@ bool Send(ClientSocket socket, Guid Token)
 {
     // 发送消息给客户端
     string msg = Config.ServerName + ";" + Config.ServerNotice;
-    if (socket.Send(SocketMessageType.Connect, msg, Token) == SocketResult.Success)
+    if (socket.Send(SocketMessageType.RunTime_Connect, msg, Token) == SocketResult.Success)
     {
         ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
         return true;
@@ -204,7 +204,7 @@ bool SendRefuseConnect(ClientSocket socket, string msg)
 {
     // 发送消息给客户端
     msg = $"连接被拒绝，如有疑问请联系服务器管理员：{msg}";
-    if (socket.Send(SocketMessageType.Connect, msg) == SocketResult.Success)
+    if (socket.Send(SocketMessageType.RunTime_Connect, msg) == SocketResult.Success)
     {
         ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已拒绝连接");
         return true;

@@ -13,7 +13,7 @@ using Milimoe.FunGame.Server.Utility;
 
 namespace Milimoe.FunGame.Server.Model
 {
-    public class ServerModel : IServerModel
+    public partial class ServerModel : IServerModel
     {
         /**
          * Public
@@ -71,7 +71,7 @@ namespace Milimoe.FunGame.Server.Model
                 string msg = "";
 
                 // 验证Token
-                if (type != SocketMessageType.HeartBeat && token != Token)
+                if (type != SocketMessageType.RunTime_HeartBeat && token != Token)
                 {
                     ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + ServerSocket.GetTypeString(type) + "] ");
                     return false;
@@ -83,8 +83,8 @@ namespace Milimoe.FunGame.Server.Model
                 }
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
-                SocketMessageType[] IgnoreType = new SocketMessageType[] { SocketMessageType.HeartBeat, SocketMessageType.Login, SocketMessageType.IntoRoom,
-                    SocketMessageType.Chat};
+                SocketMessageType[] IgnoreType = new SocketMessageType[] { SocketMessageType.RunTime_HeartBeat, SocketMessageType.RunTime_Login, SocketMessageType.Main_IntoRoom,
+                    SocketMessageType.Main_Chat};
                 if (!IgnoreType.Contains(type))
                 {
                     if (msg.Trim() == "")
@@ -95,11 +95,11 @@ namespace Milimoe.FunGame.Server.Model
 
                 switch (type)
                 {
-                    case SocketMessageType.GetNotice:
+                    case SocketMessageType.Main_GetNotice:
                         msg = Config.ServerNotice;
                         break;
 
-                    case SocketMessageType.Login:
+                    case SocketMessageType.RunTime_Login:
                         CheckLoginKey = Guid.Empty;
                         if (args != null)
                         {
@@ -138,7 +138,7 @@ namespace Milimoe.FunGame.Server.Model
                         }
                         return Send(socket, type, CheckLoginKey, msg);
 
-                    case SocketMessageType.CheckLogin:
+                    case SocketMessageType.RunTime_CheckLogin:
                         if (args != null && args.Length > 0)
                         {
                             Guid checkloginkey = SocketObject.GetParam<Guid>(0);
@@ -160,7 +160,7 @@ namespace Milimoe.FunGame.Server.Model
                         }
                         return Send(socket, type, CheckLoginKey.ToString());
 
-                    case SocketMessageType.Logout:
+                    case SocketMessageType.RunTime_Logout:
                         Guid checklogoutkey = Guid.Empty;
                         if (args != null && args.Length > 0)
                         {
@@ -178,15 +178,15 @@ namespace Milimoe.FunGame.Server.Model
                         ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登出。");
                         return Send(socket, type, checklogoutkey);
 
-                    case SocketMessageType.Disconnect:
+                    case SocketMessageType.RunTime_Disconnect:
                         msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
                         break;
 
-                    case SocketMessageType.HeartBeat:
+                    case SocketMessageType.RunTime_HeartBeat:
                         msg = "";
                         break;
 
-                    case SocketMessageType.IntoRoom:
+                    case SocketMessageType.Main_IntoRoom:
                         msg = "-1";
                         if (args != null && args.Length > 0) msg = SocketObject.GetParam<string>(0)!;
                         RoomID = msg;
@@ -200,14 +200,14 @@ namespace Milimoe.FunGame.Server.Model
                                 {
                                     if (Client != null && User.Id != 0)
                                     {
-                                        Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 进入了房间。");
+                                        Client.Send(Client.Socket!, SocketMessageType.Main_Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 进入了房间。");
                                     }
                                 }
                             }
                         }
                         break;
 
-                    case SocketMessageType.Chat:
+                    case SocketMessageType.Main_Chat:
                         if (args != null && args.Length > 0) msg = SocketObject.GetParam<string>(0)!;
                         ServerHelper.WriteLine(msg);
                         foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
@@ -216,13 +216,13 @@ namespace Milimoe.FunGame.Server.Model
                             {
                                 if (Client != null && User.Id != 0)
                                 {
-                                    Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + msg);
+                                    Client.Send(Client.Socket!, SocketMessageType.Main_Chat, User.Username, DateTimeUtility.GetNowShortTime() + msg);
                                 }
                             }
                         }
                         return true;
 
-                    case SocketMessageType.Reg:
+                    case SocketMessageType.RunTime_Reg:
                         if (args != null)
                         {
                             string? username = "", email = "";
@@ -289,7 +289,7 @@ namespace Milimoe.FunGame.Server.Model
                         }
                         return true;
 
-                    case SocketMessageType.CheckReg:
+                    case SocketMessageType.RunTime_CheckReg:
                         if (args != null)
                         {
                             string? username = "", password = "", email = "", verifycode = "";
@@ -340,7 +340,7 @@ namespace Milimoe.FunGame.Server.Model
                         else msg = "注册失败！";
                         return Send(socket, type, false, msg);
 
-                    case SocketMessageType.UpdateRoom:
+                    case SocketMessageType.Main_UpdateRoom:
                         Config.RoomList ??= new();
                         Config.RoomList.Clear();
                         DataSet DsRoomTemp = new(), DsUserTemp = new();
@@ -350,7 +350,7 @@ namespace Milimoe.FunGame.Server.Model
                         Config.RoomList.AddRooms(rooms); // 更新服务器中的房间列表
                         return Send(socket, type, rooms); // 传RoomList
 
-                    case SocketMessageType.CreateRoom:
+                    case SocketMessageType.Main_CreateRoom:
                         msg = "-1";
                         if (args != null)
                         {
@@ -380,7 +380,7 @@ namespace Milimoe.FunGame.Server.Model
                         }
                         break;
 
-                    case SocketMessageType.QuitRoom:
+                    case SocketMessageType.Main_QuitRoom:
                         if (args != null)
                         {
                             string? roomid = "";
@@ -422,10 +422,10 @@ namespace Milimoe.FunGame.Server.Model
                                     {
                                         if (Client != null && User.Id != 0)
                                         {
-                                            Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
+                                            Client.Send(Client.Socket!, SocketMessageType.Main_Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
                                             if (UpdateRoomMaster.Id != 0 && Room.Roomid != "-1")
                                             {
-                                                Client.Send(Client.Socket!, SocketMessageType.UpdateRoomMaster, User, Room);
+                                                Client.Send(Client.Socket!, SocketMessageType.Room_UpdateRoomMaster, User, Room);
                                             }
                                         }
                                     }
@@ -436,13 +436,13 @@ namespace Milimoe.FunGame.Server.Model
                         }
                         return Send(socket, type, false);
 
-                    case SocketMessageType.MatchRoom:
+                    case SocketMessageType.Main_MatchRoom:
                         break;
 
-                    case SocketMessageType.ChangeRoomSetting:
+                    case SocketMessageType.Room_ChangeRoomSetting:
                         break;
 
-                    case SocketMessageType.GetRoomPlayerCount:
+                    case SocketMessageType.Room_GetRoomPlayerCount:
                         if (args != null)
                         {
                             string? roomid = "-1";
@@ -465,6 +465,45 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
+        public bool DataRequestHandler(ClientSocket socket, SocketObject SocketObject)
+        {
+            Hashtable ResultData = new();
+            DataRequestType type = DataRequestType.UnKnown;
+
+            if (SocketObject.Parameters.Length > 0)
+            {
+                try
+                {
+                    type = SocketObject.GetParam<DataRequestType>(0);
+                    Hashtable RequestData = SocketObject.GetParam<Hashtable>(1) ?? new();
+
+                    SQLHelper.NewTransaction();
+                    switch (type)
+                    {
+                        case DataRequestType.UnKnown:
+                            break;
+
+                        case DataRequestType.Login_GetFindPasswordVerifyCode:
+                            DataRequest_ForgetPassword(RequestData, ResultData);
+                            break;
+
+                        case DataRequestType.Login_UpdatePassword:
+                            DataRequest_UpdatePassword(RequestData, ResultData);
+                            break;
+                    }
+                    SQLHelper.Commit();
+                }
+                catch (Exception e)
+                {
+                    ServerHelper.Error(e);
+                    SQLHelper.Rollback();
+                    return Send(socket, SocketMessageType.DataRequest, type, ResultData);
+                }
+            }
+
+            return Send(socket, SocketMessageType.DataRequest, type, ResultData);
+        }
+
         public bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
         {
             // 发送消息给客户端
@@ -474,14 +513,14 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     switch (type)
                     {
-                        case SocketMessageType.Logout:
+                        case SocketMessageType.RunTime_Logout:
                             RemoveUser();
                             break;
-                        case SocketMessageType.Disconnect:
+                        case SocketMessageType.RunTime_Disconnect:
                             RemoveUser();
                             Close();
                             break;
-                        case SocketMessageType.Chat:
+                        case SocketMessageType.Main_Chat:
                             return true;
                     }
                     object obj = objs[0];
@@ -498,7 +537,7 @@ namespace Milimoe.FunGame.Server.Model
                 return false;
             }
         }
-
+        
         public void Start()
         {
             Task StreamReader = Task.Factory.StartNew(CreateStreamReader);
@@ -511,128 +550,6 @@ namespace Milimoe.FunGame.Server.Model
             _ClientName = ClientName;
         }
 
-        private bool DataRequestHandler(ClientSocket socket, SocketObject SocketObject)
-        {
-            Hashtable RequestData = new();
-            Hashtable ResultData = new();
-            DataRequestType type = DataRequestType.UnKnown;
-
-            if (SocketObject.Parameters.Length > 0)
-            {
-                try
-                {
-                    type = SocketObject.GetParam<DataRequestType>(0);
-                    RequestData = SocketObject.GetParam<Hashtable>(1) ?? new();
-                    switch (type)
-                    {
-                        case DataRequestType.UnKnown:
-                            break;
-
-                        case DataRequestType.GetFindPasswordVerifyCode:
-                            if (RequestData.Count >= 2)
-                            {
-                                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + ServerHelper.MakeClientName(ClientName, User) + " -> ForgetPassword");
-                                string username = (string?)(RequestData[ForgetVerifyCodes.Column_Username]) ?? "";
-                                string email = (string?)(RequestData[ForgetVerifyCodes.Column_Email]) ?? "";
-                                string verifycode = (string?)RequestData[ForgetVerifyCodes.Column_ForgetVerifyCode] ?? "";
-                                string msg = ""; // 返回错误信息
-                                // 客户端发来了验证码就进行验证，没有发就生成
-                                if (verifycode.Trim() != "")
-                                {
-                                    // 先检查验证码
-                                    SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_ForgetVerifyCode(username, email, verifycode));
-                                    if (SQLHelper.Result == SQLResult.Success)
-                                    {
-                                        // 检查验证码是否过期
-                                        DateTime SendTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime];
-                                        if ((DateTime.Now - SendTime).TotalMinutes >= 10)
-                                        {
-                                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 验证码已过期");
-                                            msg = "此验证码已过期，请重新找回密码。";
-                                            SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email));
-                                        }
-                                        else
-                                        {
-                                            // 找回密码
-                                            if (ForgetVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode]))
-                                            {
-                                                ServerHelper.WriteLine("[ForgerPassword] UserName: " + username + " Email: " + email);
-                                                // TODO. 等更新UpdatePassword
-                                                if (true)
-                                                {
-                                                    //msg = "找回密码！请牢记您的新密码！";
-                                                    //SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email), out _);
-                                                }
-                                                //else msg = "服务器无法处理您的注册，注册失败！";
-                                            }
-                                            else msg = "验证码不正确，请重新输入！";
-                                        }
-                                    }
-                                    else msg = "无法找回您的密码，请稍后再试。";
-                                }
-                                else
-                                {
-                                    // 检查验证码是否发送过
-                                    SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_HasSentForgetVerifyCode(username, email));
-                                    if (SQLHelper.Result == SQLResult.Success)
-                                    {
-                                        DateTime SendTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime];
-                                        string ForgetVerifyCode = (string)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode];
-                                        if ((DateTime.Now - SendTime).TotalMinutes < 10)
-                                        {
-                                            ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 十分钟内已向{email}发送过验证码：{ForgetVerifyCode}");
-                                        }
-                                        else
-                                        {
-                                            // 发送验证码，需要先删除之前过期的验证码
-                                            SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email));
-                                            ForgetVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                            SQLHelper.Execute(ForgetVerifyCodes.Insert_ForgetVerifyCode(username, email, ForgetVerify));
-                                            if (SQLHelper.Result == SQLResult.Success)
-                                            {
-                                                if (MailSender != null)
-                                                {
-                                                    // 发送验证码
-                                                    string ServerName = Config.ServerName;
-                                                    string Subject = $"[{ServerName}] FunGame 找回密码验证码";
-                                                    string Body = $"亲爱的 {username}， <br/>    您正在找回[{ServerName}]账号的密码，您的验证码是 {ForgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
-                                                    string[] To = new string[] { email };
-                                                    if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
-                                                    {
-                                                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 已向{email}发送验证码：{ForgetVerify}");
-                                                    }
-                                                    else
-                                                    {
-                                                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + " 无法发送验证码");
-                                                        ServerHelper.WriteLine(MailSender.ErrorMsg);
-                                                    }
-                                                }
-                                                else // 不使用MailSender的情况
-                                                {
-                                                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientName, User) + $" 验证码为：{ForgetVerify}，请服务器管理员告知此用户");
-                                                }
-                                            }
-                                            else msg = "无法找回您的密码，请稍后再试。";
-                                        }
-                                    }
-                                    else msg = "无法找回您的密码，请稍后再试。";
-                                }
-                                ResultData.Add("msg", msg);
-                            }
-                            else ResultData.Add("msg", "无法找回您的密码，请稍后再试。");
-                            break;
-                    }
-                }
-                catch (Exception e)
-                {
-                    ServerHelper.Error(e);
-                    return false;
-                }
-            }
-
-            return Send(socket, SocketMessageType.DataRequest, type, ResultData);
-        }
-
         private void KickUser()
         {
             if (User.Id != 0)
@@ -642,7 +559,7 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + user + " 重复登录！");
                     ServerModel serverTask = (ServerModel)Server.GetUser(user);
-                    serverTask?.Send(serverTask.Socket!, SocketMessageType.ForceLogout, serverTask.CheckLoginKey, "您的账号在别处登录，已强制下线。");
+                    serverTask?.Send(serverTask.Socket!, SocketMessageType.RunTime_ForceLogout, serverTask.CheckLoginKey, "您的账号在别处登录，已强制下线。");
                 }
             }
         }
