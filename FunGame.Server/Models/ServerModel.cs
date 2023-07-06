@@ -8,6 +8,7 @@ using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
+using Milimoe.FunGame.Server.Controllers;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
@@ -23,6 +24,8 @@ namespace Milimoe.FunGame.Server.Model
         public Task? Task => _Task;
         public string ClientName => _ClientName;
         public User User => _User;
+        public MySQLHelper SQLHelper { get; }
+        public MailSender? MailSender { get; }
 
         /**
          * Private
@@ -35,15 +38,13 @@ namespace Milimoe.FunGame.Server.Model
 
         private Guid CheckLoginKey = Guid.Empty;
         private string RegVerify = "";
-        private string ForgetVerify = "";
         private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
         private DataSet DsUser = new();
         private string RoomID = ""; 
         private readonly Guid Token;
         private readonly ServerSocket Server;
-        private readonly MySQLHelper SQLHelper;
-        private readonly MailSender? MailSender;
+        private readonly DataRequestController DataRequestController;
         private long LoginTime;
         private long LogoutTime;
 
@@ -55,6 +56,7 @@ namespace Milimoe.FunGame.Server.Model
             Token = socket.Token;
             SQLHelper = new(this);
             MailSender = SmtpHelper.GetMailSender();
+            DataRequestController = new(this);
             Config.OnlinePlayersCount++;
             GetUsersCount();
         }
@@ -467,7 +469,7 @@ namespace Milimoe.FunGame.Server.Model
 
         public bool DataRequestHandler(ClientSocket socket, SocketObject SocketObject)
         {
-            Hashtable ResultData = new();
+            Hashtable result = new();
             DataRequestType type = DataRequestType.UnKnown;
 
             if (SocketObject.Parameters.Length > 0)
@@ -475,33 +477,21 @@ namespace Milimoe.FunGame.Server.Model
                 try
                 {
                     type = SocketObject.GetParam<DataRequestType>(0);
-                    Hashtable RequestData = SocketObject.GetParam<Hashtable>(1) ?? new();
+                    Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? new();
 
                     SQLHelper.NewTransaction();
-                    switch (type)
-                    {
-                        case DataRequestType.UnKnown:
-                            break;
-
-                        case DataRequestType.Login_GetFindPasswordVerifyCode:
-                            DataRequest_ForgetPassword(RequestData, ResultData);
-                            break;
-
-                        case DataRequestType.Login_UpdatePassword:
-                            DataRequest_UpdatePassword(RequestData, ResultData);
-                            break;
-                    }
+                    result = DataRequestController.GetResultData(type, data);
                     SQLHelper.Commit();
                 }
                 catch (Exception e)
                 {
                     ServerHelper.Error(e);
                     SQLHelper.Rollback();
-                    return Send(socket, SocketMessageType.DataRequest, type, ResultData);
+                    return Send(socket, SocketMessageType.DataRequest, type, result);
                 }
             }
 
-            return Send(socket, SocketMessageType.DataRequest, type, ResultData);
+            return Send(socket, SocketMessageType.DataRequest, type, result);
         }
 
         public bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
