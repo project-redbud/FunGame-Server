@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 using Milimoe.FunGame.Core.Api.Transmittal;
-using Milimoe.FunGame.Core.Entity;
+using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
@@ -9,7 +9,7 @@ using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
-namespace Milimoe.FunGame.Server.Controllers
+namespace Milimoe.FunGame.Server.Controller
 {
     public class DataRequestController
     {
