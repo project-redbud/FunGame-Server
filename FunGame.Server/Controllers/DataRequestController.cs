@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using Milimoe.FunGame.Core.Api.Transmittal;
-using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
@@ -57,9 +56,9 @@ namespace Milimoe.FunGame.Server.Controllers
             if (RequestData.Count >= 2)
             {
                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + ServerHelper.MakeClientName(Server.ClientName, Server.User) + " -> ForgetPassword");
-                string username = NetworkUtility.JsonDeserializeFromHashtable<string>(RequestData, ForgetVerifyCodes.Column_Username) ?? "";
-                string email = NetworkUtility.JsonDeserializeFromHashtable<string>(RequestData, ForgetVerifyCodes.Column_Email) ?? "";
-                string verifycode = NetworkUtility.JsonDeserializeFromHashtable<string>(RequestData, ForgetVerifyCodes.Column_ForgetVerifyCode) ?? "";
+                string username = DataRequest.GetHashtableJsonObject<string>(RequestData, ForgetVerifyCodes.Column_Username) ?? "";
+                string email = DataRequest.GetHashtableJsonObject<string>(RequestData, ForgetVerifyCodes.Column_Email) ?? "";
+                string verifycode = DataRequest.GetHashtableJsonObject<string>(RequestData, ForgetVerifyCodes.Column_ForgetVerifyCode) ?? "";
 
                 // 客户端发来了验证码就进行验证，没有发就生成
                 if (verifycode.Trim() != "")
@@ -159,8 +158,8 @@ namespace Milimoe.FunGame.Server.Controllers
             if (RequestData.Count >= 2)
             {
                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + ServerHelper.MakeClientName(Server.ClientName, Server.User) + " -> UpdatePassword");
-                string username = NetworkUtility.JsonDeserializeFromHashtable<string>(RequestData, UserQuery.Column_Username) ?? "";
-                string password = NetworkUtility.JsonDeserializeFromHashtable<string>(RequestData, UserQuery.Column_Password) ?? "";
+                string username = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Username) ?? "";
+                string password = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Password) ?? "";
                 if (username.Trim() != "" && password.Trim() != "")
                 {
                     Server.SQLHelper.Execute(UserQuery.Update_Password(username, password));
