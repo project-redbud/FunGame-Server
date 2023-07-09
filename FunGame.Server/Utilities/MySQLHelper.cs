@@ -104,7 +104,7 @@ namespace Milimoe.FunGame.Server.Utility
         {
             // _IsOneTime = false需要手动调用此方法
             _Connection?.Close();
-            ServerHelper.WriteLine($"{GetClientName()}已释放MySQL连接");
+            ServerHelper.WriteLine($"{GetClientName()} 已释放MySQL连接");
         }
 
         /// <summary>
@@ -167,8 +167,7 @@ namespace Milimoe.FunGame.Server.Utility
         /// <returns></returns>
         private string GetClientName()
         {
-            if (ServerModel is null) return "";
-            return ServerHelper.MakeClientName(ServerModel.ClientName, ServerModel.User) + " ";
+            return ServerModel?.GetClientName() ?? string.Empty;
         }
     }
 }
