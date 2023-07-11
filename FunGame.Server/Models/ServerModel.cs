@@ -44,6 +44,7 @@ namespace Milimoe.FunGame.Server.Model
         private string RoomID = ""; 
         private readonly Guid Token;
         private readonly ServerSocket Server;
+        private readonly ServerController ServerController;
         private readonly DataRequestController DataRequestController;
         private long LoginTime;
         private long LogoutTime;
@@ -56,6 +57,7 @@ namespace Milimoe.FunGame.Server.Model
             Token = socket.Token;
             SQLHelper = new(this);
             MailSender = SmtpHelper.GetMailSender();
+            ServerController = new(this);
             DataRequestController = new(this);
             Config.OnlinePlayersCount++;
             GetUsersCount();
@@ -86,7 +88,7 @@ namespace Milimoe.FunGame.Server.Model
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
                 SocketMessageType[] IgnoreType = new SocketMessageType[] { SocketMessageType.RunTime_HeartBeat, SocketMessageType.RunTime_Login, SocketMessageType.Main_IntoRoom,
-                    SocketMessageType.Main_Chat};
+                    SocketMessageType.Main_Chat };
                 if (!IgnoreType.Contains(type))
                 {
                     if (msg.Trim() == "")

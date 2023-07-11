@@ -16,8 +16,10 @@ namespace Milimoe.FunGame.Server.Controller
         public ServerModel Server { get; }
         public MySQLHelper SQLHelper => Server.SQLHelper;
         public MailSender? MailSender => Server.MailSender;
+        public DataRequestType LastRequest => _LastRequest;
 
         private string ForgetVerify = "";
+        private DataRequestType _LastRequest = DataRequestType.UnKnown;
 
         public DataRequestController(ServerModel server)
         {
@@ -27,12 +29,20 @@ namespace Milimoe.FunGame.Server.Controller
         public Hashtable GetResultData(DataRequestType type, Hashtable data)
         {
             Hashtable result = new();
+            _LastRequest = type;
 
             switch (type)
             {
                 case DataRequestType.UnKnown:
                     break;
 
+                case DataRequestType.Main_GetNotice:
+                    GetServerNotice(result);
+                    break;
+
+                case DataRequestType.Main_CreateRoom:
+                    break;
+                
                 case DataRequestType.Login_GetFindPasswordVerifyCode:
                     ForgetPassword(data, result);
                     break;
@@ -171,6 +181,16 @@ namespace Milimoe.FunGame.Server.Controller
                 }
             }
             ResultData.Add("msg", msg);
+        }
+
+        /// <summary>
+        /// 获取公告
+        /// </summary>
+        /// <param name="ResultData"></param>
+        private void GetServerNotice(Hashtable ResultData)
+        {
+            _LastRequest = DataRequestType.Main_GetNotice;
+            ResultData.Add("notice", Config.ServerNotice);
         }
     }
 }
