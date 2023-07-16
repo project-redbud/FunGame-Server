@@ -1,6 +1,8 @@
 ﻿using System.Collections;
+using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
@@ -42,9 +44,11 @@ namespace Milimoe.FunGame.Server.Controller
                     break;
 
                 case DataRequestType.Main_CreateRoom:
+                    CreateRoom(data, result);
                     break;
 
                 case DataRequestType.Main_UpdateRoom:
+                    UpdateRoom(result);
                     break;
 
                 case DataRequestType.Reg_GetRegVerifyCode:
@@ -74,10 +78,10 @@ namespace Milimoe.FunGame.Server.Controller
         /// </summary>
         /// <param name="RequestData"></param>
         /// <param name="ResultData"></param>
-        public void ForgetPassword(Hashtable RequestData, Hashtable ResultData)
+        private void ForgetPassword(Hashtable RequestData, Hashtable ResultData)
         {
             string msg = "无法找回您的密码，请稍后再试。"; // 返回的验证信息
-            if (RequestData.Count >= 2)
+            if (RequestData.Count > 2)
             {
                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> ForgetPassword");
                 string username = DataRequest.GetHashtableJsonObject<string>(RequestData, ForgetVerifyCodes.Column_Username) ?? "";
@@ -203,6 +207,7 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="ResultData"></param>
         private void GetServerNotice(Hashtable ResultData)
         {
+            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> GetNotice");
             _LastRequest = DataRequestType.Main_GetNotice;
             ResultData.Add("notice", Config.ServerNotice);
         }
@@ -216,7 +221,7 @@ namespace Milimoe.FunGame.Server.Controller
         {
             string msg = "";
             RegInvokeType returnType = RegInvokeType.None;
-            if (RequestData.Count >= 2)
+            if (RequestData.Count > 3)
             {
                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> Reg");
                 string username = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Username) ?? "";
@@ -335,6 +340,60 @@ namespace Milimoe.FunGame.Server.Controller
             }
             ResultData.Add("msg", msg);
             ResultData.Add("type", returnType);
+        }
+
+        /// <summary>
+        /// 更新房间列表
+        /// </summary>
+        /// <param name="ResultData"></param>
+        private void UpdateRoom(Hashtable ResultData)
+        {
+            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> UpdateRoom");
+            Config.RoomList ??= new();
+            Config.RoomList.Clear();
+            DataSet DsRoomTemp = SQLHelper.ExecuteDataSet(RoomQuery.Select_Rooms);
+            DataSet DsUserTemp = SQLHelper.ExecuteDataSet(UserQuery.Select_Users);
+            List<Room> rooms = Factory.GetRooms(DsRoomTemp, DsUserTemp);
+            Config.RoomList.AddRooms(rooms); // 更新服务器中的房间列表
+            ResultData.Add("rooms", rooms); // 传RoomList
+        }
+
+        /// <summary>
+        /// 创建房间
+        /// </summary>
+        /// <param name="RequestData"></param>
+        /// <param name="ResultData"></param>
+        private void CreateRoom(Hashtable RequestData, Hashtable ResultData)
+        {
+            string roomid = "-1";
+            if (RequestData.Count > 3)
+            {
+                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> CreateRoom");
+                string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.GameMode_All;
+                User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "master") ?? Factory.GetUser();
+                string password = DataRequest.GetHashtableJsonObject<string>(RequestData, "password") ?? "";
+                if (!string.IsNullOrWhiteSpace(roomtype_string) && user.Id != 0)
+                {
+                    RoomType roomtype = roomtype_string switch
+                    {
+                        GameMode.GameMode_Mix => RoomType.Mix,
+                        GameMode.GameMode_Team => RoomType.Team,
+                        GameMode.GameMode_MixHasPass => RoomType.MixHasPass,
+                        GameMode.GameMode_TeamHasPass => RoomType.TeamHasPass,
+                        _ => RoomType.All
+                    };
+                    roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
+                    SQLHelper.NewTransaction();
+                    SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, roomtype, password ?? ""));
+                    if (SQLHelper.Result == SQLResult.Success)
+                    {
+                        SQLHelper.Commit();
+                        ServerHelper.WriteLine("[CreateRoom] Master: " + user.Name + " RoomID: " + roomid);
+                    }
+                    else SQLHelper.Rollback();
+                }
+            }
+            ResultData.Add("roomid", roomid);
         }
     }
 }
