@@ -75,7 +75,7 @@ namespace Milimoe.FunGame.Server.Model
                 string msg = "";
 
                 // 验证Token
-                if (type != SocketMessageType.RunTime_HeartBeat && token != Token)
+                if (type != SocketMessageType.HeartBeat && token != Token)
                 {
                     ServerHelper.WriteLine(GetClientName() + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + ServerSocket.GetTypeString(type) + "] ");
                     return false;
@@ -87,8 +87,7 @@ namespace Milimoe.FunGame.Server.Model
                 }
 
                 // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
-                SocketMessageType[] IgnoreType = new SocketMessageType[] { SocketMessageType.RunTime_HeartBeat, SocketMessageType.RunTime_Login, SocketMessageType.Main_IntoRoom,
-                    SocketMessageType.Main_Chat };
+                SocketMessageType[] IgnoreType = new SocketMessageType[] { SocketMessageType.HeartBeat };
                 if (!IgnoreType.Contains(type))
                 {
                     if (msg.Trim() == "")

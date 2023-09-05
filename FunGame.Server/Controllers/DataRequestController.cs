@@ -38,6 +38,27 @@ namespace Milimoe.FunGame.Server.Controller
             {
                 case DataRequestType.UnKnown:
                     break;
+                    
+                case DataRequestType.RunTime_Connect:
+                    break;
+                    
+                case DataRequestType.RunTime_Reg:
+                    break;
+                    
+                case DataRequestType.RunTime_CheckReg:
+                    break;
+                    
+                case DataRequestType.RunTime_Login:
+                    break;
+                    
+                case DataRequestType.RunTime_CheckLogin:
+                    break;
+                    
+                case DataRequestType.RunTime_Logout:
+                    break;
+                    
+                case DataRequestType.RunTime_Disconnect:
+                    break;
 
                 case DataRequestType.Main_GetNotice:
                     GetServerNotice(result);
@@ -49,6 +70,18 @@ namespace Milimoe.FunGame.Server.Controller
 
                 case DataRequestType.Main_UpdateRoom:
                     UpdateRoom(result);
+                    break;
+                    
+                case DataRequestType.Main_IntoRoom:
+                    break;
+                    
+                case DataRequestType.Main_QuitRoom:
+                    break;
+                    
+                case DataRequestType.Main_MatchRoom:
+                    break;
+                    
+                case DataRequestType.Main_Chat:
                     break;
 
                 case DataRequestType.Reg_GetRegVerifyCode:
@@ -67,6 +100,12 @@ namespace Milimoe.FunGame.Server.Controller
                     break;
 
                 case DataRequestType.Room_GetRoomPlayerCount:
+                    break;
+
+                case DataRequestType.Room_UpdateRoomMaster:
+                    break;
+
+                default:
                     break;
             }
 
