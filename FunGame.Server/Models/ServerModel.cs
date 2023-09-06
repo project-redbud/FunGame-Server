@@ -24,6 +24,11 @@ namespace Milimoe.FunGame.Server.Model
         public Task? Task => _Task;
         public string ClientName => _ClientName;
         public User User => _User;
+        public Room Room
+        {
+            get => _Room;
+            set => _Room = value;
+        }
         public MySQLHelper SQLHelper { get; }
         public MailSender? MailSender { get; }
 
@@ -33,6 +38,7 @@ namespace Milimoe.FunGame.Server.Model
         private ClientSocket? _Socket = null;
         private bool _Running = false;
         private User _User = General.UnknownUserInstance;
+        private Room _Room = General.HallInstance;
         private Task? _Task = null;
         private string _ClientName = "";
 
@@ -41,7 +47,6 @@ namespace Milimoe.FunGame.Server.Model
         private int FailedTimes = 0; // 超过一定次数断开连接
         private string UserName = "";
         private DataSet DsUser = new();
-        private string RoomID = ""; 
         private readonly Guid Token;
         private readonly ServerSocket Server;
         private readonly ServerController ServerController;
@@ -86,379 +91,75 @@ namespace Milimoe.FunGame.Server.Model
                     return DataRequestHandler(socket, SocketObject);
                 }
 
-                // 如果不等于这些Type，就不会输出一行记录。这些Type有特定的输出。
-                SocketMessageType[] IgnoreType = new SocketMessageType[] { SocketMessageType.HeartBeat };
-                if (!IgnoreType.Contains(type))
+                if (type == SocketMessageType.HeartBeat)
                 {
-                    if (msg.Trim() == "")
-                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + GetClientName());
-                    else
-                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + GetClientName() + " -> " + msg);
+                    return HeartBeat(socket);
                 }
 
                 switch (type)
                 {
-                    case SocketMessageType.Main_GetNotice:
-                        msg = Config.ServerNotice;
-                        break;
+                    //case SocketMessageType.RunTime_Login:
+                    //    CheckLoginKey = Guid.Empty;
+                    //    if (args != null)
+                    //    {
+                    //        string? username = "", password = "", autokey = "";
+                    //        if (args.Length > 0) username = SocketObject.GetParam<string>(0);
+                    //        if (args.Length > 1) password = SocketObject.GetParam<string>(1);
+                    //        if (args.Length > 2) autokey = SocketObject.GetParam<string>(2);
+                    //        if (username != null && password != null)
+                    //        {
+                    //            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
+                    //            SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password));
+                    //            if (SQLHelper.Result == SQLResult.Success)
+                    //            {
+                    //                DsUser = SQLHelper.DataSet;
+                    //                if (autokey != null && autokey.Trim() != "")
+                    //                {
+                    //                    SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey));
+                    //                    if (SQLHelper.Result == SQLResult.Success)
+                    //                    {
+                    //                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] AutoKey: 已确认");
+                    //                    }
+                    //                    else
+                    //                    {
+                    //                        msg = "AutoKey不正确，拒绝自动登录！";
+                    //                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + msg);
+                    //                        return Send(socket, type, CheckLoginKey, msg);
+                    //                    }
+                    //                }
+                    //                UserName = username;
+                    //                CheckLoginKey = Guid.NewGuid();
+                    //                return Send(socket, type, CheckLoginKey);
+                    //            }
+                    //            msg = "用户名或密码不正确。";
+                    //            ServerHelper.WriteLine(msg);
+                    //        }
+                    //    }
+                    //    return Send(socket, type, CheckLoginKey, msg);
 
-                    case SocketMessageType.RunTime_Login:
-                        CheckLoginKey = Guid.Empty;
-                        if (args != null)
-                        {
-                            string? username = "", password = "", autokey = "";
-                            if (args.Length > 0) username = SocketObject.GetParam<string>(0);
-                            if (args.Length > 1) password = SocketObject.GetParam<string>(1);
-                            if (args.Length > 2) autokey = SocketObject.GetParam<string>(2);
-                            if (username != null && password != null)
-                            {
-                                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
-                                SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password));
-                                if (SQLHelper.Result == SQLResult.Success)
-                                {
-                                    DsUser = SQLHelper.DataSet;
-                                    if (autokey != null && autokey.Trim() != "")
-                                    {
-                                        SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey));
-                                        if (SQLHelper.Result == SQLResult.Success)
-                                        {
-                                            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] AutoKey: 已确认");
-                                        }
-                                        else
-                                        {
-                                            msg = "AutoKey不正确，拒绝自动登录！";
-                                            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + msg);
-                                            return Send(socket, type, CheckLoginKey, msg);
-                                        }
-                                    }
-                                    UserName = username;
-                                    CheckLoginKey = Guid.NewGuid();
-                                    return Send(socket, type, CheckLoginKey);
-                                }
-                                msg = "用户名或密码不正确。";
-                                ServerHelper.WriteLine(msg);
-                            }
-                        }
-                        return Send(socket, type, CheckLoginKey, msg);
-
-                    case SocketMessageType.RunTime_CheckLogin:
-                        if (args != null && args.Length > 0)
-                        {
-                            Guid checkloginkey = SocketObject.GetParam<Guid>(0);
-                            if (CheckLoginKey.Equals(checkloginkey))
-                            {
-                                // 创建User对象
-                                _User = Factory.GetUser(DsUser);
-                                // 检查有没有重复登录的情况
-                                KickUser();
-                                // 添加至玩家列表
-                                AddUser();
-                                GetUsersCount();
-                                // CheckLogin
-                                LoginTime = DateTime.Now.Ticks;
-                                SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]));
-                                return Send(socket, type, _User);
-                            }
-                            ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
-                        }
-                        return Send(socket, type, CheckLoginKey.ToString());
-
-                    case SocketMessageType.RunTime_Logout:
-                        Guid checklogoutkey = Guid.Empty;
-                        if (args != null && args.Length > 0)
-                        {
-                            checklogoutkey = SocketObject.GetParam<Guid>(0);
-                            if (CheckLoginKey.Equals(checklogoutkey))
-                            {
-                                // 从玩家列表移除
-                                RemoveUser();
-                                GetUsersCount();
-                                CheckLoginKey = Guid.Empty;
-                                msg = "你已成功退出登录！ ";
-                                return Send(socket, type, checklogoutkey, msg);
-                            }
-                        }
-                        ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登出。");
-                        return Send(socket, type, checklogoutkey);
-
-                    case SocketMessageType.RunTime_Disconnect:
-                        msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
-                        break;
-
-                    case SocketMessageType.RunTime_HeartBeat:
-                        msg = "";
-                        break;
-
-                    case SocketMessageType.Main_IntoRoom:
-                        msg = "-1";
-                        if (args != null && args.Length > 0) msg = SocketObject.GetParam<string>(0)!;
-                        RoomID = msg;
-                        Config.RoomList.IntoRoom(RoomID, User);
-                        if (RoomID != "-1")
-                        {
-                            // 昭告天下
-                            foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
-                            {
-                                if (RoomID == Client.RoomID)
-                                {
-                                    if (Client != null && User.Id != 0)
-                                    {
-                                        Client.Send(Client.Socket!, SocketMessageType.Main_Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 进入了房间。");
-                                    }
-                                }
-                            }
-                        }
-                        break;
-
-                    case SocketMessageType.Main_Chat:
-                        if (args != null && args.Length > 0) msg = SocketObject.GetParam<string>(0)!;
-                        ServerHelper.WriteLine(msg);
-                        foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
-                        {
-                            if (RoomID == Client.RoomID)
-                            {
-                                if (Client != null && User.Id != 0)
-                                {
-                                    Client.Send(Client.Socket!, SocketMessageType.Main_Chat, User.Username, DateTimeUtility.GetNowShortTime() + msg);
-                                }
-                            }
-                        }
-                        return true;
-
-                    case SocketMessageType.RunTime_Reg:
-                        if (args != null)
-                        {
-                            string? username = "", email = "";
-                            if (args.Length > 0) username = SocketObject.GetParam<string>(0);
-                            if (args.Length > 1) email = SocketObject.GetParam<string>(1);
-                            if (username != null && email != null)
-                            {
-                                // 先检查账号是否重复
-                                SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(username));
-                                if (SQLHelper.Result == SQLResult.Success)
-                                {
-                                    ServerHelper.WriteLine(GetClientName() + " 账号已被注册");
-                                    return Send(socket, type, RegInvokeType.DuplicateUserName);
-                                }
-                                // 检查邮箱是否重复
-                                SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistEmail(email));
-                                if (SQLHelper.Result == SQLResult.Success)
-                                {
-                                    ServerHelper.WriteLine(GetClientName() + " 邮箱已被注册");
-                                    return Send(socket, type, RegInvokeType.DuplicateEmail);
-                                }
-                                // 检查验证码是否发送过
-                                SQLHelper.ExecuteDataSet(RegVerifyCodes.Select_HasSentRegVerifyCode(username, email));
-                                if (SQLHelper.Result == SQLResult.Success)
-                                {
-                                    DateTime RegTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime];
-                                    string RegVerifyCode = (string)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode];
-                                    if ((DateTime.Now - RegTime).TotalMinutes < 10)
-                                    {
-                                        ServerHelper.WriteLine(GetClientName() + $" 十分钟内已向{email}发送过验证码：{RegVerifyCode}");
-                                    }
-                                    return Send(socket, type, RegInvokeType.InputVerifyCode);
-                                }
-                                // 发送验证码，需要先删除之前过期的验证码
-                                SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
-                                RegVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCode(username, email, RegVerify));
-                                if (SQLHelper.Result == SQLResult.Success)
-                                {
-                                    if (MailSender != null)
-                                    {
-                                        // 发送验证码
-                                        string ServerName = Config.ServerName;
-                                        string Subject = $"[{ServerName}] FunGame 注册验证码";
-                                        string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {RegVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
-                                        string[] To = new string[] { email };
-                                        if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
-                                        {
-                                            ServerHelper.WriteLine(GetClientName() + $" 已向{email}发送验证码：{RegVerify}");
-                                        }
-                                        else
-                                        {
-                                            ServerHelper.WriteLine(GetClientName() + " 无法发送验证码");
-                                            ServerHelper.WriteLine(MailSender.ErrorMsg);
-                                        }
-                                    }
-                                    else // 不使用MailSender的情况
-                                    {
-                                        ServerHelper.WriteLine(GetClientName() + $" 验证码为：{RegVerify}，请服务器管理员告知此用户");
-                                    }
-                                    return Send(socket, type, RegInvokeType.InputVerifyCode);
-                                }
-                            }
-                        }
-                        return true;
-
-                    case SocketMessageType.RunTime_CheckReg:
-                        if (args != null)
-                        {
-                            string? username = "", password = "", email = "", verifycode = "";
-                            if (args.Length > 0) username = SocketObject.GetParam<string>(0);
-                            if (args.Length > 1) password = SocketObject.GetParam<string>(1);
-                            if (args.Length > 2) email = SocketObject.GetParam<string>(2);
-                            if (args.Length > 3) verifycode = SocketObject.GetParam<string>(3);
-                            if (username != null && password != null && email != null && verifycode != null)
-                            {
-                                // 先检查验证码
-                                SQLHelper.ExecuteDataSet(RegVerifyCodes.Select_RegVerifyCode(username, email, verifycode));
-                                if (SQLHelper.Result == SQLResult.Success)
-                                {
-                                    // 检查验证码是否过期
-                                    DateTime RegTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime];
-                                    if ((DateTime.Now - RegTime).TotalMinutes >= 10)
-                                    {
-                                        ServerHelper.WriteLine(GetClientName() + " 验证码已过期");
-                                        msg = "此验证码已过期，请重新注册。";
-                                        SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
-                                        return Send(socket, type, false, msg);
-                                    }
-                                    // 注册
-                                    if (RegVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
-                                    {
-                                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username + " Email: " + email);
-                                        SQLHelper.NewTransaction();
-                                        SQLHelper.Execute(UserQuery.Insert_Register(username, password, email, socket.ClientIP));
-                                        if (SQLHelper.Result == SQLResult.Success)
-                                        {
-                                            msg = "注册成功！请牢记您的账号与密码！";
-                                            SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
-                                            SQLHelper.Commit();
-                                            return Send(socket, type, true, msg);
-                                        }
-                                        else
-                                        {
-                                            msg = "服务器无法处理您的注册，注册失败！";
-                                            SQLHelper.Rollback();
-                                        }
-                                    }
-                                    else msg = "验证码不正确，请重新输入！";
-                                }
-                                else if (SQLHelper.Result == SQLResult.NotFound) msg = "验证码不正确，请重新输入！";
-                                else msg = "服务器无法处理您的注册，注册失败！";
-                            }
-                        }
-                        else msg = "注册失败！";
-                        return Send(socket, type, false, msg);
-
-                    case SocketMessageType.Main_UpdateRoom:
-                        Config.RoomList ??= new();
-                        Config.RoomList.Clear();
-                        DataSet DsRoomTemp = new(), DsUserTemp = new();
-                        DsRoomTemp = SQLHelper.ExecuteDataSet(RoomQuery.Select_Rooms);
-                        DsUserTemp = SQLHelper.ExecuteDataSet(UserQuery.Select_Users);
-                        List<Room> rooms = Factory.GetRooms(DsRoomTemp, DsUserTemp);
-                        Config.RoomList.AddRooms(rooms); // 更新服务器中的房间列表
-                        return Send(socket, type, rooms); // 传RoomList
-
-                    case SocketMessageType.Main_CreateRoom:
-                        msg = "-1";
-                        if (args != null)
-                        {
-                            string? roomtype_string = "";
-                            long userid = 0;
-                            string? password = "";
-                            if (args.Length > 0) roomtype_string = SocketObject.GetParam<string>(0);
-                            if (args.Length > 1) userid = SocketObject.GetParam<long>(1);
-                            if (args.Length > 2) password = SocketObject.GetParam<string>(2);
-                            if (!string.IsNullOrWhiteSpace(roomtype_string) && userid != 0)
-                            {
-                                RoomType roomtype = roomtype_string switch
-                                {
-                                    GameMode.GameMode_Mix => RoomType.Mix,
-                                    GameMode.GameMode_Team => RoomType.Team,
-                                    GameMode.GameMode_MixHasPass => RoomType.MixHasPass,
-                                    GameMode.GameMode_TeamHasPass => RoomType.TeamHasPass,
-                                    _ => RoomType.All
-                                };
-                                string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
-                                SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, userid, roomtype, password ?? ""));
-                                if (SQLHelper.Result == SQLResult.Success)
-                                {
-                                    msg = roomid;
-                                }
-                            }
-                        }
-                        break;
-
-                    case SocketMessageType.Main_QuitRoom:
-                        if (args != null)
-                        {
-                            string? roomid = "";
-                            bool isMaster = false;
-                            if (args.Length > 0) roomid = SocketObject.GetParam<string>(0);
-                            if (args.Length > 1) isMaster = SocketObject.GetParam<bool>(1);
-                            if (roomid != null && roomid.Trim() != "")
-                            {
-                                Config.RoomList.QuitRoom(roomid, User);
-                                Room Room = Config.RoomList[roomid] ?? General.HallInstance;
-                                User UpdateRoomMaster = General.UnknownUserInstance;
-                                DataSet DsUser = new(), DsRoom = new();
-                                // 是否是房主
-                                if (isMaster)
-                                {
-                                    List<User> users = GetRoomPlayerList(roomid);
-                                    if (users.Count > 0) // 如果此时房间还有人，更新房主
-                                    {
-                                        UpdateRoomMaster = users[0];
-                                        Room.RoomMaster = UpdateRoomMaster;
-                                        SQLHelper.Execute(RoomQuery.Update_QuitRoom(roomid, User.Id, UpdateRoomMaster.Id));
-                                        DsUser = SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(UpdateRoomMaster.Username));
-                                        DsRoom = SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(roomid));
-                                    }
-                                    else // 没人了就解散房间
-                                    {
-                                        Config.RoomList.RemoveRoom(roomid);
-                                        SQLHelper.Execute(RoomQuery.Delete_QuitRoom(roomid, User.Id));
-                                        if (SQLHelper.Result == SQLResult.Success)
-                                        {
-                                            ServerHelper.WriteLine(GetClientName() + " 解散了房间 " + roomid);
-                                        }
-                                    }
-                                }
-                                // 昭告天下
-                                foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
-                                {
-                                    if (roomid == Client.RoomID)
-                                    {
-                                        if (Client != null && User.Id != 0)
-                                        {
-                                            Client.Send(Client.Socket!, SocketMessageType.Main_Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
-                                            if (UpdateRoomMaster.Id != 0 && Room.Roomid != "-1")
-                                            {
-                                                Client.Send(Client.Socket!, SocketMessageType.Room_UpdateRoomMaster, User, Room);
-                                            }
-                                        }
-                                    }
-                                }
-                                RoomID = "-1";
-                                return Send(socket, type, true);
-                            }
-                        }
-                        return Send(socket, type, false);
-
-                    case SocketMessageType.Main_MatchRoom:
-                        break;
-
-                    case SocketMessageType.Room_ChangeRoomSetting:
-                        break;
-
-                    case SocketMessageType.Room_GetRoomPlayerCount:
-                        if (args != null)
-                        {
-                            string? roomid = "-1";
-                            if (args.Length > 0) roomid = SocketObject.GetParam<string>(0);
-                            if (roomid != null && roomid != "-1")
-                            {
-                                int count = GetRoomPlayerCount(roomid);
-                                return Send(socket, type, count);
-                            }
-                        }
-                        return Send(socket, type, 0);
+                    //case SocketMessageType.RunTime_CheckLogin:
+                    //    if (args != null && args.Length > 0)
+                    //    {
+                    //        Guid checkloginkey = SocketObject.GetParam<Guid>(0);
+                    //        if (CheckLoginKey.Equals(checkloginkey))
+                    //        {
+                    //            // 创建User对象
+                    //            _User = Factory.GetUser(DsUser);
+                    //            // 检查有没有重复登录的情况
+                    //            KickUser();
+                    //            // 添加至玩家列表
+                    //            AddUser();
+                    //            GetUsersCount();
+                    //            // CheckLogin
+                    //            LoginTime = DateTime.Now.Ticks;
+                    //            SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]));
+                    //            return Send(socket, type, _User);
+                    //        }
+                    //        ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
+                    //    }
+                    //    return Send(socket, type, CheckLoginKey.ToString());
                 }
-                return Send(socket, type, msg);
+                return true;
             }
             catch (Exception e)
             {
@@ -504,14 +205,14 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     switch (type)
                     {
-                        case SocketMessageType.RunTime_Logout:
+                        case SocketMessageType.ForceLogout:
                             RemoveUser();
                             break;
-                        case SocketMessageType.RunTime_Disconnect:
+                        case SocketMessageType.Disconnect:
                             RemoveUser();
                             Close();
                             break;
-                        case SocketMessageType.Main_Chat:
+                        case SocketMessageType.Chat:
                             return true;
                     }
                     object obj = objs[0];
@@ -546,6 +247,71 @@ namespace Milimoe.FunGame.Server.Model
             return ServerHelper.MakeClientName(ClientName, User);
         }
 
+        public bool IsLoginKey(Guid key)
+        {
+            return key == CheckLoginKey;
+        }
+
+        public void LogOut()
+        {
+            // 从玩家列表移除
+            RemoveUser();
+            GetUsersCount();
+            CheckLoginKey = Guid.Empty;
+        }
+
+        public void Chat(string msg)
+        {
+            ServerHelper.WriteLine(msg);
+            foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
+            {
+                if (Room.Roomid == Client.Room.Roomid)
+                {
+                    if (Client != null && User.Id != 0)
+                    {
+                        Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + msg);
+                    }
+                }
+            }
+        }
+
+        public void IntoRoom(string roomid)
+        {
+            foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
+            {
+                if (roomid == Client.Room.Roomid)
+                {
+                    if (Client != null && User.Id != 0)
+                    {
+                        Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 进入了房间。");
+                    }
+                }
+            }
+        }
+
+        public void UpdateRoomMaster(Room Room)
+        {
+            foreach (ServerModel Client in Server.GetUsersList.Cast<ServerModel>())
+            {
+                if (Room.Roomid == Client.Room.Roomid)
+                {
+                    if (Client != null && User.Id != 0)
+                    {
+                        Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
+                        if (Room.RoomMaster?.Id != 0 && Room.Roomid != "-1")
+                        {
+                            Client.Send(Client.Socket!, SocketMessageType.UpdateRoomMaster, Room);
+                        }
+                    }
+                }
+            }
+        }
+
+        public bool HeartBeat(ClientSocket socket)
+        {
+            return Send(socket, SocketMessageType.HeartBeat, "");
+        }
+
         private void KickUser()
         {
             if (User.Id != 0)
@@ -555,7 +321,7 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + user + " 重复登录！");
                     ServerModel serverTask = (ServerModel)Server.GetUser(user);
-                    serverTask?.Send(serverTask.Socket!, SocketMessageType.RunTime_ForceLogout, serverTask.CheckLoginKey, "您的账号在别处登录，已强制下线。");
+                    serverTask?.Send(serverTask.Socket!, SocketMessageType.ForceLogout, serverTask.CheckLoginKey, "您的账号在别处登录，已强制下线。");
                 }
             }
         }
@@ -660,16 +426,6 @@ namespace Milimoe.FunGame.Server.Model
             {
                 ServerHelper.Error(e);
             }
-        }
-
-        private static int GetRoomPlayerCount(string roomid)
-        {
-            return Config.RoomList.GetPlayerCount(roomid);
-        }
-
-        private static List<User> GetRoomPlayerList(string roomid)
-        {
-            return Config.RoomList.GetPlayerList(roomid);
         }
     }
 }
