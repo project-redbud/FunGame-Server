@@ -1,11 +1,8 @@
 ﻿using System.Collections;
 using System.Data;
-using System.Net.Sockets;
-using Microsoft.VisualBasic;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
-using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
@@ -42,29 +39,10 @@ namespace Milimoe.FunGame.Server.Controller
                 case DataRequestType.UnKnown:
                     break;
                     
-                case DataRequestType.RunTime_Connect:
-                    break;
-                    
-                case DataRequestType.RunTime_Reg:
-                    break;
-                    
-                case DataRequestType.RunTime_CheckReg:
-                    break;
-                    
-                case DataRequestType.RunTime_Login:
-                    break;
-                    
-                case DataRequestType.RunTime_CheckLogin:
-                    break;
-                    
                 case DataRequestType.RunTime_Logout:
                     LogOut(data, result);
                     break;
                     
-                case DataRequestType.RunTime_Disconnect:
-                    Disconnect(result);
-                    break;
-
                 case DataRequestType.Main_GetNotice:
                     GetServerNotice(result);
                     break;
@@ -144,18 +122,6 @@ namespace Milimoe.FunGame.Server.Controller
             }
             ResultData.Add("msg", msg);
             ResultData.Add("key", key);
-        }
-
-        /// <summary>
-        /// 断开连接
-        /// </summary>
-        /// <param name="ResultData"></param>
-        private void Disconnect(Hashtable ResultData)
-        {
-            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> Disconnect");
-            string msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
-            _LastRequest = DataRequestType.RunTime_Disconnect;
-            ResultData.Add("msg", msg);
         }
 
         #endregion

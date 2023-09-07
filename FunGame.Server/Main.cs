@@ -1,15 +1,11 @@
-﻿using System.Collections;
-using Milimoe.FunGame;
-using Milimoe.FunGame.Core.Api.Transmittal;
+﻿using Milimoe.FunGame;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
-using Milimoe.FunGame.Server.Controller;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
-using MySqlX.XDevAPI.Common;
 
 Console.Title = Config.ServerName;
 Console.WriteLine(FunGameInfo.GetInfo(Config.FunGameType));
@@ -159,52 +155,35 @@ bool Connect(ClientSocket socket, Guid token, string clientip)
     // 接收客户端消息
     foreach (SocketObject read in socket.ReceiveArray())
     {
-        if (read.SocketType == SocketMessageType.DataRequest)
+        if (read.SocketType == SocketMessageType.Connect)
         {
-            Hashtable result = new();
-            DataRequestType type = DataRequestType.UnKnown;
-
-            if (read.Parameters.Length > 0)
+            if (Config.ConnectingPlayersCount + Config.OnlinePlayersCount + 1 > Config.MaxPlayers)
             {
-                type = read.GetParam<DataRequestType>(0);
-                if (type == DataRequestType.RunTime_Connect)
-                {
-                    if (Config.ConnectingPlayersCount + Config.OnlinePlayersCount + 1 > Config.MaxPlayers)
-                    {
-                        SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
-                        ServerHelper.WriteLine("服务器可接受的连接数量已上限！");
-                        continue;
-                    }
-                    Config.ConnectingPlayersCount++;
-                    ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 正在连接服务器 . . .");
-                    if (IsIPBanned(ListeningSocket, clientip))
-                    {
-                        SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
-                        ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(clientip) + " 为黑名单用户，已禁止其连接！");
-                        Config.ConnectingPlayersCount--;
-                        continue;
-                    }
+                SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
+                ServerHelper.WriteLine("服务器可接受的连接数量已上限！");
+                continue;
+            }
+            Config.ConnectingPlayersCount++;
+            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 正在连接服务器 . . .");
+            if (IsIPBanned(ListeningSocket, clientip))
+            {
+                SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
+                ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(clientip) + " 为黑名单用户，已禁止其连接！");
+                Config.ConnectingPlayersCount--;
+                continue;
+            }
 
-                    ServerHelper.WriteLine("[" + DataRequest.GetTypeString(type) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
+            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(read.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
 
-                    // 发送消息给客户端
-                    result.Add("success", true);
-                    result.Add("msg", "");
-                    result.Add("token", token);
-                    result.Add("servername", Config.ServerName);
-                    result.Add("notice", Config.ServerNotice);
-
-                    if (socket.Send(SocketMessageType.DataRequest, DataRequestType.RunTime_Connect, result) == SocketResult.Success)
-                    {
-                        ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
-                        return true;
-                    }
-                    else
-                    {
-                        ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
-                        return false;
-                    }
-                }
+            if (socket.Send(SocketMessageType.Connect, true, "", token, Config.ServerName, Config.ServerNotice) == SocketResult.Success)
+            {
+                ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
+                return true;
+            }
+            else
+            {
+                ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
+                return false;
             }
         }
     }
@@ -216,11 +195,8 @@ bool Connect(ClientSocket socket, Guid token, string clientip)
 bool SendRefuseConnect(ClientSocket socket, string msg)
 {
     // 发送消息给客户端
-    Hashtable result = new();
     msg = "连接被拒绝，如有疑问请联系服务器管理员：" + msg;
-    result.Add("success", false);
-    result.Add("msg", msg);
-    if (socket.Send(SocketMessageType.DataRequest, DataRequestType.RunTime_Connect, result) == SocketResult.Success)
+    if (socket.Send(SocketMessageType.Connect, false, msg) == SocketResult.Success)
     {
         ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
         return true;

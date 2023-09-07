@@ -6,7 +6,6 @@ using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Controller;
 using Milimoe.FunGame.Server.Others;
@@ -98,68 +97,73 @@ namespace Milimoe.FunGame.Server.Model
 
                 switch (type)
                 {
-                    //case SocketMessageType.RunTime_Login:
-                    //    CheckLoginKey = Guid.Empty;
-                    //    if (args != null)
-                    //    {
-                    //        string? username = "", password = "", autokey = "";
-                    //        if (args.Length > 0) username = SocketObject.GetParam<string>(0);
-                    //        if (args.Length > 1) password = SocketObject.GetParam<string>(1);
-                    //        if (args.Length > 2) autokey = SocketObject.GetParam<string>(2);
-                    //        if (username != null && password != null)
-                    //        {
-                    //            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
-                    //            SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password));
-                    //            if (SQLHelper.Result == SQLResult.Success)
-                    //            {
-                    //                DsUser = SQLHelper.DataSet;
-                    //                if (autokey != null && autokey.Trim() != "")
-                    //                {
-                    //                    SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey));
-                    //                    if (SQLHelper.Result == SQLResult.Success)
-                    //                    {
-                    //                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] AutoKey: 已确认");
-                    //                    }
-                    //                    else
-                    //                    {
-                    //                        msg = "AutoKey不正确，拒绝自动登录！";
-                    //                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + msg);
-                    //                        return Send(socket, type, CheckLoginKey, msg);
-                    //                    }
-                    //                }
-                    //                UserName = username;
-                    //                CheckLoginKey = Guid.NewGuid();
-                    //                return Send(socket, type, CheckLoginKey);
-                    //            }
-                    //            msg = "用户名或密码不正确。";
-                    //            ServerHelper.WriteLine(msg);
-                    //        }
-                    //    }
-                    //    return Send(socket, type, CheckLoginKey, msg);
+                    case SocketMessageType.Disconnect:
+                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + GetClientName() + " -> Disconnect");
+                        msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
+                        break;
 
-                    //case SocketMessageType.RunTime_CheckLogin:
-                    //    if (args != null && args.Length > 0)
-                    //    {
-                    //        Guid checkloginkey = SocketObject.GetParam<Guid>(0);
-                    //        if (CheckLoginKey.Equals(checkloginkey))
-                    //        {
-                    //            // 创建User对象
-                    //            _User = Factory.GetUser(DsUser);
-                    //            // 检查有没有重复登录的情况
-                    //            KickUser();
-                    //            // 添加至玩家列表
-                    //            AddUser();
-                    //            GetUsersCount();
-                    //            // CheckLogin
-                    //            LoginTime = DateTime.Now.Ticks;
-                    //            SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]));
-                    //            return Send(socket, type, _User);
-                    //        }
-                    //        ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
-                    //    }
-                    //    return Send(socket, type, CheckLoginKey.ToString());
+                        //case SocketMessageType.RunTime_Login:
+                        //    CheckLoginKey = Guid.Empty;
+                        //    if (args != null)
+                        //    {
+                        //        string? username = "", password = "", autokey = "";
+                        //        if (args.Length > 0) username = SocketObject.GetParam<string>(0);
+                        //        if (args.Length > 1) password = SocketObject.GetParam<string>(1);
+                        //        if (args.Length > 2) autokey = SocketObject.GetParam<string>(2);
+                        //        if (username != null && password != null)
+                        //        {
+                        //            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] UserName: " + username);
+                        //            SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password));
+                        //            if (SQLHelper.Result == SQLResult.Success)
+                        //            {
+                        //                DsUser = SQLHelper.DataSet;
+                        //                if (autokey != null && autokey.Trim() != "")
+                        //                {
+                        //                    SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey));
+                        //                    if (SQLHelper.Result == SQLResult.Success)
+                        //                    {
+                        //                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] AutoKey: 已确认");
+                        //                    }
+                        //                    else
+                        //                    {
+                        //                        msg = "AutoKey不正确，拒绝自动登录！";
+                        //                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + msg);
+                        //                        return Send(socket, type, CheckLoginKey, msg);
+                        //                    }
+                        //                }
+                        //                UserName = username;
+                        //                CheckLoginKey = Guid.NewGuid();
+                        //                return Send(socket, type, CheckLoginKey);
+                        //            }
+                        //            msg = "用户名或密码不正确。";
+                        //            ServerHelper.WriteLine(msg);
+                        //        }
+                        //    }
+                        //    return Send(socket, type, CheckLoginKey, msg);
+
+                        //case SocketMessageType.RunTime_CheckLogin:
+                        //    if (args != null && args.Length > 0)
+                        //    {
+                        //        Guid checkloginkey = SocketObject.GetParam<Guid>(0);
+                        //        if (CheckLoginKey.Equals(checkloginkey))
+                        //        {
+                        //            // 创建User对象
+                        //            _User = Factory.GetUser(DsUser);
+                        //            // 检查有没有重复登录的情况
+                        //            KickUser();
+                        //            // 添加至玩家列表
+                        //            AddUser();
+                        //            GetUsersCount();
+                        //            // CheckLogin
+                        //            LoginTime = DateTime.Now.Ticks;
+                        //            SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, socket.ClientIP.Split(':')[0]));
+                        //            return Send(socket, type, _User);
+                        //        }
+                        //        ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
+                        //    }
+                        //    return Send(socket, type, CheckLoginKey.ToString());
                 }
-                return true;
+                return Send(socket, type, msg);
             }
             catch (Exception e)
             {
