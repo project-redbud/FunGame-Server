@@ -224,7 +224,10 @@ namespace Milimoe.FunGame.Server.Model
         public void ForceLogOut(string msg, string username = "")
         {
             ServerModel serverTask = (ServerModel)Server.Get(username == "" ? UserName : username);
-            serverTask.Send(serverTask.Socket!, SocketMessageType.ForceLogout, serverTask.CheckLoginKey, msg);
+            if (serverTask.Socket != null)
+            {
+                serverTask.Send(serverTask.Socket, SocketMessageType.ForceLogout, serverTask.CheckLoginKey, msg);
+            }
         }
 
         public void Chat(string msg)

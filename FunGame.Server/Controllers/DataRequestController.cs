@@ -265,6 +265,7 @@ namespace Milimoe.FunGame.Server.Controller
                 {
                     Config.RoomList.IntoRoom(roomid, Server.User);
                     Server.IntoRoom(roomid);
+                    result = true;
                 }
             }
             ResultData.Add("result", result);
