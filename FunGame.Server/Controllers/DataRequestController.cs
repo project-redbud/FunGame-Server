@@ -1,10 +1,8 @@
 ﻿using System.Collections;
 using System.Data;
-using System.Net.Sockets;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
-using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
@@ -174,7 +172,7 @@ namespace Milimoe.FunGame.Server.Controller
                     SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, roomtype, password ?? ""));
                     if (SQLHelper.Result == SQLResult.Success)
                     {
-                        ServerHelper.WriteLine("[CreateRoom] Master: " + user.Name + " RoomID: " + roomid);
+                        ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
                     }
                 }
             }
