@@ -226,7 +226,7 @@ namespace Milimoe.FunGame.Server.Model
             ServerModel serverTask = (ServerModel)Server.Get(username == "" ? UserName : username);
             if (serverTask.Socket != null)
             {
-                serverTask.Send(serverTask.Socket, SocketMessageType.ForceLogout, serverTask.CheckLoginKey, msg);
+                serverTask.Send(serverTask.Socket, SocketMessageType.ForceLogout, msg);
             }
         }
 
