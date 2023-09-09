@@ -247,6 +247,7 @@ namespace Milimoe.FunGame.Server.Model
 
         public void IntoRoom(string roomid)
         {
+            Room = Config.RoomList[roomid];
             foreach (ServerModel Client in Server.ClientList.Cast<ServerModel>())
             {
                 if (roomid == Client.Room.Roomid)

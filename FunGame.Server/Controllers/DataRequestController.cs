@@ -224,9 +224,9 @@ namespace Milimoe.FunGame.Server.Controller
                             SQLHelper.Execute(RoomQuery.Update_QuitRoom(roomid, Server.User.Id, NewMaster.Id));
                             if (SQLHelper.Result == SQLResult.Success)
                             {
-                                result = true;
                                 Server.Room = General.HallInstance;
                                 Server.UpdateRoomMaster(Room);
+                                result = true;
                             }
                         }
                         else // 没人了就解散房间
@@ -235,11 +235,17 @@ namespace Milimoe.FunGame.Server.Controller
                             SQLHelper.Execute(RoomQuery.Delete_QuitRoom(roomid, Server.User.Id));
                             if (SQLHelper.Result == SQLResult.Success)
                             {
-                                result = true;
                                 Server.Room = General.HallInstance;
                                 ServerHelper.WriteLine("[ " + Server.GetClientName() + " ] 解散了房间 " + roomid);
+                                result = true;
                             }
                         }
+                    }
+                    // 不是房主直接退出房间
+                    else
+                    {
+                        Server.Room = General.HallInstance;
+                        result = true;
                     }
                 }
             }
