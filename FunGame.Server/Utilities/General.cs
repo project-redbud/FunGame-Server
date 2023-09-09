@@ -19,9 +19,14 @@ namespace Milimoe.FunGame.Server.Utility
             Console.Write("\r" + GetPrefix() + e.Message + "\n" + e.StackTrace + "\n\r> ");
         }
 
-        public static void WriteLine(string? msg)
+        public static void Write(string msg)
         {
-            Console.Write("\r" + GetPrefix() + msg + "\n\r> ");
+            if (msg.Trim() != "") Console.Write("\r" + GetPrefix() + msg + "> ");
+        }
+        
+        public static void WriteLine(string msg)
+        {
+            if (msg.Trim() != "") Console.Write("\r" + GetPrefix() + msg + "\n\r> ");
         }
 
         public static void Type()
@@ -100,7 +105,7 @@ namespace Milimoe.FunGame.Server.Utility
             }
             catch (Exception e)
             {
-                ServerHelper.WriteLine(e.StackTrace);
+                ServerHelper.WriteLine(e.StackTrace ?? "");
             }
         }
 

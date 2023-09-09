@@ -1,8 +1,10 @@
 ﻿using System.Collections;
 using System.Data;
+using System.Net.Sockets;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
+using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
@@ -72,6 +74,10 @@ namespace Milimoe.FunGame.Server.Controller
 
                 case DataRequestType.Reg_GetRegVerifyCode:
                     Reg(data, result);
+                    break;
+                
+                case DataRequestType.Login_Login:
+                    Login(data, result);
                     break;
                 
                 case DataRequestType.Login_GetFindPasswordVerifyCode:
@@ -290,13 +296,14 @@ namespace Milimoe.FunGame.Server.Controller
         {
             string msg = "";
             RegInvokeType returnType = RegInvokeType.None;
+            bool success = false;
             if (RequestData.Count >= 4)
             {
                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> Reg");
-                string username = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Username) ?? "";
-                string password = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Password) ?? "";
-                string email = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Email) ?? "";
-                string verifycode = DataRequest.GetHashtableJsonObject<string>(RequestData, RegVerifyCodes.Column_RegVerifyCode) ?? "";
+                string username = DataRequest.GetHashtableJsonObject<string>(RequestData, "username") ?? "";
+                string password = DataRequest.GetHashtableJsonObject<string>(RequestData, "password") ?? "";
+                string email = DataRequest.GetHashtableJsonObject<string>(RequestData, "email") ?? "";
+                string verifycode = DataRequest.GetHashtableJsonObject<string>(RequestData, "verifycode") ?? "";
 
                 // 如果没发验证码，就生成验证码
                 if (verifycode.Trim() == "")
@@ -389,6 +396,7 @@ namespace Milimoe.FunGame.Server.Controller
                                 SQLHelper.Execute(UserQuery.Insert_Register(username, password, email, Server.Socket?.ClientIP ?? ""));
                                 if (SQLHelper.Result == SQLResult.Success)
                                 {
+                                    success = true;
                                     msg = "注册成功！请牢记您的账号与密码！";
                                     SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
                                 }
@@ -406,11 +414,78 @@ namespace Milimoe.FunGame.Server.Controller
             }
             ResultData.Add("msg", msg);
             ResultData.Add("type", returnType);
+            ResultData.Add("success", success);
         }
 
         #endregion
 
         #region Login
+
+        /// <summary>
+        /// 登录
+        /// </summary>
+        /// <param name="RequestData"></param>
+        /// <param name="ResultData"></param>
+        private void Login(Hashtable RequestData, Hashtable ResultData)
+        {
+            string msg = "";
+            User user = Factory.GetUser();
+            if (RequestData.Count >= 4)
+            {
+                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> Login");
+                string username = DataRequest.GetHashtableJsonObject<string>(RequestData, "username") ?? "";
+                string password = DataRequest.GetHashtableJsonObject<string>(RequestData, "password") ?? "";
+                string autokey = DataRequest.GetHashtableJsonObject<string>(RequestData, "autokey") ?? "";
+                Guid key = DataRequest.GetHashtableJsonObject<Guid>(RequestData, "key");
+
+                // CheckLogin的情况
+                if (key != Guid.Empty)
+                {
+                    if (Server.IsLoginKey(key))
+                    {
+                        Server.CheckLogin();
+                        user = Server.User;
+                    }
+                    else ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
+                }
+                else
+                {
+                    // 验证登录
+                    if (username != null && password != null)
+                    {
+                        ServerHelper.WriteLine("[" + DataRequest.GetTypeString(DataRequestType.Login_Login) + "] UserName: " + username);
+                        SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password));
+                        if (SQLHelper.Result == SQLResult.Success)
+                        {
+                            DataSet DsUser = SQLHelper.DataSet;
+                            if (autokey.Trim() != "")
+                            {
+                                SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey));
+                                if (SQLHelper.Result == SQLResult.Success)
+                                {
+                                    ServerHelper.WriteLine("[" + DataRequest.GetTypeString(DataRequestType.Login_Login) + "] AutoKey: 已确认");
+                                }
+                                else
+                                {
+                                    msg = "AutoKey不正确，拒绝自动登录！";
+                                    ServerHelper.WriteLine("[" + DataRequest.GetTypeString(DataRequestType.Login_Login) + "] " + msg);
+                                }
+                            }
+                            key = Guid.NewGuid();
+                            Server.PreLogin(DsUser, username, key);
+                            ResultData.Add("key", key);
+                        }
+                        else
+                        {
+                            msg = "用户名或密码不正确。";
+                            ServerHelper.WriteLine(msg);
+                        }
+                    }
+                }
+            }
+            ResultData.Add("msg", msg);
+            ResultData.Add("user", user);
+        }
 
         /// <summary>
         /// 接收并验证找回密码时的验证码

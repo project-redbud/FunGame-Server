@@ -17,11 +17,11 @@ StartServer();
 
 while (Running)
 {
-    string? order = "";
-    order = Console.ReadLine();
+    string order = Console.ReadLine() ?? "";
     ServerHelper.Type();
-    if (order != null && !order.Equals("") && Running)
+    if (order != "" && Running)
     {
+        order = order.ToLower();
         switch (order)
         {
             case OrderDictionary.Quit:
@@ -29,17 +29,16 @@ while (Running)
             case OrderDictionary.Close:
                 Running = false;
                 break;
-            case OrderDictionary.Help:
-                ServerHelper.WriteLine("Milimoe -> 帮助");
-                break;
             case OrderDictionary.Restart:
                 if (ListeningSocket == null)
                 {
                     ServerHelper.WriteLine("重启服务器");
                     StartServer();
                 }
-                else
-                    ServerHelper.WriteLine("服务器正在运行，拒绝重启！");
+                else ServerHelper.WriteLine("服务器正在运行，拒绝重启！");
+                break;
+            default:
+                ConsoleModel.Order(ListeningSocket, order);
                 break;
         }
     }
