@@ -16,7 +16,7 @@ namespace Milimoe.FunGame.Server.Model
                     ServerHelper.Type();
                     if (user != "" && server != null)
                     {
-                        ((ServerModel)server.GetUser(user))?.ForceLogOut("您已被服务器管理员踢出此服务器。");
+                        ((ServerModel)server.Get(user))?.ForceLogOut("您已被服务器管理员踢出此服务器。");
                     }
                     break;
                 case OrderDictionary.Help:

@@ -60,7 +60,7 @@ namespace Milimoe.FunGame.Server.Model
             SQLHelper = new(this);
             MailSender = SmtpHelper.GetMailSender();
             DataRequestController = new(this);
-            Config.OnlinePlayersCount++;
+            Config.OnlinePlayerCount++;
             GetUsersCount();
         }
 
@@ -201,7 +201,7 @@ namespace Milimoe.FunGame.Server.Model
             // 检查有没有重复登录的情况
             KickUser();
             // 添加至玩家列表
-            AddUser();
+            Add();
             GetUsersCount();
             // CheckLogin
             LoginTime = DateTime.Now.Ticks;
@@ -223,14 +223,14 @@ namespace Milimoe.FunGame.Server.Model
 
         public void ForceLogOut(string msg, string username = "")
         {
-            ServerModel serverTask = (ServerModel)Server.GetUser(username == "" ? UserName : username);
+            ServerModel serverTask = (ServerModel)Server.Get(username == "" ? UserName : username);
             serverTask.Send(serverTask.Socket!, SocketMessageType.ForceLogout, serverTask.CheckLoginKey, msg);
         }
 
         public void Chat(string msg)
         {
             ServerHelper.WriteLine(msg);
-            foreach (ServerModel Client in Server.UserList.Cast<ServerModel>())
+            foreach (ServerModel Client in Server.ClientList.Cast<ServerModel>())
             {
                 if (Room.Roomid == Client.Room.Roomid)
                 {
@@ -244,7 +244,7 @@ namespace Milimoe.FunGame.Server.Model
 
         public void IntoRoom(string roomid)
         {
-            foreach (ServerModel Client in Server.UserList.Cast<ServerModel>())
+            foreach (ServerModel Client in Server.ClientList.Cast<ServerModel>())
             {
                 if (roomid == Client.Room.Roomid)
                 {
@@ -258,7 +258,7 @@ namespace Milimoe.FunGame.Server.Model
 
         public void UpdateRoomMaster(Room Room)
         {
-            foreach (ServerModel Client in Server.UserList.Cast<ServerModel>())
+            foreach (ServerModel Client in Server.ClientList.Cast<ServerModel>())
             {
                 if (Room.Roomid == Client.Room.Roomid)
                 {
@@ -284,7 +284,7 @@ namespace Milimoe.FunGame.Server.Model
             if (User.Id != 0)
             {
                 string user = User.Username;
-                if (Server.ContainsUser(user))
+                if (Server.Contains(user))
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + user + " 重复登录！");
                     ForceLogOut("您的账号在别处登录，已强制下线。");
@@ -292,11 +292,11 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        private bool AddUser()
+        private bool Add()
         {
             if (User.Id != 0 && this != null)
             {
-                Server.AddUser(User.Username, this);
+                Server.Add(User.Username, this);
                 ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
                 return true;
             }
@@ -315,7 +315,7 @@ namespace Milimoe.FunGame.Server.Model
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 本次已游玩" + TotalMinutes + "分钟");
                 }
                 else ServerHelper.WriteLine("OnlinePlayers: 无法更新玩家 " + User.Username + " 的游戏时长");
-                if (Server.RemoveUser(User.Username))
+                if (Server.Remove(User.Username))
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已移除");
                     _User = General.UnknownUserInstance;
@@ -328,7 +328,7 @@ namespace Milimoe.FunGame.Server.Model
 
         private void GetUsersCount()
         {
-            ServerHelper.WriteLine($"目前在线客户端数量: {Config.OnlinePlayersCount}（已登录的玩家数量：{Server.UsersCount}）");
+            ServerHelper.WriteLine($"目前在线客户端数量: {Config.OnlinePlayerCount}（已登录的玩家数量：{Server.ClientCount}）");
         }
 
         private void CreateStreamReader()
@@ -385,7 +385,7 @@ namespace Milimoe.FunGame.Server.Model
                 Socket?.Close();
                 _Socket = null;
                 _Running = false;
-                Config.OnlinePlayersCount--;
+                Config.OnlinePlayerCount--;
                 GetUsersCount();
             }
             catch (Exception e)
