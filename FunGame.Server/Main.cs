@@ -160,7 +160,7 @@ bool Connect(ClientSocket socket, Guid token, string clientip)
             {
                 SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
                 ServerHelper.WriteLine("服务器可接受的连接数量已上限！");
-                continue;
+                return false;
             }
             Config.ConnectingPlayerCount++;
             ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 正在连接服务器 . . .");
@@ -169,7 +169,7 @@ bool Connect(ClientSocket socket, Guid token, string clientip)
                 SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
                 ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(clientip) + " 为黑名单用户，已禁止其连接！");
                 Config.ConnectingPlayerCount--;
-                continue;
+                return false;
             }
 
             ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(read.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
@@ -197,7 +197,7 @@ bool SendRefuseConnect(ClientSocket socket, string msg)
     msg = "连接被拒绝，如有疑问请联系服务器管理员：" + msg;
     if (socket.Send(SocketMessageType.Connect, false, msg) == SocketResult.Success)
     {
-        ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
+        ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已拒绝连接");
         return true;
     }
     else
