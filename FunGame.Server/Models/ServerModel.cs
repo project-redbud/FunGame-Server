@@ -344,7 +344,7 @@ namespace Milimoe.FunGame.Server.Model
 
         private void GetUsersCount()
         {
-            ServerHelper.WriteLine($"目前在线客户端数量: {Server.ClientCount}（已登录的玩家数量：{Server.ClientCount}）");
+            ServerHelper.WriteLine($"目前在线客户端数量: {Server.ClientCount}（已登录的玩家数量：{Server.UserCount}）");
         }
 
         private void CreateStreamReader()
