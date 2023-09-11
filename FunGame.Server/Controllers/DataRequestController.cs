@@ -225,7 +225,7 @@ namespace Milimoe.FunGame.Server.Controller
                             if (SQLHelper.Result == SQLResult.Success)
                             {
                                 Server.Room = General.HallInstance;
-                                Server.UpdateRoomMaster(Room);
+                                Server.UpdateRoomMaster(Room, true);
                                 result = true;
                             }
                         }
@@ -245,6 +245,7 @@ namespace Milimoe.FunGame.Server.Controller
                     else
                     {
                         Server.Room = General.HallInstance;
+                        Server.UpdateRoomMaster(Room);
                         result = true;
                     }
                 }
@@ -318,6 +319,7 @@ namespace Milimoe.FunGame.Server.Controller
                     if (SQLHelper.Result == SQLResult.Success)
                     {
                         ServerHelper.WriteLine(Server.GetClientName() + " 账号已被注册");
+                        msg = "此账号名已被使用！";
                         returnType = RegInvokeType.DuplicateUserName;
                     }
                     else
@@ -327,6 +329,7 @@ namespace Milimoe.FunGame.Server.Controller
                         if (SQLHelper.Result == SQLResult.Success)
                         {
                             ServerHelper.WriteLine(Server.GetClientName() + " 邮箱已被注册");
+                            msg = "此邮箱已被注册！";
                             returnType = RegInvokeType.DuplicateEmail;
                         }
                         else

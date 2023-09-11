@@ -102,6 +102,7 @@ void StartServer()
                     Guid token = Guid.NewGuid();
                     socket = ListeningSocket.Accept(token);
                     clientip = socket.ClientIP;
+                    Config.ConnectingPlayerCount++;
                     // 开始处理客户端连接请求
                     if (Connect(socket, token, clientip))
                     {
@@ -156,19 +157,17 @@ bool Connect(ClientSocket socket, Guid token, string clientip)
     {
         if (read.SocketType == SocketMessageType.Connect)
         {
-            if (Config.ConnectingPlayerCount + Config.OnlinePlayerCount + 1 > Config.MaxPlayers)
+            if (Config.ConnectingPlayerCount + Config.OnlinePlayerCount > Config.MaxPlayers)
             {
                 SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
                 ServerHelper.WriteLine("服务器可接受的连接数量已上限！");
                 return false;
             }
-            Config.ConnectingPlayerCount++;
             ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 正在连接服务器 . . .");
             if (IsIPBanned(ListeningSocket, clientip))
             {
                 SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
                 ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(clientip) + " 为黑名单用户，已禁止其连接！");
-                Config.ConnectingPlayerCount--;
                 return false;
             }
 

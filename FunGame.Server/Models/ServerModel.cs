@@ -60,8 +60,6 @@ namespace Milimoe.FunGame.Server.Model
             SQLHelper = new(this);
             MailSender = SmtpHelper.GetMailSender();
             DataRequestController = new(this);
-            Config.OnlinePlayerCount++;
-            GetUsersCount();
         }
 
         public bool Read(ClientSocket socket)
@@ -182,6 +180,8 @@ namespace Milimoe.FunGame.Server.Model
             _ClientName = ClientName;
             // 添加客户端到列表中
             Server.AddClient(_ClientName, this);
+            Config.OnlinePlayerCount++;
+            GetUsersCount();
         }
 
         public string GetClientName()
@@ -235,11 +235,13 @@ namespace Milimoe.FunGame.Server.Model
         public void Kick(string msg, string clientname = "")
         {
             // 将客户端踢出服务器
+            RemoveUser();
             ServerModel serverTask = (ServerModel)Server.GetClient(clientname == "" ? ClientName : clientname);
             if (serverTask.Socket != null)
             {
                 serverTask.Send(serverTask.Socket, SocketMessageType.Disconnect, msg);
             }
+            Close();
         }
 
         public void Chat(string msg)
@@ -260,31 +262,25 @@ namespace Milimoe.FunGame.Server.Model
         public void IntoRoom(string roomid)
         {
             Room = Config.RoomList[roomid];
-            foreach (ServerModel Client in Server.ClientList.Cast<ServerModel>())
+            foreach (ServerModel Client in Server.ClientList.Cast<ServerModel>().Where(c => c != null && c.Socket != null && roomid == c.Room.Roomid))
             {
-                if (roomid == Client.Room.Roomid)
+                if (User.Id != 0)
                 {
-                    if (Client != null && User.Id != 0)
-                    {
-                        Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 进入了房间。");
-                    }
+                    Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 进入了房间。");
                 }
             }
         }
 
-        public void UpdateRoomMaster(Room Room)
+        public void UpdateRoomMaster(Room Room, bool bolIsUpdateRoomMaster = false)
         {
-            foreach (ServerModel Client in Server.ClientList.Cast<ServerModel>())
+            foreach (ServerModel Client in Server.ClientList.Cast<ServerModel>().Where(c => c != null && c.Socket != null && Room.Roomid == c.Room.Roomid))
             {
-                if (Room.Roomid == Client.Room.Roomid)
+                if (User.Id != 0)
                 {
-                    if (Client != null && User.Id != 0)
+                    Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
+                    if (bolIsUpdateRoomMaster && Room.RoomMaster?.Id != 0 && Room.Roomid != "-1")
                     {
-                        Client.Send(Client.Socket!, SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
-                        if (Room.RoomMaster?.Id != 0 && Room.Roomid != "-1")
-                        {
-                            Client.Send(Client.Socket!, SocketMessageType.UpdateRoomMaster, Room);
-                        }
+                        Client.Send(Client.Socket!, SocketMessageType.UpdateRoomMaster, Room);
                     }
                 }
             }
