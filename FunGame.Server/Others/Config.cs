@@ -17,8 +17,8 @@ namespace Milimoe.FunGame.Server.Others
         public static string ServerBannedList { get; set; } = ""; // 禁止连接的黑名单
         public static int MaxPlayers { get; set; } = 20; // 最多接受连接的玩家数量
         public static int MaxConnectionFaileds { get; set; } = 5; // 最大连接失败次数
-        public static int OnlinePlayersCount { get; set; } = 0; // 已连接的玩家数量
-        public static int ConnectingPlayersCount { get; set; } = 0; // 正在连接的玩家数量
+        public static int OnlinePlayerCount { get; set; } = 0; // 已连接的玩家数量
+        public static int ConnectingPlayerCount { get; set; } = 0; // 正在连接的玩家数量
         public static Encoding DefaultEncoding { get; } = General.DefaultEncoding; // 默认传输字符集
         public static FunGameInfo.FunGame FunGameType { get; } = FunGameInfo.FunGame.FunGame_Server;
         public static Hashtable OrderList { get; } = new();

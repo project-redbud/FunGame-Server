@@ -20,7 +20,6 @@ namespace Milimoe.FunGame.Server.Utility
             try
             {
                 PrepareCommand(Helper, cmd);
-                Helper.NewTransaction();
 
                 updaterow = cmd.ExecuteNonQuery();
                 if (updaterow > 0)
@@ -91,7 +90,6 @@ namespace Milimoe.FunGame.Server.Utility
             try
             {
                 PrepareCommand(Helper, cmd);
-                Helper.NewTransaction();
 
                 updaterow = cmd.ExecuteNonQuery();
                 if (updaterow > 0)

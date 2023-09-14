@@ -12,5 +12,11 @@
         public const string RemoveBanned1 = "ban -remove";
         public const string RemoveBanned2 = "ban -r";
         public const string Kick = "kick";
+        public const string Logout = "logout";
+        public const string ShowList = "showlist";
+        public const string ShowClients1 = "showclients";
+        public const string ShowClients2 = "clients";
+        public const string ShowUsers1 = "showusers";
+        public const string ShowUsers2 = "users";
     }
 }

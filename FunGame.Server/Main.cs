@@ -3,7 +3,6 @@ using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
-using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
@@ -18,11 +17,11 @@ StartServer();
 
 while (Running)
 {
-    string? order = "";
-    order = Console.ReadLine();
+    string order = Console.ReadLine() ?? "";
     ServerHelper.Type();
-    if (order != null && !order.Equals("") && Running)
+    if (order != "" && Running)
     {
+        order = order.ToLower();
         switch (order)
         {
             case OrderDictionary.Quit:
@@ -30,17 +29,16 @@ while (Running)
             case OrderDictionary.Close:
                 Running = false;
                 break;
-            case OrderDictionary.Help:
-                ServerHelper.WriteLine("Milimoe -> 帮助");
-                break;
             case OrderDictionary.Restart:
                 if (ListeningSocket == null)
                 {
                     ServerHelper.WriteLine("重启服务器");
                     StartServer();
                 }
-                else
-                    ServerHelper.WriteLine("服务器正在运行，拒绝重启！");
+                else ServerHelper.WriteLine("服务器正在运行，拒绝重启！");
+                break;
+            default:
+                ConsoleModel.Order(ListeningSocket, order);
                 break;
         }
     }
@@ -98,44 +96,33 @@ void StartServer()
             while (Running)
             {
                 ClientSocket socket;
-                string ClientIPAddress = "";
+                string clientip = "";
                 try
                 {
-                    Guid Token = Guid.NewGuid();
-                    socket = ListeningSocket.Accept(Token);
-                    ClientIPAddress = socket.ClientIP;
-                    if (Config.ConnectingPlayersCount + Config.OnlinePlayersCount + 1 > Config.MaxPlayers)
-                    {
-                        SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
-                        ServerHelper.WriteLine("服务器可接受的连接数量已上限！");
-                        continue;
-                    }
-                    Config.ConnectingPlayersCount++;
-                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientIPAddress) + " 正在连接服务器 . . .");
-                    if (IsIPBanned(ListeningSocket, ClientIPAddress))
-                    {
-                        SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
-                        ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(ClientIPAddress) + " 为黑名单用户，已禁止其连接！");
-                        Config.ConnectingPlayersCount--;
-                        continue;
-                    }
-                    if (Read(socket) && Send(socket, Token))
+                    Guid token = Guid.NewGuid();
+                    socket = ListeningSocket.Accept(token);
+                    clientip = socket.ClientIP;
+                    Config.ConnectingPlayerCount++;
+                    // 开始处理客户端连接请求
+                    if (Connect(socket, token, clientip))
                     {
                         ServerModel ClientModel = new(ListeningSocket, socket, Running);
                         Task t = Task.Factory.StartNew(() =>
                         {
                             ClientModel.Start();
                         });
-                        ClientModel.SetTaskAndClientName(t, ClientIPAddress);
+                        ClientModel.SetTaskAndClientName(t, clientip);
                     }
                     else
-                        ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientIPAddress) + " 连接失败。");
-                    Config.ConnectingPlayersCount--;
+                    {
+                        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。");
+                    }
+                    Config.ConnectingPlayerCount--;
                 }
                 catch (Exception e)
                 {
-                    if (--Config.ConnectingPlayersCount < 0) Config.ConnectingPlayersCount = 0;
-                    ServerHelper.WriteLine(ServerHelper.MakeClientName(ClientIPAddress) + " 断开连接！");
+                    if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
+                    ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！");
                     ServerHelper.Error(e);
                 }
             }
@@ -160,25 +147,42 @@ void StartServer()
                 ListeningSocket = null;
             }
         }
-
     });
 }
 
-bool Read(ClientSocket socket)
+bool Connect(ClientSocket socket, Guid token, string clientip)
 {
     // 接收客户端消息
     foreach (SocketObject read in socket.ReceiveArray())
     {
-        SocketMessageType type = read.SocketType;
-        if (type == SocketMessageType.RunTime_Connect)
+        if (read.SocketType == SocketMessageType.Connect)
         {
-            if (read.Parameters.Length > 0)
+            if (Config.ConnectingPlayerCount + Config.OnlinePlayerCount > Config.MaxPlayers)
             {
-                string str = (read.GetParam<string>(0) ?? "").Trim();
-                if (str != "") ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(socket.ClientIP) + " -> " + str);
+                SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
+                ServerHelper.WriteLine("服务器可接受的连接数量已上限！");
+                return false;
             }
-            else ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
-            return true;
+            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 正在连接服务器 . . .");
+            if (IsIPBanned(ListeningSocket, clientip))
+            {
+                SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
+                ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(clientip) + " 为黑名单用户，已禁止其连接！");
+                return false;
+            }
+
+            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(read.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
+
+            if (socket.Send(SocketMessageType.Connect, true, "", token, Config.ServerName, Config.ServerNotice) == SocketResult.Success)
+            {
+                ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
+                return true;
+            }
+            else
+            {
+                ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
+                return false;
+            }
         }
     }
 
@@ -186,32 +190,20 @@ bool Read(ClientSocket socket)
     return false;
 }
 
-bool Send(ClientSocket socket, Guid Token)
-{
-    // 发送消息给客户端
-    string msg = Config.ServerName + ";" + Config.ServerNotice;
-    if (socket.Send(SocketMessageType.RunTime_Connect, msg, Token) == SocketResult.Success)
-    {
-        ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
-        return true;
-    }
-    else
-        ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
-    return false;
-}
-
 bool SendRefuseConnect(ClientSocket socket, string msg)
 {
     // 发送消息给客户端
-    msg = $"连接被拒绝，如有疑问请联系服务器管理员：{msg}";
-    if (socket.Send(SocketMessageType.RunTime_Connect, msg) == SocketResult.Success)
+    msg = "连接被拒绝，如有疑问请联系服务器管理员：" + msg;
+    if (socket.Send(SocketMessageType.Connect, false, msg) == SocketResult.Success)
     {
         ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已拒绝连接");
         return true;
     }
     else
+    {
         ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
-    return false;
+        return false;
+    }
 }
 
 SQLResult TestSQLConnection()
