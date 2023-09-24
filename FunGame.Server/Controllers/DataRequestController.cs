@@ -150,11 +150,11 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="ResultData"></param>
         private void CreateRoom(Hashtable RequestData, Hashtable ResultData)
         {
-            string roomid = "-1";
+            Room room = General.HallInstance;
             if (RequestData.Count >= 3)
             {
                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> CreateRoom");
-                string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.GameMode_All;
+                string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.All;
                 User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "master") ?? Factory.GetUser();
                 string password = DataRequest.GetHashtableJsonObject<string>(RequestData, "password") ?? "";
 
@@ -162,21 +162,26 @@ namespace Milimoe.FunGame.Server.Controller
                 {
                     RoomType roomtype = roomtype_string switch
                     {
-                        GameMode.GameMode_Mix => RoomType.Mix,
-                        GameMode.GameMode_Team => RoomType.Team,
-                        GameMode.GameMode_MixHasPass => RoomType.MixHasPass,
-                        GameMode.GameMode_TeamHasPass => RoomType.TeamHasPass,
+                        GameMode.Mix => RoomType.Mix,
+                        GameMode.Team => RoomType.Team,
+                        GameMode.MixHasPass => RoomType.MixHasPass,
+                        GameMode.TeamHasPass => RoomType.TeamHasPass,
                         _ => RoomType.All
                     };
-                    roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
+                    string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
                     SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, roomtype, password ?? ""));
                     if (SQLHelper.Result == SQLResult.Success)
                     {
                         ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
+                        SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(roomid));
+                        if (SQLHelper.Result == SQLResult.Success && SQLHelper.DataSet.Tables[0].Rows.Count > 0)
+                        {
+                            room = Factory.GetRoom(SQLHelper.DataSet.Tables[0].Rows[0], user);
+                        }
                     }
                 }
             }
-            ResultData.Add("roomid", roomid);
+            ResultData.Add("room", room);
         }
 
         /// <summary>
