@@ -7,6 +7,7 @@ using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
+using Milimoe.FunGame.Server.Controllers;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
@@ -18,6 +19,7 @@ namespace Milimoe.FunGame.Server.Controller
         public ServerModel Server { get; }
         public MySQLHelper SQLHelper => Server.SQLHelper;
         public MailSender? MailSender => Server.MailSender;
+        public Authenticator Authenticator { get; }
         public DataRequestType LastRequest => _LastRequest;
 
         private string ForgetVerify = "";
@@ -27,6 +29,7 @@ namespace Milimoe.FunGame.Server.Controller
         public DataRequestController(ServerModel server)
         {
             Server = server;
+            Authenticator = new(SQLHelper);
         }
 
         public Hashtable GetResultData(DataRequestType type, Hashtable data)

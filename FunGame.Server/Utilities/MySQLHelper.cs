@@ -15,7 +15,6 @@ namespace Milimoe.FunGame.Server.Utility
         public override string Script { get; set; } = "";
         public override CommandType CommandType { get; set; } = CommandType.Text;
         public override SQLResult Result => _Result;
-        public override bool Success => Result == SQLResult.Success;
         public override SQLServerInfo ServerInfo => _ServerInfo ?? SQLServerInfo.Create();
         public override int UpdateRows => _UpdateRows;
         public override DataSet DataSet => _DataSet;
