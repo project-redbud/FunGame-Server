@@ -29,7 +29,7 @@ namespace Milimoe.FunGame.Server.Controller
         public DataRequestController(ServerModel server)
         {
             Server = server;
-            Authenticator = new(SQLHelper);
+            Authenticator = new(Server, SQLHelper, MailSender);
         }
 
         public Hashtable GetResultData(DataRequestType type, Hashtable data)
