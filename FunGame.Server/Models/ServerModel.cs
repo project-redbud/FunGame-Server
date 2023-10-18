@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Data;
+using System.Net.Sockets;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
@@ -50,6 +51,8 @@ namespace Milimoe.FunGame.Server.Model
         private readonly DataRequestController DataRequestController;
         private long LoginTime;
         private long LogoutTime;
+        private Core.Library.Common.Architecture.TaskAwaiter MatchTask;
+        private bool IsMatching;
 
         public ServerModel(ServerSocket server, ClientSocket socket, bool running)
         {
@@ -289,6 +292,32 @@ namespace Milimoe.FunGame.Server.Model
         public bool HeartBeat(ClientSocket socket)
         {
             return Send(socket, SocketMessageType.HeartBeat, "");
+        }
+
+        public void StartMatching(string roomtype_string, User user)
+        {
+            ServerHelper.WriteLine(GetClientName() + " 开始匹配。类型：" + roomtype_string);
+            Room room = General.HallInstance;
+            MatchTask = TaskUtility.NewTask(async () =>
+            {
+                if (IsMatching)
+                {
+                    await Task.Delay(12000);
+                    if (IsMatching && Socket != null)
+                    {
+                        Send(Socket, SocketMessageType.MatchRoom, room);
+                    }
+                }
+            });
+        }
+
+        public void StopMatching()
+        {
+            if (IsMatching)
+            {
+                ServerHelper.WriteLine(GetClientName() + " 取消了匹配。");
+                IsMatching = false;
+            }
         }
 
         private void KickUser()

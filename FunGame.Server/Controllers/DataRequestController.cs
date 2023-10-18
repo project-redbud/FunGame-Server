@@ -67,6 +67,7 @@ namespace Milimoe.FunGame.Server.Controller
                     break;
                     
                 case DataRequestType.Main_MatchRoom:
+                    MatchRoom(data, result);
                     break;
                     
                 case DataRequestType.Main_Chat:
@@ -291,16 +292,25 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="ResultData"></param>
         private void MatchRoom(Hashtable RequestData, Hashtable ResultData)
         {
-            bool result = false;
-            string roomid = "-1";
+            bool result = true;
             if (RequestData.Count >= 1)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom");
-                string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.All;
-                User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "master") ?? Factory.GetUser();
+                bool iscancel = DataRequest.GetHashtableJsonObject<bool>(RequestData, "iscancel");
+                if (!iscancel)
+                {
+                    ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom : Start");
+                    string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.All;
+                    User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "matcher") ?? Factory.GetUser();
+                    Server.StartMatching(roomtype_string, user);
+                }
+                else
+                {
+                    // 取消匹配
+                    ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom : Cancel");
+                    Server.StopMatching();
+                }
             }
             ResultData.Add("result", result);
-            ResultData.Add("roomid", roomid);
         }
 
         /// <summary>
