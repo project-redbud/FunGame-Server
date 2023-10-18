@@ -75,5 +75,10 @@ namespace Milimoe.FunGame.Server.Controllers
             // 添加人机验证或频繁验证等
             return true;
         }
+
+        public bool Check2FA(string username, string code, out string msg)
+        {
+            return Login2FA.Authenticate(username, code, out msg);
+        }
     }
 }

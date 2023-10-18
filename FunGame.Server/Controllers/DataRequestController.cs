@@ -283,6 +283,25 @@ namespace Milimoe.FunGame.Server.Controller
             }
             ResultData.Add("result", result);
         }
+        
+        /// <summary>
+        /// 匹配房间
+        /// </summary>
+        /// <param name="RequestData"></param>
+        /// <param name="ResultData"></param>
+        private void MatchRoom(Hashtable RequestData, Hashtable ResultData)
+        {
+            bool result = false;
+            string roomid = "-1";
+            if (RequestData.Count >= 1)
+            {
+                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom");
+                string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.All;
+                User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "master") ?? Factory.GetUser();
+            }
+            ResultData.Add("result", result);
+            ResultData.Add("roomid", roomid);
+        }
 
         /// <summary>
         /// 发送聊天消息
