@@ -296,6 +296,7 @@ namespace Milimoe.FunGame.Server.Model
 
         public void StartMatching(string roomtype_string, User user)
         {
+            IsMatching = true;
             ServerHelper.WriteLine(GetClientName() + " 开始匹配。类型：" + roomtype_string);
             Room room = General.HallInstance;
             MatchTask = TaskUtility.NewTask(async () =>

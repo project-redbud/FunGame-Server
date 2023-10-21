@@ -1,8 +1,8 @@
-﻿using Milimoe.FunGame.Server.Model;
+﻿using Milimoe.FunGame.Core.Api.Utility;
 
 namespace Milimoe.FunGame.Server.Utility
 {
-    public class TFA : Core.Api.Utility.TFA
+    public class TFA : TwoFactorAuthenticator
     {
         public override bool IsAvailable(string username)
         {
