@@ -303,13 +303,21 @@ namespace Milimoe.FunGame.Server.Model
             {
                 if (IsMatching)
                 {
-                    await Task.Delay(12000);
+                    RoomType roomtype = roomtype_string switch
+                    {
+                        GameMode.Mix => RoomType.Mix,
+                        GameMode.Team => RoomType.Team,
+                        GameMode.MixHasPass => RoomType.MixHasPass,
+                        GameMode.TeamHasPass => RoomType.TeamHasPass,
+                        _ => RoomType.All
+                    };
+                    Room target = await MatchingRoom(roomtype, user);
                     if (IsMatching && Socket != null)
                     {
-                        Send(Socket, SocketMessageType.MatchRoom, room);
+                        Send(Socket, SocketMessageType.MatchRoom, Factory.GetRoom(1, target.Roomid));
                     }
                 }
-            });
+            }).OnError(ServerHelper.Error);
         }
 
         public void StopMatching()
@@ -319,6 +327,51 @@ namespace Milimoe.FunGame.Server.Model
                 ServerHelper.WriteLine(GetClientName() + " 取消了匹配。");
                 IsMatching = false;
             }
+        }
+
+        private async Task<Room> MatchingRoom(RoomType roomtype, User user)
+        {
+            int i = 1;
+            int time = 0;
+            while (IsMatching)
+            {
+                // 先列出符合条件的房间
+                List<Room> targets = Config.RoomList.ListRoom.Where(r => r.RoomType == roomtype).ToList();
+
+                // 匹配Elo
+                foreach (Room room in targets)
+                {
+                    // 计算房间平均Elo
+                    List<User> players = Config.RoomList.GetPlayerList(room.Roomid);
+                    if (players.Count > 0)
+                    {
+                        decimal avgelo = players.Sum(u => (decimal?)u.Statistics?.EloStats?["current"] ?? 0M) / players.Count;
+                        decimal userelo = (decimal?)user.Statistics?.EloStats?["current"] ?? 0M;
+                        if (userelo >= avgelo - (300 * i) && userelo <= avgelo + (300 * i))
+                        {
+                            return room;
+                        }
+                    }
+                }
+
+                if (!IsMatching) break;
+
+                // 等待10秒
+                await Task.Delay(10 * 1000);
+                time += 10 * 1000;
+                if (time >= 50 * 1000)
+                {
+                    // 50秒后不再匹配Elo，直接返回第一个房间
+                    if (targets.Count > 0)
+                    {
+                        return targets[0];
+                    }
+                    break;
+                }
+                i++;
+            }
+
+            return General.HallInstance;
         }
 
         private void KickUser()
