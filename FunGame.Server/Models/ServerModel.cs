@@ -315,9 +315,14 @@ namespace Milimoe.FunGame.Server.Model
                     if (IsMatching && Socket != null)
                     {
                         Send(Socket, SocketMessageType.MatchRoom, Factory.GetRoom(1, target.Roomid));
+                        IsMatching = false;
                     }
                 }
-            }).OnError(ServerHelper.Error);
+            }).OnError(e =>
+            {
+                ServerHelper.Error(e);
+                IsMatching = false;
+            });
         }
 
         public void StopMatching()
