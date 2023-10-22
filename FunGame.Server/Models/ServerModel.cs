@@ -298,7 +298,6 @@ namespace Milimoe.FunGame.Server.Model
         {
             IsMatching = true;
             ServerHelper.WriteLine(GetClientName() + " 开始匹配。类型：" + roomtype_string);
-            Room room = General.HallInstance;
             MatchTask = TaskUtility.NewTask(async () =>
             {
                 if (IsMatching)
@@ -311,12 +310,12 @@ namespace Milimoe.FunGame.Server.Model
                         GameMode.TeamHasPass => RoomType.TeamHasPass,
                         _ => RoomType.All
                     };
-                    Room target = await MatchingRoom(roomtype, user);
+                    Room room = await MatchingRoom(roomtype, user);
                     if (IsMatching && Socket != null)
                     {
-                        Send(Socket, SocketMessageType.MatchRoom, Factory.GetRoom(1, target.Roomid));
-                        IsMatching = false;
+                        Send(Socket, SocketMessageType.MatchRoom, room);
                     }
+                    IsMatching = false;
                 }
             }).OnError(e =>
             {
