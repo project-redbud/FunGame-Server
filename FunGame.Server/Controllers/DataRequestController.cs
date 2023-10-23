@@ -17,7 +17,7 @@ namespace Milimoe.FunGame.Server.Controller
     public class DataRequestController
     {
         public ServerModel Server { get; }
-        public MySQLHelper SQLHelper => Server.SQLHelper;
+        public MySQLHelper SQLHelper => Server.SQLHelper ?? throw new MySQLConfigException();
         public MailSender? MailSender => Server.MailSender;
         public Authenticator Authenticator { get; }
         public DataRequestType LastRequest => _LastRequest;
@@ -645,7 +645,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string password = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Password) ?? "";
                 if (username.Trim() != "" && password.Trim() != "")
                 {
-                    Server.SQLHelper.Execute(UserQuery.Update_Password(username, password));
+                    Server.SQLHelper?.Execute(UserQuery.Update_Password(username, password));
                     if (SQLHelper.Success)
                     {
                         // 更新成功返回空值

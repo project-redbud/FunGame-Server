@@ -111,10 +111,6 @@ namespace Milimoe.FunGame.Server.Utility
         /// <param name="parameters">执行命令所用参数的集合</param> 
         public MySQLHelper(string script = "", bool IsOneTime = true, CommandType type = CommandType.Text, params MySqlParameter[] parameters)
         {
-            if (!Config.SQLMode)
-            {
-                throw new MySQLConfigException();
-            }
             Script = script;
             _IsOneTime = IsOneTime;
             CommandType = type;
@@ -128,10 +124,6 @@ namespace Milimoe.FunGame.Server.Utility
         /// <param name="ServerModel">SocketModel</param>
         public MySQLHelper(ServerModel ServerModel)
         {
-            if (!Config.SQLMode)
-            {
-                throw new MySQLConfigException();
-            }
             this.ServerModel = ServerModel;
             Script = "";
             CommandType = CommandType.Text;

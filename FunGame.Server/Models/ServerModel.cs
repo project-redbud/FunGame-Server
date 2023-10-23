@@ -28,7 +28,7 @@ namespace Milimoe.FunGame.Server.Model
             get => _Room;
             set => _Room = value;
         }
-        public MySQLHelper SQLHelper { get; }
+        public MySQLHelper? SQLHelper { get; }
         public MailSender? MailSender { get; }
 
         /**
@@ -50,7 +50,6 @@ namespace Milimoe.FunGame.Server.Model
         private readonly DataRequestController DataRequestController;
         private long LoginTime;
         private long LogoutTime;
-        private Core.Library.Common.Architecture.TaskAwaiter MatchTask;
         private bool IsMatching;
 
         public ServerModel(ServerSocket server, ClientSocket socket, bool running)
@@ -59,7 +58,7 @@ namespace Milimoe.FunGame.Server.Model
             _Socket = socket;
             _Running = running;
             Token = socket.Token;
-            SQLHelper = new(this);
+            if (Config.SQLMode) SQLHelper = new(this);
             MailSender = SmtpHelper.GetMailSender();
             DataRequestController = new(this);
         }
@@ -111,29 +110,34 @@ namespace Milimoe.FunGame.Server.Model
 
         public bool DataRequestHandler(ClientSocket socket, SocketObject SocketObject)
         {
-            Hashtable result = new();
-            DataRequestType type = DataRequestType.UnKnown;
-
-            if (SocketObject.Parameters.Length > 0)
+            if (SQLHelper != null)
             {
-                try
-                {
-                    type = SocketObject.GetParam<DataRequestType>(0);
-                    Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? new();
+                Hashtable result = new();
+                DataRequestType type = DataRequestType.UnKnown;
 
-                    SQLHelper.NewTransaction();
-                    result = DataRequestController.GetResultData(type, data);
-                    SQLHelper.Commit();
-                }
-                catch (Exception e)
+                if (SocketObject.Parameters.Length > 0)
                 {
-                    ServerHelper.Error(e);
-                    SQLHelper.Rollback();
-                    return Send(socket, SocketMessageType.DataRequest, type, result);
+                    try
+                    {
+                        type = SocketObject.GetParam<DataRequestType>(0);
+                        Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? new();
+
+                        SQLHelper.NewTransaction();
+                        result = DataRequestController.GetResultData(type, data);
+                        SQLHelper.Commit();
+                    }
+                    catch (Exception e)
+                    {
+                        ServerHelper.Error(e);
+                        SQLHelper.Rollback();
+                        return Send(socket, SocketMessageType.DataRequest, type, result);
+                    }
                 }
+
+                return Send(socket, SocketMessageType.DataRequest, type, result);
             }
 
-            return Send(socket, SocketMessageType.DataRequest, type, result);
+            return false;
         }
 
         public bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
@@ -209,7 +213,7 @@ namespace Milimoe.FunGame.Server.Model
             GetUsersCount();
             // CheckLogin
             LoginTime = DateTime.Now.Ticks;
-            SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, _Socket?.ClientIP.Split(':')[0] ?? "127.0.0.1"));
+            SQLHelper?.Execute(UserQuery.Update_CheckLogin(UserName, _Socket?.ClientIP.Split(':')[0] ?? "127.0.0.1"));
         }
 
         public bool IsLoginKey(Guid key)
@@ -297,7 +301,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             IsMatching = true;
             ServerHelper.WriteLine(GetClientName() + " 开始匹配。类型：" + roomtype_string);
-            MatchTask = TaskUtility.NewTask(async () =>
+            TaskUtility.NewTask(async () =>
             {
                 if (IsMatching)
                 {
@@ -407,8 +411,8 @@ namespace Milimoe.FunGame.Server.Model
             {
                 LogoutTime = DateTime.Now.Ticks;
                 int TotalMinutes = Convert.ToInt32((new DateTime(LogoutTime) - new DateTime(LoginTime)).TotalMinutes);
-                SQLHelper.Execute(UserQuery.Update_GameTime(User.Username, TotalMinutes));
-                if (SQLHelper.Result == SQLResult.Success)
+                SQLHelper?.Execute(UserQuery.Update_GameTime(User.Username, TotalMinutes));
+                if (SQLHelper?.Result == SQLResult.Success)
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 本次已游玩" + TotalMinutes + "分钟");
                 }
@@ -470,7 +474,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
                 Thread.Sleep(2 * 1000 * 3600);
-                SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(UserName));
+                SQLHelper?.ExecuteDataSet(UserQuery.Select_IsExistUsername(UserName));
             }
         }
 
@@ -478,7 +482,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             try
             {
-                SQLHelper.Close();
+                SQLHelper?.Close();
                 MailSender?.Dispose();
                 Socket?.Close();
                 _Socket = null;
