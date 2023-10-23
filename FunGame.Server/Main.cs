@@ -2,7 +2,6 @@
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
@@ -72,13 +71,9 @@ void StartServer()
             }
             ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
 
-            // 测试MySQL服务器连接
-            if (TestSQLConnection() != SQLResult.Success)
-            {
-                Running = false;
-                throw new SQLQueryException();
-            }
-            
+            // 创建全局SQLHelper
+            Config.InitSQLHelper();
+
             // 创建监听
             ListeningSocket = ServerSocket.StartListening();
 
@@ -204,13 +199,6 @@ bool SendRefuseConnect(ClientSocket socket, string msg)
         ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
         return false;
     }
-}
-
-SQLResult TestSQLConnection()
-{
-    MySQLHelper sql = new(ServerLoginLogs.Insert_ServerLoginLogs(Config.ServerName, Config.ServerKey));
-    sql.Execute();
-    return sql.Result;
 }
 
 void AddBannedList(ServerSocket server)

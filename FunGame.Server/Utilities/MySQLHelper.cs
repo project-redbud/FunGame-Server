@@ -1,11 +1,11 @@
 ﻿using System.Data;
-using MySql.Data.MySqlClient;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
-using Milimoe.FunGame.Server.Utility.DataUtility;
-using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Model;
+using Milimoe.FunGame.Server.Others;
+using Milimoe.FunGame.Server.Utility.DataUtility;
+using MySql.Data.MySqlClient;
 
 namespace Milimoe.FunGame.Server.Utility
 {
@@ -38,7 +38,6 @@ namespace Milimoe.FunGame.Server.Utility
         public override int Execute()
         {
             // _IsOneTime = true需要手动创建连接和关闭
-            if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
             _DataSet = new DataSet();
             _UpdateRows = MySQLManager.Execute(this, out _Result);
@@ -55,7 +54,6 @@ namespace Milimoe.FunGame.Server.Utility
         public override int Execute(string Script)
         {
             // _IsOneTime = true需要手动创建连接和关闭
-            if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
             this.Script = Script;
             _DataSet = new DataSet();
@@ -72,13 +70,12 @@ namespace Milimoe.FunGame.Server.Utility
         public override DataSet ExecuteDataSet()
         {
             // _IsOneTime = true需要手动创建连接和关闭
-            if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
             _DataSet = MySQLManager.ExecuteDataSet(this, out _Result, out _UpdateRows);
             if (_IsOneTime) Close();
             return DataSet;
         }
-        
+
         /// <summary>
         /// 执行指定的命令查询DataSet
         /// </summary>
@@ -88,7 +85,6 @@ namespace Milimoe.FunGame.Server.Utility
         public override DataSet ExecuteDataSet(string Script)
         {
             // _IsOneTime = true需要手动创建连接和关闭
-            if (_IsOneTime) _Connection = new MySQLConnection(out _ServerInfo);
             ServerHelper.WriteLine("SQLQuery -> " + Script);
             this.Script = Script;
             _DataSet = MySQLManager.ExecuteDataSet(this, out _Result, out _UpdateRows);
@@ -103,7 +99,7 @@ namespace Milimoe.FunGame.Server.Utility
         {
             // _IsOneTime = false需要手动调用此方法
             _Connection?.Close();
-            ServerHelper.WriteLine($"{GetClientName()} 已释放MySQL连接");
+            ServerHelper.WriteLine($"{(GetClientName() == string.Empty ? "" : GetClientName())}已释放MySQL连接");
         }
 
         /// <summary>
@@ -115,10 +111,15 @@ namespace Milimoe.FunGame.Server.Utility
         /// <param name="parameters">执行命令所用参数的集合</param> 
         public MySQLHelper(string script = "", bool IsOneTime = true, CommandType type = CommandType.Text, params MySqlParameter[] parameters)
         {
+            if (!Config.SQLMode)
+            {
+                throw new MySQLConfigException();
+            }
             Script = script;
             _IsOneTime = IsOneTime;
             CommandType = type;
             Parameters = parameters;
+            _Connection = new MySQLConnection(out _ServerInfo);
         }
 
         /// <summary>
@@ -127,6 +128,10 @@ namespace Milimoe.FunGame.Server.Utility
         /// <param name="ServerModel">SocketModel</param>
         public MySQLHelper(ServerModel ServerModel)
         {
+            if (!Config.SQLMode)
+            {
+                throw new MySQLConfigException();
+            }
             this.ServerModel = ServerModel;
             Script = "";
             CommandType = CommandType.Text;
@@ -150,7 +155,7 @@ namespace Milimoe.FunGame.Server.Utility
             _Transaction?.Commit();
             _Transaction = null;
         }
-        
+
         /// <summary>
         /// 回滚事务
         /// </summary>

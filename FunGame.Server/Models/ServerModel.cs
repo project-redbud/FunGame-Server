@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Data;
-using System.Net.Sockets;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
@@ -170,7 +169,7 @@ namespace Milimoe.FunGame.Server.Model
                 return false;
             }
         }
-        
+
         public void Start()
         {
             Task StreamReader = Task.Factory.StartNew(CreateStreamReader);
@@ -198,7 +197,7 @@ namespace Milimoe.FunGame.Server.Model
             UserName = username;
             CheckLoginKey = checkloginkey;
         }
-        
+
         public void CheckLogin()
         {
             // 创建User对象
@@ -234,7 +233,7 @@ namespace Milimoe.FunGame.Server.Model
                 serverTask.Send(serverTask.Socket, SocketMessageType.ForceLogout, msg);
             }
         }
-        
+
         public void Kick(string msg, string clientname = "")
         {
             // 将客户端踢出服务器
@@ -462,7 +461,7 @@ namespace Milimoe.FunGame.Server.Model
                 }
             }
         }
-        
+
         private void CreatePeriodicalQuerier()
         {
             Thread.Sleep(100);
