@@ -17,7 +17,7 @@ namespace Milimoe.FunGame.Server.Controller
     public class DataRequestController
     {
         public ServerModel Server { get; }
-        public MySQLHelper SQLHelper => Server.SQLHelper;
+        public MySQLHelper SQLHelper => Server.SQLHelper ?? throw new MySQLConfigException();
         public MailSender? MailSender => Server.MailSender;
         public Authenticator Authenticator { get; }
         public DataRequestType LastRequest => _LastRequest;
@@ -41,11 +41,11 @@ namespace Milimoe.FunGame.Server.Controller
             {
                 case DataRequestType.UnKnown:
                     break;
-                    
+
                 case DataRequestType.RunTime_Logout:
                     LogOut(data, result);
                     break;
-                    
+
                 case DataRequestType.Main_GetNotice:
                     GetServerNotice(result);
                     break;
@@ -57,18 +57,19 @@ namespace Milimoe.FunGame.Server.Controller
                 case DataRequestType.Main_UpdateRoom:
                     UpdateRoom(result);
                     break;
-                    
+
                 case DataRequestType.Main_IntoRoom:
                     IntoRoom(data, result);
                     break;
-                    
+
                 case DataRequestType.Main_QuitRoom:
                     QuitRoom(data, result);
                     break;
-                    
+
                 case DataRequestType.Main_MatchRoom:
+                    MatchRoom(data, result);
                     break;
-                    
+
                 case DataRequestType.Main_Chat:
                     Chat(data);
                     break;
@@ -76,11 +77,11 @@ namespace Milimoe.FunGame.Server.Controller
                 case DataRequestType.Reg_GetRegVerifyCode:
                     Reg(data, result);
                     break;
-                
+
                 case DataRequestType.Login_Login:
                     Login(data, result);
                     break;
-                
+
                 case DataRequestType.Login_GetFindPasswordVerifyCode:
                     ForgetPassword(data, result);
                     break;
@@ -180,6 +181,7 @@ namespace Milimoe.FunGame.Server.Controller
                         if (SQLHelper.Result == SQLResult.Success && SQLHelper.DataSet.Tables[0].Rows.Count > 0)
                         {
                             room = Factory.GetRoom(SQLHelper.DataSet.Tables[0].Rows[0], user);
+                            Config.RoomList.AddRoom(room);
                         }
                     }
                 }
@@ -194,13 +196,7 @@ namespace Milimoe.FunGame.Server.Controller
         private void UpdateRoom(Hashtable ResultData)
         {
             ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> UpdateRoom");
-            Config.RoomList ??= new();
-            Config.RoomList.Clear();
-            DataSet DsRoomTemp = SQLHelper.ExecuteDataSet(RoomQuery.Select_Rooms);
-            DataSet DsUserTemp = SQLHelper.ExecuteDataSet(UserQuery.Select_Users);
-            List<Room> rooms = Factory.GetRooms(DsRoomTemp, DsUserTemp);
-            Config.RoomList.AddRooms(rooms); // 更新服务器中的房间列表
-            ResultData.Add("rooms", rooms); // 传RoomList
+            ResultData.Add("rooms", Config.RoomList.ListRoom); // 传RoomList
         }
 
         /// <summary>
@@ -217,7 +213,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
                 bool isMaster = DataRequest.GetHashtableJsonObject<bool>(RequestData, "isMaster");
 
-                if (roomid != "-1")
+                if (roomid != "-1" && Config.RoomList.IsExist(roomid))
                 {
                     Config.RoomList.QuitRoom(roomid, Server.User);
                     Room Room = Config.RoomList[roomid] ?? General.HallInstance;
@@ -260,7 +256,7 @@ namespace Milimoe.FunGame.Server.Controller
             }
             ResultData.Add("result", result);
         }
-        
+
         /// <summary>
         /// 进入房间
         /// </summary>
@@ -276,14 +272,22 @@ namespace Milimoe.FunGame.Server.Controller
 
                 if (roomid != "-1")
                 {
-                    Config.RoomList.IntoRoom(roomid, Server.User);
-                    Server.IntoRoom(roomid);
-                    result = true;
+                    SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(roomid));
+                    if (SQLHelper.Success)
+                    {
+                        Config.RoomList.IntoRoom(roomid, Server.User);
+                        Server.IntoRoom(roomid);
+                        result = true;
+                    }
+                    else
+                    {
+                        Config.RoomList.RemoveRoom(roomid);
+                    }
                 }
             }
             ResultData.Add("result", result);
         }
-        
+
         /// <summary>
         /// 匹配房间
         /// </summary>
@@ -291,16 +295,25 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="ResultData"></param>
         private void MatchRoom(Hashtable RequestData, Hashtable ResultData)
         {
-            bool result = false;
-            string roomid = "-1";
+            bool result = true;
             if (RequestData.Count >= 1)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom");
-                string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.All;
-                User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "master") ?? Factory.GetUser();
+                bool iscancel = DataRequest.GetHashtableJsonObject<bool>(RequestData, "iscancel");
+                if (!iscancel)
+                {
+                    ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom : Start");
+                    string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.All;
+                    User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "matcher") ?? Factory.GetUser();
+                    Server.StartMatching(roomtype_string, user);
+                }
+                else
+                {
+                    // 取消匹配
+                    ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom : Cancel");
+                    Server.StopMatching();
+                }
             }
             ResultData.Add("result", result);
-            ResultData.Add("roomid", roomid);
         }
 
         /// <summary>
@@ -639,7 +652,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string password = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Password) ?? "";
                 if (username.Trim() != "" && password.Trim() != "")
                 {
-                    Server.SQLHelper.Execute(UserQuery.Update_Password(username, password));
+                    Server.SQLHelper?.Execute(UserQuery.Update_Password(username, password));
                     if (SQLHelper.Success)
                     {
                         // 更新成功返回空值

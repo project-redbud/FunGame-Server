@@ -28,7 +28,7 @@ namespace Milimoe.FunGame.Server.Model
             get => _Room;
             set => _Room = value;
         }
-        public MySQLHelper SQLHelper { get; }
+        public MySQLHelper? SQLHelper { get; }
         public MailSender? MailSender { get; }
 
         /**
@@ -50,6 +50,7 @@ namespace Milimoe.FunGame.Server.Model
         private readonly DataRequestController DataRequestController;
         private long LoginTime;
         private long LogoutTime;
+        private bool IsMatching;
 
         public ServerModel(ServerSocket server, ClientSocket socket, bool running)
         {
@@ -57,7 +58,7 @@ namespace Milimoe.FunGame.Server.Model
             _Socket = socket;
             _Running = running;
             Token = socket.Token;
-            SQLHelper = new(this);
+            if (Config.SQLMode) SQLHelper = new(this);
             MailSender = SmtpHelper.GetMailSender();
             DataRequestController = new(this);
         }
@@ -109,29 +110,34 @@ namespace Milimoe.FunGame.Server.Model
 
         public bool DataRequestHandler(ClientSocket socket, SocketObject SocketObject)
         {
-            Hashtable result = new();
-            DataRequestType type = DataRequestType.UnKnown;
-
-            if (SocketObject.Parameters.Length > 0)
+            if (SQLHelper != null)
             {
-                try
-                {
-                    type = SocketObject.GetParam<DataRequestType>(0);
-                    Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? new();
+                Hashtable result = new();
+                DataRequestType type = DataRequestType.UnKnown;
 
-                    SQLHelper.NewTransaction();
-                    result = DataRequestController.GetResultData(type, data);
-                    SQLHelper.Commit();
-                }
-                catch (Exception e)
+                if (SocketObject.Parameters.Length > 0)
                 {
-                    ServerHelper.Error(e);
-                    SQLHelper.Rollback();
-                    return Send(socket, SocketMessageType.DataRequest, type, result);
+                    try
+                    {
+                        type = SocketObject.GetParam<DataRequestType>(0);
+                        Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? new();
+
+                        SQLHelper.NewTransaction();
+                        result = DataRequestController.GetResultData(type, data);
+                        SQLHelper.Commit();
+                    }
+                    catch (Exception e)
+                    {
+                        ServerHelper.Error(e);
+                        SQLHelper.Rollback();
+                        return Send(socket, SocketMessageType.DataRequest, type, result);
+                    }
                 }
+
+                return Send(socket, SocketMessageType.DataRequest, type, result);
             }
 
-            return Send(socket, SocketMessageType.DataRequest, type, result);
+            return false;
         }
 
         public bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
@@ -167,7 +173,7 @@ namespace Milimoe.FunGame.Server.Model
                 return false;
             }
         }
-        
+
         public void Start()
         {
             Task StreamReader = Task.Factory.StartNew(CreateStreamReader);
@@ -195,7 +201,7 @@ namespace Milimoe.FunGame.Server.Model
             UserName = username;
             CheckLoginKey = checkloginkey;
         }
-        
+
         public void CheckLogin()
         {
             // 创建User对象
@@ -207,7 +213,7 @@ namespace Milimoe.FunGame.Server.Model
             GetUsersCount();
             // CheckLogin
             LoginTime = DateTime.Now.Ticks;
-            SQLHelper.Execute(UserQuery.Update_CheckLogin(UserName, _Socket?.ClientIP.Split(':')[0] ?? "127.0.0.1"));
+            SQLHelper?.Execute(UserQuery.Update_CheckLogin(UserName, _Socket?.ClientIP.Split(':')[0] ?? "127.0.0.1"));
         }
 
         public bool IsLoginKey(Guid key)
@@ -231,7 +237,7 @@ namespace Milimoe.FunGame.Server.Model
                 serverTask.Send(serverTask.Socket, SocketMessageType.ForceLogout, msg);
             }
         }
-        
+
         public void Kick(string msg, string clientname = "")
         {
             // 将客户端踢出服务器
@@ -291,6 +297,90 @@ namespace Milimoe.FunGame.Server.Model
             return Send(socket, SocketMessageType.HeartBeat, "");
         }
 
+        public void StartMatching(string roomtype_string, User user)
+        {
+            IsMatching = true;
+            ServerHelper.WriteLine(GetClientName() + " 开始匹配。类型：" + roomtype_string);
+            TaskUtility.NewTask(async () =>
+            {
+                if (IsMatching)
+                {
+                    RoomType roomtype = roomtype_string switch
+                    {
+                        GameMode.Mix => RoomType.Mix,
+                        GameMode.Team => RoomType.Team,
+                        GameMode.MixHasPass => RoomType.MixHasPass,
+                        GameMode.TeamHasPass => RoomType.TeamHasPass,
+                        _ => RoomType.All
+                    };
+                    Room room = await MatchingRoom(roomtype, user);
+                    if (IsMatching && Socket != null)
+                    {
+                        Send(Socket, SocketMessageType.MatchRoom, room);
+                    }
+                    IsMatching = false;
+                }
+            }).OnError(e =>
+            {
+                ServerHelper.Error(e);
+                IsMatching = false;
+            });
+        }
+
+        public void StopMatching()
+        {
+            if (IsMatching)
+            {
+                ServerHelper.WriteLine(GetClientName() + " 取消了匹配。");
+                IsMatching = false;
+            }
+        }
+
+        private async Task<Room> MatchingRoom(RoomType roomtype, User user)
+        {
+            int i = 1;
+            int time = 0;
+            while (IsMatching)
+            {
+                // 先列出符合条件的房间
+                List<Room> targets = Config.RoomList.ListRoom.Where(r => r.RoomType == roomtype).ToList();
+
+                // 匹配Elo
+                foreach (Room room in targets)
+                {
+                    // 计算房间平均Elo
+                    List<User> players = Config.RoomList.GetPlayerList(room.Roomid);
+                    if (players.Count > 0)
+                    {
+                        decimal avgelo = players.Sum(u => u.Statistics.EloStats?[0] ?? 0M) / players.Count;
+                        decimal userelo = user.Statistics.EloStats?[0] ?? 0M;
+                        if (userelo >= avgelo - (300 * i) && userelo <= avgelo + (300 * i))
+                        {
+                            return room;
+                        }
+                    }
+                }
+
+                if (!IsMatching) break;
+
+                // 等待10秒
+                await Task.Delay(10 * 1000);
+                time += 10 * 1000;
+                if (time >= 50 * 1000)
+                {
+                    // 50秒后不再匹配Elo，直接返回第一个房间
+                    if (targets.Count > 0)
+                    {
+                        return targets[0];
+                    }
+                    break;
+                }
+                i++;
+            }
+
+            return General.HallInstance;
+        }
+
         private void KickUser()
         {
             if (User.Id != 0)
@@ -321,8 +411,8 @@ namespace Milimoe.FunGame.Server.Model
             {
                 LogoutTime = DateTime.Now.Ticks;
                 int TotalMinutes = Convert.ToInt32((new DateTime(LogoutTime) - new DateTime(LoginTime)).TotalMinutes);
-                SQLHelper.Execute(UserQuery.Update_GameTime(User.Username, TotalMinutes));
-                if (SQLHelper.Result == SQLResult.Success)
+                SQLHelper?.Execute(UserQuery.Update_GameTime(User.Username, TotalMinutes));
+                if (SQLHelper?.Result == SQLResult.Success)
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 本次已游玩" + TotalMinutes + "分钟");
                 }
@@ -375,7 +465,7 @@ namespace Milimoe.FunGame.Server.Model
                 }
             }
         }
-        
+
         private void CreatePeriodicalQuerier()
         {
             Thread.Sleep(100);
@@ -384,7 +474,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
                 Thread.Sleep(2 * 1000 * 3600);
-                SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(UserName));
+                SQLHelper?.ExecuteDataSet(UserQuery.Select_IsExistUsername(UserName));
             }
         }
 
@@ -392,7 +482,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             try
             {
-                SQLHelper.Close();
+                SQLHelper?.Close();
                 MailSender?.Dispose();
                 Socket?.Close();
                 _Socket = null;

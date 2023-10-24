@@ -1,8 +1,8 @@
 ﻿using System.Collections;
+using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Server.Others;
-using Milimoe.FunGame.Core.Api.Transmittal;
 
 namespace Milimoe.FunGame.Server.Utility
 {
@@ -23,7 +23,7 @@ namespace Milimoe.FunGame.Server.Utility
         {
             if (msg.Trim() != "") Console.Write("\r" + GetPrefix() + msg + "> ");
         }
-        
+
         public static void WriteLine(string msg)
         {
             if (msg.Trim() != "") Console.Write("\r" + GetPrefix() + msg + "\n\r> ");
