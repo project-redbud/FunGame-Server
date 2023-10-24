@@ -272,9 +272,17 @@ namespace Milimoe.FunGame.Server.Controller
 
                 if (roomid != "-1")
                 {
-                    Config.RoomList.IntoRoom(roomid, Server.User);
-                    Server.IntoRoom(roomid);
-                    result = true;
+                    SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(roomid));
+                    if (SQLHelper.Success)
+                    {
+                        Config.RoomList.IntoRoom(roomid, Server.User);
+                        Server.IntoRoom(roomid);
+                        result = true;
+                    }
+                    else
+                    {
+                        Config.RoomList.RemoveRoom(roomid);
+                    }
                 }
             }
             ResultData.Add("result", result);
