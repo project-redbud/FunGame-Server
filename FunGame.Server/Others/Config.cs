@@ -29,7 +29,7 @@ namespace Milimoe.FunGame.Server.Others
         public static Encoding DefaultEncoding { get; } = General.DefaultEncoding; // 默认传输字符集
         public static FunGameInfo.FunGame FunGameType { get; } = FunGameInfo.FunGame.FunGame_Server; // FunGame Runtime
         public static Hashtable OrderList { get; } = new(); // 服务器指令列表
-        public static RoomList RoomList { get; set; } = new(); // 在线房间列表
+        public static RoomList RoomList { get; } = new(); // 在线房间列表
         public static bool SQLMode { get; set; } = false; // 是否运行数据库模式
         public static SQLHelper SQLHelper
         {

@@ -79,7 +79,6 @@ void StartServer()
 
             // 开始监听连接
             AddBannedList(ListeningSocket);
-            Config.RoomList = new();
             ServerHelper.WriteLine("Listen -> " + Config.ServerPort);
             ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
 

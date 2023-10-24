@@ -182,7 +182,6 @@ namespace Milimoe.FunGame.Server.Controller
                         {
                             room = Factory.GetRoom(SQLHelper.DataSet.Tables[0].Rows[0], user);
                             Config.RoomList.AddRoom(room);
-                            Config.RoomList.IntoRoom(room.Roomid, user);
                         }
                     }
                 }
