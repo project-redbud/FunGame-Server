@@ -367,7 +367,7 @@ namespace Milimoe.FunGame.Server.Controller
 
                 if (roomid != "-1" && user.Id != 0)
                 {
-                    Config.RoomList.SetNotReady(roomid, user);
+                    Config.RoomList.CancelReady(roomid, user);
                     result = true;
                 }
             }
