@@ -73,6 +73,14 @@ namespace Milimoe.FunGame.Server.Controller
                 case DataRequestType.Main_Chat:
                     Chat(data);
                     break;
+                    
+                case DataRequestType.Main_Ready:
+                    SetReady(data, result);
+                    break;
+                    
+                case DataRequestType.Main_CancelReady:
+                    CancelReady(data, result);
+                    break;
 
                 case DataRequestType.Reg_GetRegVerifyCode:
                     Reg(data, result);
@@ -314,6 +322,58 @@ namespace Milimoe.FunGame.Server.Controller
                 }
             }
             ResultData.Add("result", result);
+        }
+
+        /// <summary>
+        /// 设置已准备状态
+        /// </summary>
+        /// <param name="RequestData"></param>
+        /// <param name="ResultData"></param>
+        private void SetReady(Hashtable RequestData, Hashtable ResultData)
+        {
+            bool result = false;
+            string roomid = "-1";
+            if (RequestData.Count >= 2)
+            {
+                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> SetReady");
+                roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
+                User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "user") ?? General.UnknownUserInstance;
+
+                if (roomid != "-1" && user.Id != 0)
+                {
+                    Config.RoomList.SetReady(roomid, user);
+                    result = true;
+                }
+            }
+            ResultData.Add("result", result);
+            ResultData.Add("ready", Config.RoomList.GetReadyPlayerList(roomid));
+            ResultData.Add("notready", Config.RoomList.GetNotReadyPlayerList(roomid));
+        }
+        
+        /// <summary>
+        /// 取消已准备状态
+        /// </summary>
+        /// <param name="RequestData"></param>
+        /// <param name="ResultData"></param>
+        private void CancelReady(Hashtable RequestData, Hashtable ResultData)
+        {
+            bool result = false;
+            string roomid = "-1";
+            if (RequestData.Count >= 2)
+            {
+                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> SetReady");
+                roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
+                User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "user") ?? General.UnknownUserInstance;
+
+                if (roomid != "-1" && user.Id != 0)
+                {
+                    Config.RoomList.SetNotReady(roomid, user);
+                    result = true;
+                }
+            }
+            ResultData.Add("result", result);
+            ResultData.Add("ready", Config.RoomList.GetReadyPlayerList(roomid));
+            ResultData.Add("notready", Config.RoomList.GetNotReadyPlayerList(roomid));
         }
 
         /// <summary>
