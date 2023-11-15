@@ -352,8 +352,8 @@ namespace Milimoe.FunGame.Server.Model
                     List<User> players = Config.RoomList.GetPlayerList(room.Roomid);
                     if (players.Count > 0)
                     {
-                        decimal avgelo = players.Sum(u => u.Statistics.EloStats?[0] ?? 0M) / players.Count;
-                        decimal userelo = user.Statistics.EloStats?[0] ?? 0M;
+                        decimal avgelo = players.Sum(u => u.Statistics.EloStats.ContainsKey(0) ? u.Statistics.EloStats[0] : 0M) / players.Count;
+                        decimal userelo = user.Statistics.EloStats.ContainsKey(0) ? user.Statistics.EloStats[0] : 0M;
                         if (userelo >= avgelo - (300 * i) && userelo <= avgelo + (300 * i))
                         {
                             return room;
