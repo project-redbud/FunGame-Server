@@ -223,6 +223,7 @@ namespace Milimoe.FunGame.Server.Controller
 
                 if (roomid != "-1" && Config.RoomList.IsExist(roomid))
                 {
+                    Config.RoomList.CancelReady(roomid, Server.User);
                     Config.RoomList.QuitRoom(roomid, Server.User);
                     Room Room = Config.RoomList[roomid] ?? General.HallInstance;
                     // 是否是房主
@@ -333,13 +334,13 @@ namespace Milimoe.FunGame.Server.Controller
         {
             bool result = false;
             string roomid = "-1";
-            if (RequestData.Count >= 2)
+            if (RequestData.Count >= 1)
             {
                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> SetReady");
                 roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
-                User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "user") ?? General.UnknownUserInstance;
+                User user = Server.User;
 
-                if (roomid != "-1" && user.Id != 0)
+                if (roomid != "-1" && user.Id != 0 && !Config.RoomList.GetReadyPlayerList(roomid).Contains(user))
                 {
                     Config.RoomList.SetReady(roomid, user);
                     result = true;
@@ -359,13 +360,13 @@ namespace Milimoe.FunGame.Server.Controller
         {
             bool result = false;
             string roomid = "-1";
-            if (RequestData.Count >= 2)
+            if (RequestData.Count >= 1)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> SetReady");
+                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> CancelReady");
                 roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
-                User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "user") ?? General.UnknownUserInstance;
+                User user = Server.User;
 
-                if (roomid != "-1" && user.Id != 0)
+                if (roomid != "-1" && user.Id != 0 && Config.RoomList.GetReadyPlayerList(roomid).Contains(user))
                 {
                     Config.RoomList.CancelReady(roomid, user);
                     result = true;
