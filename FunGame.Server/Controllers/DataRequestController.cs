@@ -81,6 +81,10 @@ namespace Milimoe.FunGame.Server.Controller
                 case DataRequestType.Main_CancelReady:
                     CancelReady(data, result);
                     break;
+                    
+                case DataRequestType.Main_StartGame:
+                    StartGame(data, result);
+                    break;
 
                 case DataRequestType.Reg_GetRegVerifyCode:
                     Reg(data, result);
@@ -388,6 +392,43 @@ namespace Milimoe.FunGame.Server.Controller
                 string msg = DataRequest.GetHashtableJsonObject<string>(RequestData, "msg") ?? "";
                 if (msg.Trim() != "") Server.Chat(msg);
             }
+        }
+
+        /// <summary>
+        /// 开始游戏
+        /// </summary>
+        /// <param name="RequestData"></param>
+        /// <param name="ResultData"></param>
+        private void StartGame(Hashtable RequestData, Hashtable ResultData)
+        {
+            bool result = false;
+            if (RequestData.Count >= 2)
+            {
+                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> StartGame");
+                string roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
+                bool isMaster = DataRequest.GetHashtableJsonObject<bool>(RequestData, "isMaster");
+
+                if (roomid != "-1")
+                {
+                    if (isMaster)
+                    {
+                        string[] usernames = Config.RoomList.GetNotReadyPlayerList(roomid).Select(user => user.Username).ToArray();
+                        if (usernames.Length > 0)
+                        {
+                            // 提醒玩家准备
+                            Server.SendSystemMessage("房主即将开始游戏，请准备！", 2, 10, usernames);
+                            result = true;
+                        }
+                    }
+                    else
+                    {
+                        // 提醒房主开始游戏
+                        Server.SendSystemMessage("房间中的玩家已请求你立即开始游戏。", 2, 10, Config.RoomList[roomid].RoomMaster.Username);
+                        result = true;
+                    }
+                }
+            }
+            ResultData.Add("result", result);
         }
 
         #endregion

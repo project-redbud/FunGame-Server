@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Data;
+using System.Linq;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
@@ -264,6 +265,18 @@ namespace Milimoe.FunGame.Server.Model
                 }
             }
         }
+        
+        public void SendSystemMessage(string msg, int showtype, int autoclose, params string[] usernames)
+        {
+            ServerHelper.WriteLine(msg);
+            foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.UserName)))
+            {
+                if (serverTask != null && serverTask.Socket != null)
+                {
+                    serverTask.Send(serverTask.Socket, SocketMessageType.System, msg, showtype, autoclose);
+                }
+            }
+        }
 
         public void IntoRoom(string roomid)
         {
@@ -399,6 +412,7 @@ namespace Milimoe.FunGame.Server.Model
             if (User.Id != 0 && this != null)
             {
                 Server.AddUser(User.Username, this);
+                UserName = User.Username;
                 ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
                 return true;
             }
