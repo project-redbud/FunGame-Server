@@ -276,7 +276,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
         
-        public void StartGame(string roomid, params string[] usernames)
+        public void StartGame(string roomid, List<User> users, params string[] usernames)
         {
             Room room = General.HallInstance;
             if (roomid != "-1")
@@ -288,7 +288,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 if (serverTask != null && serverTask.Socket != null)
                 {
-                    serverTask.Send(serverTask.Socket, SocketMessageType.StartGame, room);
+                    serverTask.Send(serverTask.Socket, SocketMessageType.StartGame, room, users);
                 }
             }
         }
