@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Data;
-using System.Linq;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
@@ -266,14 +265,30 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
         
-        public void SendSystemMessage(string msg, int showtype, int autoclose, params string[] usernames)
+        public void SendSystemMessage(ShowMessageType showtype, string msg, string title, int autoclose, params string[] usernames)
         {
-            ServerHelper.WriteLine(msg);
             foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.UserName)))
             {
                 if (serverTask != null && serverTask.Socket != null)
                 {
-                    serverTask.Send(serverTask.Socket, SocketMessageType.System, msg, showtype, autoclose);
+                    serverTask.Send(serverTask.Socket, SocketMessageType.System, showtype, msg, title, autoclose);
+                }
+            }
+        }
+        
+        public void StartGame(string roomid, params string[] usernames)
+        {
+            Room room = General.HallInstance;
+            if (roomid != "-1")
+            {
+                room = Config.RoomList[roomid];
+            }
+            if (room.Roomid == "-1") return;
+            foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.User.Username)))
+            {
+                if (serverTask != null && serverTask.Socket != null)
+                {
+                    serverTask.Send(serverTask.Socket, SocketMessageType.StartGame, room);
                 }
             }
         }

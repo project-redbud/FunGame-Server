@@ -25,6 +25,7 @@ namespace Milimoe.FunGame.Server.Controller
         private string ForgetVerify = "";
         private string RegVerify = "";
         private DataRequestType _LastRequest = DataRequestType.UnKnown;
+        private bool[] isReadyCheckCD = new bool[] { false, false };
 
         public DataRequestController(ServerModel server)
         {
@@ -415,16 +416,44 @@ namespace Milimoe.FunGame.Server.Controller
                         string[] usernames = Config.RoomList.GetNotReadyPlayerList(roomid).Select(user => user.Username).ToArray();
                         if (usernames.Length > 0)
                         {
-                            // 提醒玩家准备
-                            Server.SendSystemMessage("房主即将开始游戏，请准备！", 2, 10, usernames);
+                            if (isReadyCheckCD[0] == false)
+                            {
+                                // 提醒玩家准备
+                                Server.SendSystemMessage(ShowMessageType.None, "还有玩家尚未准备，无法开始游戏。", "", 0, Server.User.Username);
+                                Server.SendSystemMessage(ShowMessageType.Tip, "房主即将开始游戏，请准备！", "请准备就绪", 10, usernames);
+                                isReadyCheckCD[0] = true;
+                                TaskUtility.RunTimer(() =>
+                                {
+                                    isReadyCheckCD[0] = false;
+                                }, 15000);
+                            }
+                            else
+                            {
+                                Server.SendSystemMessage(ShowMessageType.None, "还有玩家尚未准备，无法开始游戏。15秒内只能发送一次准备提醒。", "", 0, Server.User.Username);
+                            }
+                        }
+                        else
+                        {
+                            usernames = Config.RoomList.GetPlayerList(roomid).Select(user => user.Username).ToArray();
+                            Server.SendSystemMessage(ShowMessageType.None, "所有玩家均已准备，游戏将在10秒后开始。", "", 0, usernames);
+                            Server.StartGame(roomid, usernames);
                             result = true;
                         }
                     }
-                    else
+                    else if (isReadyCheckCD[1] == false)
                     {
                         // 提醒房主开始游戏
-                        Server.SendSystemMessage("房间中的玩家已请求你立即开始游戏。", 2, 10, Config.RoomList[roomid].RoomMaster.Username);
-                        result = true;
+                        Server.SendSystemMessage(ShowMessageType.None, "已提醒房主立即开始游戏。", "", 0, Server.User.Username);
+                        Server.SendSystemMessage(ShowMessageType.Tip, "房间中的玩家已请求你立即开始游戏。", "请求开始", 10, Config.RoomList[roomid].RoomMaster.Username);
+                        isReadyCheckCD[1] = true;
+                        TaskUtility.RunTimer(() =>
+                        {
+                            isReadyCheckCD[1] = false;
+                        }, 15000);
+                    }
+                    else
+                    {
+                        Server.SendSystemMessage(ShowMessageType.None, "15秒内只能发送一次提醒，请稍后再试。", "", 0, Server.User.Username);
                     }
                 }
             }
@@ -603,7 +632,7 @@ namespace Milimoe.FunGame.Server.Controller
                     // 验证登录
                     if (username != null && password != null)
                     {
-                        ServerHelper.WriteLine("[" + DataRequest.GetTypeString(DataRequestType.Login_Login) + "] UserName: " + username);
+                        ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] UserName: " + username);
                         SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password));
                         if (SQLHelper.Result == SQLResult.Success)
                         {
@@ -613,12 +642,12 @@ namespace Milimoe.FunGame.Server.Controller
                                 SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey));
                                 if (SQLHelper.Result == SQLResult.Success)
                                 {
-                                    ServerHelper.WriteLine("[" + DataRequest.GetTypeString(DataRequestType.Login_Login) + "] AutoKey: 已确认");
+                                    ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] AutoKey: 已确认");
                                 }
                                 else
                                 {
                                     msg = "AutoKey不正确，拒绝自动登录！";
-                                    ServerHelper.WriteLine("[" + DataRequest.GetTypeString(DataRequestType.Login_Login) + "] " + msg);
+                                    ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] " + msg);
                                 }
                             }
                             key = Guid.NewGuid();
