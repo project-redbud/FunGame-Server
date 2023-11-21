@@ -435,7 +435,7 @@ namespace Milimoe.FunGame.Server.Controller
                         else
                         {
                             List<User> users = Config.RoomList.GetPlayerList(roomid);
-                            usernames = Config.RoomList.GetPlayerList(roomid).Select(user => user.Username).ToArray();
+                            usernames = users.Select(user => user.Username).ToArray();
                             Server.SendSystemMessage(ShowMessageType.None, "所有玩家均已准备，游戏将在10秒后开始。", "", 0, usernames);
                             Server.StartGame(roomid, users, usernames);
                             result = true;
