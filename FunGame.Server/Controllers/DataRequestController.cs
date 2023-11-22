@@ -435,10 +435,17 @@ namespace Milimoe.FunGame.Server.Controller
                         else
                         {
                             List<User> users = Config.RoomList.GetPlayerList(roomid);
-                            usernames = users.Select(user => user.Username).ToArray();
-                            Server.SendSystemMessage(ShowMessageType.None, "所有玩家均已准备，游戏将在10秒后开始。", "", 0, usernames);
-                            Server.StartGame(roomid, users, usernames);
-                            result = true;
+                            if (users.Count < 2)
+                            {
+                                Server.SendSystemMessage(ShowMessageType.None, "玩家数量不足，无法开始游戏。", "", 0, Server.User.Username);
+                            }
+                            else
+                            {
+                                usernames = users.Select(user => user.Username).ToArray();
+                                Server.SendSystemMessage(ShowMessageType.None, "所有玩家均已准备，游戏将在10秒后开始。", "", 0, usernames);
+                                Server.StartGame(roomid, users, usernames);
+                                result = true;
+                            }
                         }
                     }
                     else if (isReadyCheckCD[1] == false)

@@ -291,6 +291,17 @@ namespace Milimoe.FunGame.Server.Model
                     serverTask.Send(serverTask.Socket, SocketMessageType.StartGame, room, users);
                 }
             }
+            TaskUtility.RunTimer(() =>
+            {
+                foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.User.Username)))
+                {
+                    if (serverTask != null && serverTask.Socket != null)
+                    {
+                        Config.RoomList.CancelReady(roomid, serverTask.User);
+                        serverTask.Send(serverTask.Socket, SocketMessageType.EndGame, room, users);
+                    }
+                }
+            }, 20 * 1000);
         }
 
         public void IntoRoom(string roomid)
