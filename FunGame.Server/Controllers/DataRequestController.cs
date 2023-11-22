@@ -177,14 +177,7 @@ namespace Milimoe.FunGame.Server.Controller
 
                 if (!string.IsNullOrWhiteSpace(roomtype_string) && user.Id != 0)
                 {
-                    RoomType roomtype = roomtype_string switch
-                    {
-                        GameMode.Mix => RoomType.Mix,
-                        GameMode.Team => RoomType.Team,
-                        GameMode.MixHasPass => RoomType.MixHasPass,
-                        GameMode.TeamHasPass => RoomType.TeamHasPass,
-                        _ => RoomType.All
-                    };
+                    RoomType roomtype = GameMode.GetRoomType(roomtype_string);
                     string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
                     SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, roomtype, password ?? ""));
                     if (SQLHelper.Result == SQLResult.Success)

@@ -344,14 +344,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 if (IsMatching)
                 {
-                    RoomType roomtype = roomtype_string switch
-                    {
-                        GameMode.Mix => RoomType.Mix,
-                        GameMode.Team => RoomType.Team,
-                        GameMode.MixHasPass => RoomType.MixHasPass,
-                        GameMode.TeamHasPass => RoomType.TeamHasPass,
-                        _ => RoomType.All
-                    };
+                    RoomType roomtype = GameMode.GetRoomType(roomtype_string);
                     Room room = await MatchingRoom(roomtype, user);
                     if (IsMatching && Socket != null)
                     {
