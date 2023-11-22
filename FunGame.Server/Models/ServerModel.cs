@@ -264,6 +264,45 @@ namespace Milimoe.FunGame.Server.Model
                 }
             }
         }
+        
+        public void SendSystemMessage(ShowMessageType showtype, string msg, string title, int autoclose, params string[] usernames)
+        {
+            foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.UserName)))
+            {
+                if (serverTask != null && serverTask.Socket != null)
+                {
+                    serverTask.Send(serverTask.Socket, SocketMessageType.System, showtype, msg, title, autoclose);
+                }
+            }
+        }
+        
+        public void StartGame(string roomid, List<User> users, params string[] usernames)
+        {
+            Room room = General.HallInstance;
+            if (roomid != "-1")
+            {
+                room = Config.RoomList[roomid];
+            }
+            if (room.Roomid == "-1") return;
+            foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.User.Username)))
+            {
+                if (serverTask != null && serverTask.Socket != null)
+                {
+                    serverTask.Send(serverTask.Socket, SocketMessageType.StartGame, room, users);
+                }
+            }
+            TaskUtility.RunTimer(() =>
+            {
+                foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.User.Username)))
+                {
+                    if (serverTask != null && serverTask.Socket != null)
+                    {
+                        Config.RoomList.CancelReady(roomid, serverTask.User);
+                        serverTask.Send(serverTask.Socket, SocketMessageType.EndGame, room, users);
+                    }
+                }
+            }, 20 * 1000);
+        }
 
         public void IntoRoom(string roomid)
         {
@@ -305,14 +344,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 if (IsMatching)
                 {
-                    RoomType roomtype = roomtype_string switch
-                    {
-                        GameMode.Mix => RoomType.Mix,
-                        GameMode.Team => RoomType.Team,
-                        GameMode.MixHasPass => RoomType.MixHasPass,
-                        GameMode.TeamHasPass => RoomType.TeamHasPass,
-                        _ => RoomType.All
-                    };
+                    RoomType roomtype = GameMode.GetRoomType(roomtype_string);
                     Room room = await MatchingRoom(roomtype, user);
                     if (IsMatching && Socket != null)
                     {
@@ -352,8 +384,8 @@ namespace Milimoe.FunGame.Server.Model
                     List<User> players = Config.RoomList.GetPlayerList(room.Roomid);
                     if (players.Count > 0)
                     {
-                        decimal avgelo = players.Sum(u => u.Statistics.EloStats?[0] ?? 0M) / players.Count;
-                        decimal userelo = user.Statistics.EloStats?[0] ?? 0M;
+                        decimal avgelo = players.Sum(u => u.Statistics.EloStats.ContainsKey(0) ? u.Statistics.EloStats[0] : 0M) / players.Count;
+                        decimal userelo = user.Statistics.EloStats.ContainsKey(0) ? user.Statistics.EloStats[0] : 0M;
                         if (userelo >= avgelo - (300 * i) && userelo <= avgelo + (300 * i))
                         {
                             return room;
@@ -399,6 +431,7 @@ namespace Milimoe.FunGame.Server.Model
             if (User.Id != 0 && this != null)
             {
                 Server.AddUser(User.Username, this);
+                UserName = User.Username;
                 ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
                 return true;
             }
