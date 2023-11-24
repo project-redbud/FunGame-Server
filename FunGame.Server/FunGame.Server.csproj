@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationIcon>logo.ico</ApplicationIcon>
@@ -36,8 +36,7 @@
 
   <ItemGroup>
     <Reference Include="FunGame.Core">
-      <HintPath>..\..\FunGame.Core\bin\Debug\net7.0\FunGame.Core.dll</HintPath>
-      <Private>True</Private>
+      <HintPath>..\..\FunGame.Core\bin\Debug\net8.0\FunGame.Core.dll</HintPath>
     </Reference>
     <Reference Include="MySql.Data">
       <HintPath>..\bin\Debug\net7.0\MySql.Data.dll</HintPath>
