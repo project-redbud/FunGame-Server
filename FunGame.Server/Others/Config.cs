@@ -1,9 +1,6 @@
 ﻿using System.Collections;
-using System.Data;
 using System.Text;
 using Milimoe.FunGame.Core.Api.Transmittal;
-using Milimoe.FunGame.Core.Api.Utility;
-using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
@@ -52,7 +49,7 @@ namespace Milimoe.FunGame.Server.Others
                 {
                     SQLMode = true;
                     ServerLogin();
-                    InitRoomList();
+                    ClearRoomList();
                 }
             }
             catch (Exception e)
@@ -65,19 +62,16 @@ namespace Milimoe.FunGame.Server.Others
         {
             if (SQLMode)
             {
-                SQLHelper.Execute(ServerLoginLogs.Insert_ServerLoginLogs(Config.ServerName, Config.ServerKey));
+                SQLHelper.Execute(ServerLoginLogs.Insert_ServerLoginLogs(ServerName, ServerKey));
             }
         }
 
-        public static void InitRoomList()
+        public static void ClearRoomList()
         {
             if (SQLMode)
             {
-                // 初始化服务器中的房间列表
-                DataSet DsRoomTemp = SQLHelper.ExecuteDataSet(RoomQuery.Select_Rooms);
-                DataSet DsUserTemp = SQLHelper.ExecuteDataSet(UserQuery.Select_Users);
-                List<Room> rooms = Factory.GetRooms(DsRoomTemp, DsUserTemp);
-                RoomList.AddRooms(rooms);
+                // 重启服务器后，所有房间都会被删除
+                SQLHelper.Execute(RoomQuery.Delete_Rooms());
             }
         }
     }
