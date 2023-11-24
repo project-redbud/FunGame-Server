@@ -286,10 +286,15 @@ namespace Milimoe.FunGame.Server.Model
         public void Kick(string msg, string clientname = "")
         {
             // 将客户端踢出服务器
-            RemoveUser();
             ServerModel serverTask = (ServerModel)Server.GetClient(clientname == "" ? ClientName : clientname);
             if (serverTask.Socket != null)
             {
+                serverTask.Room = General.HallInstance;
+                foreach (Room room in Config.RoomList.Cast<Room>())
+                {
+                    QuitRoom(room.Roomid, room.RoomMaster.Id == User.Id);
+                }
+                RemoveUser();
                 serverTask.Send(serverTask.Socket, SocketMessageType.Disconnect, msg);
             }
             Close();
