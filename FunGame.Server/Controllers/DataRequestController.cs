@@ -74,15 +74,15 @@ namespace Milimoe.FunGame.Server.Controller
                 case DataRequestType.Main_Chat:
                     Chat(data);
                     break;
-                    
+
                 case DataRequestType.Main_Ready:
                     SetReady(data, result);
                     break;
-                    
+
                 case DataRequestType.Main_CancelReady:
                     CancelReady(data, result);
                     break;
-                    
+
                 case DataRequestType.Main_StartGame:
                     StartGame(data, result);
                     break;
@@ -221,44 +221,7 @@ namespace Milimoe.FunGame.Server.Controller
 
                 if (roomid != "-1" && Config.RoomList.IsExist(roomid))
                 {
-                    Config.RoomList.CancelReady(roomid, Server.User);
-                    Config.RoomList.QuitRoom(roomid, Server.User);
-                    Room Room = Config.RoomList[roomid] ?? General.HallInstance;
-                    // 是否是房主
-                    if (isMaster)
-                    {
-                        List<User> users = Config.RoomList.GetPlayerList(roomid);
-                        if (users.Count > 0) // 如果此时房间还有人，更新房主
-                        {
-                            User NewMaster = users[0];
-                            Room.RoomMaster = NewMaster;
-                            SQLHelper.Execute(RoomQuery.Update_QuitRoom(roomid, Server.User.Id, NewMaster.Id));
-                            if (SQLHelper.Result == SQLResult.Success)
-                            {
-                                Server.Room = General.HallInstance;
-                                Server.UpdateRoomMaster(Room, true);
-                                result = true;
-                            }
-                        }
-                        else // 没人了就解散房间
-                        {
-                            Config.RoomList.RemoveRoom(roomid);
-                            SQLHelper.Execute(RoomQuery.Delete_QuitRoom(roomid, Server.User.Id));
-                            if (SQLHelper.Result == SQLResult.Success)
-                            {
-                                Server.Room = General.HallInstance;
-                                ServerHelper.WriteLine("[ " + Server.GetClientName() + " ] 解散了房间 " + roomid);
-                                result = true;
-                            }
-                        }
-                    }
-                    // 不是房主直接退出房间
-                    else
-                    {
-                        Server.Room = General.HallInstance;
-                        Server.UpdateRoomMaster(Room);
-                        result = true;
-                    }
+                    result = Server.QuitRoom(roomid, isMaster);
                 }
             }
             ResultData.Add("result", result);
@@ -348,7 +311,7 @@ namespace Milimoe.FunGame.Server.Controller
             ResultData.Add("ready", Config.RoomList.GetReadyPlayerList(roomid));
             ResultData.Add("notready", Config.RoomList.GetNotReadyPlayerList(roomid));
         }
-        
+
         /// <summary>
         /// 取消已准备状态
         /// </summary>

@@ -234,8 +234,53 @@ namespace Milimoe.FunGame.Server.Model
             ServerModel serverTask = (ServerModel)Server.GetUser(username == "" ? UserName : username);
             if (serverTask.Socket != null)
             {
+                serverTask.Room = General.HallInstance;
+                foreach (Room room in Config.RoomList.Cast<Room>())
+                {
+                    QuitRoom(room.Roomid, room.RoomMaster.Id == User.Id);
+                }
                 serverTask.Send(serverTask.Socket, SocketMessageType.ForceLogout, msg);
             }
+        }
+
+        public bool QuitRoom(string roomid, bool isMaster)
+        {
+            bool result;
+
+            Config.RoomList.CancelReady(roomid, User);
+            Config.RoomList.QuitRoom(roomid, User);
+            Room Room = Config.RoomList[roomid] ?? General.HallInstance;
+            // 是否是房主
+            if (isMaster)
+            {
+                List<User> users = Config.RoomList.GetPlayerList(roomid);
+                if (users.Count > 0) // 如果此时房间还有人，更新房主
+                {
+                    User NewMaster = users[0];
+                    Room.RoomMaster = NewMaster;
+                    SQLHelper?.Execute(RoomQuery.Update_QuitRoom(roomid, User.Id, NewMaster.Id));
+                    this.Room = General.HallInstance;
+                    UpdateRoomMaster(Room, true);
+                    result = true;
+                }
+                else // 没人了就解散房间
+                {
+                    Config.RoomList.RemoveRoom(roomid);
+                    SQLHelper?.Execute(RoomQuery.Delete_QuitRoom(roomid, User.Id));
+                    this.Room = General.HallInstance;
+                    ServerHelper.WriteLine("[ " + GetClientName() + " ] 解散了房间 " + roomid);
+                    result = true;
+                }
+            }
+            // 不是房主直接退出房间
+            else
+            {
+                this.Room = General.HallInstance;
+                UpdateRoomMaster(Room);
+                result = true;
+            }
+
+            return result;
         }
 
         public void Kick(string msg, string clientname = "")
@@ -264,7 +309,7 @@ namespace Milimoe.FunGame.Server.Model
                 }
             }
         }
-        
+
         public void SendSystemMessage(ShowMessageType showtype, string msg, string title, int autoclose, params string[] usernames)
         {
             foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.UserName)))
@@ -275,7 +320,7 @@ namespace Milimoe.FunGame.Server.Model
                 }
             }
         }
-        
+
         public void StartGame(string roomid, List<User> users, params string[] usernames)
         {
             Room room = General.HallInstance;

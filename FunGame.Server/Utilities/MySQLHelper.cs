@@ -93,11 +93,12 @@ namespace Milimoe.FunGame.Server.Utility
         }
 
         /// <summary>
-        /// 关闭连接
+        /// 关闭连接 如有事务会自动提交事务
         /// </summary>
         public override void Close()
         {
             // _IsOneTime = false需要手动调用此方法
+            Commit();
             _Connection?.Close();
             ServerHelper.WriteLine($"{(GetClientName() == string.Empty ? "" : GetClientName())}已释放MySQL连接");
         }
@@ -134,7 +135,7 @@ namespace Milimoe.FunGame.Server.Utility
         /// <summary>
         /// 创建一个SQL事务
         /// </summary>
-        public void NewTransaction()
+        public override void NewTransaction()
         {
             _Transaction ??= _Connection?.Connection?.BeginTransaction();
         }
@@ -142,7 +143,7 @@ namespace Milimoe.FunGame.Server.Utility
         /// <summary>
         /// 提交事务
         /// </summary>
-        public void Commit()
+        public override void Commit()
         {
             _Transaction?.Commit();
             _Transaction = null;
@@ -151,7 +152,7 @@ namespace Milimoe.FunGame.Server.Utility
         /// <summary>
         /// 回滚事务
         /// </summary>
-        public void Rollback()
+        public override void Rollback()
         {
             _Transaction?.Rollback();
             _Transaction = null;
