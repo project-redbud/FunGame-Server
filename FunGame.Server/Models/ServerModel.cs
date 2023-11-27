@@ -30,6 +30,7 @@ namespace Milimoe.FunGame.Server.Model
         }
         public MySQLHelper? SQLHelper { get; }
         public MailSender? MailSender { get; }
+        public bool IsDebugMode { get; }
 
         /**
          * Private
@@ -52,7 +53,7 @@ namespace Milimoe.FunGame.Server.Model
         private long LogoutTime;
         private bool IsMatching;
 
-        public ServerModel(ServerSocket server, ClientSocket socket, bool running)
+        public ServerModel(ServerSocket server, ClientSocket socket, bool running, bool isDebugMode)
         {
             Server = server;
             _Socket = socket;
@@ -394,7 +395,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 if (IsMatching)
                 {
-                    RoomType roomtype = GameMode.GetRoomType(roomtype_string);
+                    RoomType roomtype = RoomSet.GetRoomType(roomtype_string);
                     Room room = await MatchingRoom(roomtype, user);
                     if (IsMatching && Socket != null)
                     {

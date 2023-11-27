@@ -1,5 +1,6 @@
 ﻿using Milimoe.FunGame;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Model;
@@ -56,6 +57,12 @@ void StartServer()
             // 初始化命令菜单
             ServerHelper.InitOrderList();
 
+            // 读取游戏模组
+            if (!GetGameModeList())
+            {
+                ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
+            }
+
             // 检查是否存在配置文件
             if (!INIHelper.ExistINIFile())
             {
@@ -98,9 +105,10 @@ void StartServer()
                     clientip = socket.ClientIP;
                     Config.ConnectingPlayerCount++;
                     // 开始处理客户端连接请求
-                    if (Connect(socket, token, clientip))
+                    bool isDebugMode = false;
+                    if (Connect(socket, token, clientip, ref isDebugMode))
                     {
-                        ServerModel ClientModel = new(ListeningSocket, socket, Running);
+                        ServerModel ClientModel = new(ListeningSocket, socket, Running, isDebugMode);
                         Task t = Task.Factory.StartNew(() =>
                         {
                             ClientModel.Start();
@@ -144,7 +152,52 @@ void StartServer()
     });
 }
 
-bool Connect(ClientSocket socket, Guid token, string clientip)
+bool GetGameModeList()
+{
+    // 同时读取Implement预设的模组和gamemods目录下的模组，最后合成一个总的列表
+    List<string> supported = [];
+    GameModeLoader loader = GameModeLoader.LoadGameModes();
+    string[] mods = (string[]?)Implement.GetFunGameImplValue(InterfaceType.IGameModeSupported, InterfaceMethod.GameModeList, false) ?? [];
+    if (mods.Length > 0)
+    {
+        supported.AddRange(mods);
+        // 检查已安装的模组中是否在Implement预设的模组中存在
+        foreach (string mod in mods)
+        {
+            if (!loader.Modes.ContainsKey(mod))
+            {
+                ServerHelper.WriteLine("[GameMode] Load Failed: " + mod + " 不存在或未正确安装");
+                supported.Remove(mod);
+            }
+        }
+    }
+    // 检查模组是否有相对应的地图
+    foreach (GameMode mode in loader.Modes.Values)
+    {
+        string modename = mode.Name;
+        if (loader.Maps.ContainsKey(mode.Map))
+        {
+            supported.Add(modename);
+        }
+        else
+        {
+            ServerHelper.WriteLine("[GameMode] Load Failed: " + modename + " 没有找到相对应的地图，加载失败");
+            loader.Modes.Remove(modename);
+            supported.Remove(modename);
+        }
+    }
+
+    // 设置全局
+    Config.GameModeSupported = supported.Distinct().ToArray();
+    foreach (string modename in Config.GameModeSupported)
+    {
+        ServerHelper.WriteLine("[GameMode] Loaded: " + modename);
+    }
+
+    return Config.GameModeSupported.Length > 0;
+}
+
+bool Connect(ClientSocket socket, Guid token, string clientip, ref bool isDebugMode)
 {
     // 接收客户端消息
     foreach (SocketObject read in socket.ReceiveArray())
@@ -167,10 +220,32 @@ bool Connect(ClientSocket socket, Guid token, string clientip)
 
             ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(read.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
 
-            if (socket.Send(SocketMessageType.Connect, true, "", token, Config.ServerName, Config.ServerNotice) == SocketResult.Success)
+            // 读取参数
+            // 参数1：客户端的游戏模组列表，没有服务器的需要拒绝
+            string[] modes = read.GetParam<string[]>(0) ?? [];
+            // 参数2：客户端是否开启了开发者模式，开启开发者模式部分功能不可用
+            isDebugMode = read.GetParam<bool>(1);
+            if (isDebugMode) ServerHelper.WriteLine("客户端已开启开发者模式");
+
+            string msg = "";
+            List<string> ClientDontHave = [];
+            string strDontHave = string.Join("\r\n", Config.GameModeSupported.Where(mode => !modes.Contains(mode)));
+            if (strDontHave != "")
+            {
+                strDontHave = "客户端缺少服务器所需的模组：" + strDontHave;
+                ServerHelper.WriteLine(strDontHave);
+                msg += strDontHave;
+            }
+
+            if (msg == "" && socket.Send(SocketMessageType.Connect, true, msg, token, Config.ServerName, Config.ServerNotice) == SocketResult.Success)
             {
                 ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
                 return true;
+            }
+            else if (msg != "" && socket.Send(SocketMessageType.Connect, false, msg) == SocketResult.Success)
+            {
+                ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "拒绝连接");
+                return false;
             }
             else
             {

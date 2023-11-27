@@ -171,15 +171,15 @@ namespace Milimoe.FunGame.Server.Controller
             if (RequestData.Count >= 3)
             {
                 ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> CreateRoom");
-                string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.All;
+                string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? RoomSet.All;
                 User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "master") ?? Factory.GetUser();
                 string password = DataRequest.GetHashtableJsonObject<string>(RequestData, "password") ?? "";
 
                 if (!string.IsNullOrWhiteSpace(roomtype_string) && user.Id != 0)
                 {
-                    RoomType roomtype = GameMode.GetRoomType(roomtype_string);
+                    RoomType roomtype = RoomSet.GetRoomType(roomtype_string);
                     string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
-                    SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, roomtype, password ?? ""));
+                    SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, roomtype, "", "", password ?? ""));
                     if (SQLHelper.Result == SQLResult.Success)
                     {
                         ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
@@ -272,7 +272,7 @@ namespace Milimoe.FunGame.Server.Controller
                 if (!iscancel)
                 {
                     ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom : Start");
-                    string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? GameMode.All;
+                    string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? RoomSet.All;
                     User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "matcher") ?? Factory.GetUser();
                     Server.StartMatching(roomtype_string, user);
                 }
