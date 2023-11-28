@@ -3,6 +3,7 @@ using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
@@ -170,8 +171,16 @@ namespace Milimoe.FunGame.Server.Controller
             Room room = General.HallInstance;
             if (RequestData.Count >= 3)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> CreateRoom");
                 string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? RoomSet.All;
+                string gamemode = DataRequest.GetHashtableJsonObject<string>(RequestData, "gamemode") ?? "";
+                string gamemap = DataRequest.GetHashtableJsonObject<string>(RequestData, "gamemap") ?? "";
+                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> CreateRoom: " + roomtype_string + " (" + string.Join(", ", [gamemode, gamemap]) + ")");
+                if (gamemode == "" || gamemap == "")
+                {
+                    ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
+                    ResultData.Add("room", room);
+                    return;
+                }
                 User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "master") ?? Factory.GetUser();
                 string password = DataRequest.GetHashtableJsonObject<string>(RequestData, "password") ?? "";
 
@@ -179,7 +188,7 @@ namespace Milimoe.FunGame.Server.Controller
                 {
                     RoomType roomtype = RoomSet.GetRoomType(roomtype_string);
                     string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
-                    SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, roomtype, "", "", password ?? ""));
+                    SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, roomtype, gamemode, gamemap, password ?? ""));
                     if (SQLHelper.Result == SQLResult.Success)
                     {
                         ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);

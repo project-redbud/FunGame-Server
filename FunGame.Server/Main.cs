@@ -175,7 +175,7 @@ bool GetGameModeList()
     foreach (GameMode mode in loader.Modes.Values)
     {
         string modename = mode.Name;
-        if (loader.Maps.ContainsKey(mode.Map))
+        if (loader.Maps.ContainsKey(mode.DefaultMap))
         {
             supported.Add(modename);
         }
