@@ -2,31 +2,44 @@
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
+using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Others;
 
 namespace Milimoe.FunGame.Server.Utility
 {
     public class ServerHelper
     {
-        public static string GetPrefix()
+        public static string GetPrefix(InvokeMessageType type)
         {
+            string prefix = type switch
+            {
+                InvokeMessageType.Core => "[Core] ",
+                InvokeMessageType.Error => "[Error] ",
+                InvokeMessageType.System => "[System] ",
+                InvokeMessageType.Api => "[Api] ",
+                InvokeMessageType.Interface => "[Interface] ",
+                InvokeMessageType.DataRequest => "[DataRequest] ",
+                InvokeMessageType.Plugin => "[Plugin] ",
+                InvokeMessageType.GameMode => "[GameMode] ",
+                _ => ""
+            };
             DateTime now = DateTime.Now;
-            return now.AddMilliseconds(-now.Millisecond).ToString() + " " + Config.ServerName + "：";
+            return now.AddMilliseconds(-now.Millisecond).ToString() + " " + prefix + Config.ServerName + "：";
         }
 
         public static void Error(Exception e)
         {
-            Console.Write("\r" + GetPrefix() + e.Message + "\n" + e.StackTrace + "\n\r> ");
+            Console.Write("\r" + GetPrefix(InvokeMessageType.Error) + e.Message + "\n" + e.StackTrace + "\n\r> ");
         }
 
-        public static void Write(string msg)
+        public static void Write(string msg, InvokeMessageType type = InvokeMessageType.System)
         {
-            if (msg.Trim() != "") Console.Write("\r" + GetPrefix() + msg + "> ");
+            if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type) + msg + "> ");
         }
 
-        public static void WriteLine(string msg)
+        public static void WriteLine(string msg, InvokeMessageType type = InvokeMessageType.System)
         {
-            if (msg.Trim() != "") Console.Write("\r" + GetPrefix() + msg + "\n\r> ");
+            if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type) + msg + "\n\r> ");
         }
 
         public static void Type()

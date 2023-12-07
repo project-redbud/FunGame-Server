@@ -38,7 +38,7 @@ namespace Milimoe.FunGame.Server.Utility
         public override int Execute()
         {
             // _IsOneTime = true需要手动创建连接和关闭
-            ServerHelper.WriteLine("SQLQuery -> " + Script);
+            ServerHelper.WriteLine("SQLQuery -> " + Script, InvokeMessageType.Api);
             _DataSet = new DataSet();
             _UpdateRows = MySQLManager.Execute(this, out _Result);
             if (_IsOneTime) Close();
@@ -54,7 +54,7 @@ namespace Milimoe.FunGame.Server.Utility
         public override int Execute(string Script)
         {
             // _IsOneTime = true需要手动创建连接和关闭
-            ServerHelper.WriteLine("SQLQuery -> " + Script);
+            ServerHelper.WriteLine("SQLQuery -> " + Script, InvokeMessageType.Api);
             this.Script = Script;
             _DataSet = new DataSet();
             _UpdateRows = MySQLManager.Execute(this, out _Result);
@@ -70,7 +70,7 @@ namespace Milimoe.FunGame.Server.Utility
         public override DataSet ExecuteDataSet()
         {
             // _IsOneTime = true需要手动创建连接和关闭
-            ServerHelper.WriteLine("SQLQuery -> " + Script);
+            ServerHelper.WriteLine("SQLQuery -> " + Script, InvokeMessageType.Api);
             _DataSet = MySQLManager.ExecuteDataSet(this, out _Result, out _UpdateRows);
             if (_IsOneTime) Close();
             return DataSet;
@@ -85,7 +85,7 @@ namespace Milimoe.FunGame.Server.Utility
         public override DataSet ExecuteDataSet(string Script)
         {
             // _IsOneTime = true需要手动创建连接和关闭
-            ServerHelper.WriteLine("SQLQuery -> " + Script);
+            ServerHelper.WriteLine("SQLQuery -> " + Script, InvokeMessageType.Api);
             this.Script = Script;
             _DataSet = MySQLManager.ExecuteDataSet(this, out _Result, out _UpdateRows);
             if (_IsOneTime) Close();
@@ -128,7 +128,7 @@ namespace Milimoe.FunGame.Server.Utility
             this.ServerModel = ServerModel;
             Script = "";
             CommandType = CommandType.Text;
-            Parameters = Array.Empty<MySqlParameter>();
+            Parameters = [];
             _Connection = new MySQLConnection(out _ServerInfo);
         }
 

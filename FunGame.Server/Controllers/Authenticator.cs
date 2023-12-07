@@ -3,7 +3,7 @@ using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Model;
 
-namespace Milimoe.FunGame.Server.Controllers
+namespace Milimoe.FunGame.Server.Controller
 {
     public class Authenticator : Core.Library.Common.Architecture.Authenticator
     {

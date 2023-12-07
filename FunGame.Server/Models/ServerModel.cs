@@ -4,6 +4,7 @@ using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Interface.Base;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
@@ -20,7 +21,6 @@ namespace Milimoe.FunGame.Server.Model
          */
         public bool Running => _Running;
         public ClientSocket? Socket => _Socket;
-        public Task? Task => _Task;
         public string ClientName => _ClientName;
         public User User => _User;
         public Room Room
@@ -35,11 +35,12 @@ namespace Milimoe.FunGame.Server.Model
         /**
          * Private
          */
+        private GameModeServer? NowGamingServer = null;
+
         private ClientSocket? _Socket = null;
         private bool _Running = false;
         private User _User = General.UnknownUserInstance;
         private Room _Room = General.HallInstance;
-        private Task? _Task = null;
         private string _ClientName = "";
 
         private Guid CheckLoginKey = Guid.Empty;
@@ -59,6 +60,7 @@ namespace Milimoe.FunGame.Server.Model
             _Socket = socket;
             _Running = running;
             Token = socket.Token;
+            this.IsDebugMode = isDebugMode;
             if (Config.SQLMode) SQLHelper = new(this);
             MailSender = SmtpHelper.GetMailSender();
             DataRequestController = new(this);
@@ -69,6 +71,9 @@ namespace Milimoe.FunGame.Server.Model
             // 接收客户端消息
             try
             {
+                // 禁止GameModeServer调用
+                if ((IServerModel)this is GameModeServer) throw new NotSupportedException("请勿在GameModeServer类中调用此方法");
+
                 SocketObject SocketObject = socket.Receive();
                 SocketMessageType type = SocketObject.SocketType;
                 Guid token = SocketObject.Token;
@@ -82,9 +87,20 @@ namespace Milimoe.FunGame.Server.Model
                     return false;
                 }
 
+                if (type == SocketMessageType.EndGame)
+                {
+                    NowGamingServer = null;
+                    return true;
+                }
+
                 if (type == SocketMessageType.DataRequest)
                 {
                     return DataRequestHandler(socket, SocketObject);
+                }
+
+                if (type == SocketMessageType.Gaming)
+                {
+                    return GamingMessageHandler(socket, SocketObject);
                 }
 
                 if (type == SocketMessageType.HeartBeat)
@@ -95,7 +111,7 @@ namespace Milimoe.FunGame.Server.Model
                 switch (type)
                 {
                     case SocketMessageType.Disconnect:
-                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + GetClientName() + " -> Disconnect");
+                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + GetClientName() + " -> Disconnect", InvokeMessageType.Core);
                         msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
                         break;
                 }
@@ -113,7 +129,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (SQLHelper != null)
             {
-                Hashtable result = new();
+                Hashtable result = [];
                 DataRequestType type = DataRequestType.UnKnown;
 
                 if (SocketObject.Parameters.Length > 0)
@@ -121,7 +137,7 @@ namespace Milimoe.FunGame.Server.Model
                     try
                     {
                         type = SocketObject.GetParam<DataRequestType>(0);
-                        Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? new();
+                        Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? [];
 
                         SQLHelper.NewTransaction();
                         result = DataRequestController.GetResultData(type, data);
@@ -136,6 +152,35 @@ namespace Milimoe.FunGame.Server.Model
                 }
 
                 return Send(socket, SocketMessageType.DataRequest, type, result);
+            }
+
+            return false;
+        }
+
+        public bool GamingMessageHandler(ClientSocket socket, SocketObject SocketObject)
+        {
+            if (NowGamingServer != null)
+            {
+                Hashtable result = [];
+                GamingType type = GamingType.None;
+
+                if (SocketObject.Parameters.Length > 0)
+                {
+                    try
+                    {
+                        type = SocketObject.GetParam<GamingType>(0);
+                        Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? [];
+
+                        result = NowGamingServer.GamingMessageHandler(UserName, type, data);
+                    }
+                    catch (Exception e)
+                    {
+                        ServerHelper.Error(e);
+                        return Send(socket, SocketMessageType.Gaming, type, result);
+                    }
+                }
+
+                return Send(socket, SocketMessageType.Gaming, type, result);
             }
 
             return false;
@@ -162,7 +207,7 @@ namespace Milimoe.FunGame.Server.Model
                     }
                     object obj = objs[0];
                     if (obj.GetType() == typeof(string) && (string)obj != "")
-                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + GetClientName() + " <- " + obj);
+                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + GetClientName() + " <- " + obj, InvokeMessageType.Core);
                     return true;
                 }
                 throw new CanNotSendToClientException();
@@ -176,14 +221,14 @@ namespace Milimoe.FunGame.Server.Model
         }
 
         public void Start()
-        {
+        { 
+            if ((IServerModel)this is GameModeServer) throw new NotSupportedException("请勿在GameModeServer类中调用此方法"); // 禁止GameModeServer调用
             Task StreamReader = Task.Factory.StartNew(CreateStreamReader);
             Task PeriodicalQuerier = Task.Factory.StartNew(CreatePeriodicalQuerier);
         }
 
-        public void SetTaskAndClientName(Task t, string ClientName)
+        public void SetClientName(string ClientName)
         {
-            _Task = t;
             _ClientName = ClientName;
             // 添加客户端到列表中
             Server.AddClient(_ClientName, this);
@@ -335,24 +380,26 @@ namespace Milimoe.FunGame.Server.Model
                 room = Config.RoomList[roomid];
             }
             if (room.Roomid == "-1") return;
-            foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.User.Username)))
+            // 启动服务器
+            TaskUtility.NewTask(() =>
             {
-                if (serverTask != null && serverTask.Socket != null)
+                if (Config.GameModeLoader != null && Config.GameModeLoader.ServerModes.ContainsKey(room.GameMode))
                 {
-                    serverTask.Send(serverTask.Socket, SocketMessageType.StartGame, room, users);
-                }
-            }
-            TaskUtility.RunTimer(() =>
-            {
-                foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Length > 0 && usernames.Contains(model.User.Username)))
-                {
-                    if (serverTask != null && serverTask.Socket != null)
+                    NowGamingServer = Config.GameModeLoader.GetServerMode(room.GameMode);
+                    Dictionary<string, IServerModel> others = Server.UserList.Cast<IServerModel>().Where(model => usernames.Contains(model.User.Username) && model.User.Username != UserName).ToDictionary(k => k.User.Username, v => v);
+                    if (NowGamingServer.StartServer(room.GameMode, room, users, this, others, new Action<string>(msg => ServerHelper.WriteLine(msg))))
                     {
-                        Config.RoomList.CancelReady(roomid, serverTask.User);
-                        serverTask.Send(serverTask.Socket, SocketMessageType.EndGame, room, users);
+                        foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Contains(model.User.Username)))
+                        {
+                            if (serverTask != null && serverTask.Socket != null)
+                            {
+                                Config.RoomList.CancelReady(roomid, serverTask.User);
+                                serverTask.Send(serverTask.Socket, SocketMessageType.StartGame, room, users);
+                            }
+                        }
                     }
                 }
-            }, 20 * 1000);
+            });
         }
 
         public void IntoRoom(string roomid)
