@@ -11,11 +11,11 @@ namespace Milimoe.FunGame.Server.Utility
     {
         public static string GetPrefix(InvokeMessageType type)
         {
-            string prefix = "";
+            string prefix;
             switch (type)
             {
                 case InvokeMessageType.Core:
-                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.ForegroundColor = ConsoleColor.Cyan;
                     prefix = "[Core] ";
                     break;
                 case InvokeMessageType.Error:
@@ -31,7 +31,7 @@ namespace Milimoe.FunGame.Server.Utility
                     prefix = "[Interface] ";
                     break;
                 case InvokeMessageType.DataRequest:
-                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.ForegroundColor = ConsoleColor.Green;
                     prefix = "[DataRequest] ";
                     break;
                 case InvokeMessageType.Plugin:
