@@ -387,7 +387,7 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     NowGamingServer = Config.GameModeLoader.GetServerMode(room.GameMode);
                     Dictionary<string, IServerModel> others = Server.UserList.Cast<IServerModel>().Where(model => usernames.Contains(model.User.Username) && model.User.Username != UserName).ToDictionary(k => k.User.Username, v => v);
-                    if (NowGamingServer.StartServer(room.GameMode, room, users, this, others, new Action<string>(msg => ServerHelper.WriteLine(msg))))
+                    if (NowGamingServer.StartServer(room.GameMode, room, users, this, others))
                     {
                         foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Contains(model.User.Username)))
                         {

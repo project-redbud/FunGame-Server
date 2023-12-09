@@ -1,4 +1,5 @@
-﻿using Milimoe.FunGame;
+﻿using System.Collections;
+using Milimoe.FunGame;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
@@ -156,7 +157,12 @@ bool GetGameModeList()
 {
     // 同时读取Implement预设的模组和gamemods目录下的模组，最后合成一个总的列表
     List<string> supported = [];
-    Config.GameModeLoader = GameModeLoader.LoadGameModes(Config.FunGameType, [new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameMode))]);
+    // 构建AddonController
+    Hashtable delegates = [];
+    delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameMode)));
+    delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
+    // 开始读取
+    Config.GameModeLoader = GameModeLoader.LoadGameModes(Config.FunGameType, delegates);
     string[] mods = (string[]?)Implement.GetFunGameImplValue(InterfaceType.IServer, InterfaceMethod.GameModeList, false) ?? [];
     if (mods.Length > 0)
     {
