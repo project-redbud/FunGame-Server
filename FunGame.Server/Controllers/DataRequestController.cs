@@ -3,11 +3,9 @@ using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
-using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
-using Milimoe.FunGame.Server.Controllers;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
@@ -25,7 +23,7 @@ namespace Milimoe.FunGame.Server.Controller
         private string ForgetVerify = "";
         private string RegVerify = "";
         private DataRequestType _LastRequest = DataRequestType.UnKnown;
-        private bool[] isReadyCheckCD = new bool[] { false, false };
+        private readonly bool[] isReadyCheckCD = [false, false];
 
         public DataRequestController(ServerModel server)
         {
@@ -35,7 +33,7 @@ namespace Milimoe.FunGame.Server.Controller
 
         public Hashtable GetResultData(DataRequestType type, Hashtable data)
         {
-            Hashtable result = new();
+            Hashtable result = [];
             _LastRequest = type;
 
             switch (type)
@@ -133,7 +131,7 @@ namespace Milimoe.FunGame.Server.Controller
             Guid key = Guid.Empty;
             if (RequestData.Count >= 1)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> LogOut");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 key = DataRequest.GetHashtableJsonObject<Guid>(RequestData, "key");
                 if (Server.IsLoginKey(key))
                 {
@@ -155,8 +153,7 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="ResultData"></param>
         private void GetServerNotice(Hashtable ResultData)
         {
-            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> GetNotice");
-            _LastRequest = DataRequestType.Main_GetNotice;
+            ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
             ResultData.Add("notice", Config.ServerNotice);
         }
 
@@ -174,7 +171,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string gamemode = DataRequest.GetHashtableJsonObject<string>(RequestData, "gamemode") ?? "";
                 string gamemap = DataRequest.GetHashtableJsonObject<string>(RequestData, "gamemap") ?? "";
                 bool isrank = DataRequest.GetHashtableJsonObject<bool>(RequestData, "isrank");
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> CreateRoom: " + roomtype_string + " (" + string.Join(", ", [gamemode, gamemap]) + ")");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : " + roomtype_string + " (" + string.Join(", ", [gamemode, gamemap]) + ")", InvokeMessageType.DataRequest);
                 if (gamemode == "" || gamemap == "")
                 {
                     ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
@@ -210,7 +207,7 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="ResultData"></param>
         private void UpdateRoom(Hashtable ResultData)
         {
-            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> UpdateRoom");
+            ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
             ResultData.Add("rooms", Config.RoomList.ListRoom); // 传RoomList
         }
 
@@ -224,7 +221,7 @@ namespace Milimoe.FunGame.Server.Controller
             bool result = false;
             if (RequestData.Count >= 2)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> QuitRoom");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 string roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
                 bool isMaster = DataRequest.GetHashtableJsonObject<bool>(RequestData, "isMaster");
 
@@ -246,7 +243,7 @@ namespace Milimoe.FunGame.Server.Controller
             bool result = false;
             if (RequestData.Count >= 1)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> IntoRoom");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 string roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
 
                 if (roomid != "-1")
@@ -280,7 +277,7 @@ namespace Milimoe.FunGame.Server.Controller
                 bool iscancel = DataRequest.GetHashtableJsonObject<bool>(RequestData, "iscancel");
                 if (!iscancel)
                 {
-                    ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom : Start");
+                    ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : Start", InvokeMessageType.DataRequest);
                     string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? RoomSet.All;
                     User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "matcher") ?? Factory.GetUser();
                     Server.StartMatching(roomtype_string, user);
@@ -288,7 +285,7 @@ namespace Milimoe.FunGame.Server.Controller
                 else
                 {
                     // 取消匹配
-                    ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> MatchRoom : Cancel");
+                    ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : Cancel", InvokeMessageType.DataRequest);
                     Server.StopMatching();
                 }
             }
@@ -306,7 +303,7 @@ namespace Milimoe.FunGame.Server.Controller
             string roomid = "-1";
             if (RequestData.Count >= 1)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> SetReady");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
                 User user = Server.User;
 
@@ -332,7 +329,7 @@ namespace Milimoe.FunGame.Server.Controller
             string roomid = "-1";
             if (RequestData.Count >= 1)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> CancelReady");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
                 User user = Server.User;
 
@@ -370,7 +367,7 @@ namespace Milimoe.FunGame.Server.Controller
             bool result = false;
             if (RequestData.Count >= 2)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> StartGame");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 string roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
                 bool isMaster = DataRequest.GetHashtableJsonObject<bool>(RequestData, "isMaster");
 
@@ -449,7 +446,7 @@ namespace Milimoe.FunGame.Server.Controller
             bool success = false;
             if (RequestData.Count >= 4)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> Reg");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 string username = DataRequest.GetHashtableJsonObject<string>(RequestData, "username") ?? "";
                 string password = DataRequest.GetHashtableJsonObject<string>(RequestData, "password") ?? "";
                 string email = DataRequest.GetHashtableJsonObject<string>(RequestData, "email") ?? "";
@@ -584,7 +581,7 @@ namespace Milimoe.FunGame.Server.Controller
             User user = Factory.GetUser();
             if (RequestData.Count >= 4)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> Login");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 string username = DataRequest.GetHashtableJsonObject<string>(RequestData, "username") ?? "";
                 string password = DataRequest.GetHashtableJsonObject<string>(RequestData, "password") ?? "";
                 string autokey = DataRequest.GetHashtableJsonObject<string>(RequestData, "autokey") ?? "";
@@ -649,7 +646,7 @@ namespace Milimoe.FunGame.Server.Controller
             string msg = "无法找回您的密码，请稍后再试。"; // 返回的验证信息
             if (RequestData.Count >= 3)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> ForgetPassword");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 string username = DataRequest.GetHashtableJsonObject<string>(RequestData, ForgetVerifyCodes.Column_Username) ?? "";
                 string email = DataRequest.GetHashtableJsonObject<string>(RequestData, ForgetVerifyCodes.Column_Email) ?? "";
                 string verifycode = DataRequest.GetHashtableJsonObject<string>(RequestData, ForgetVerifyCodes.Column_ForgetVerifyCode) ?? "";
@@ -751,7 +748,7 @@ namespace Milimoe.FunGame.Server.Controller
             string msg = "无法更新您的密码，请稍后再试。";
             if (RequestData.Count >= 2)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> UpdatePassword");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 string username = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Username) ?? "";
                 string password = DataRequest.GetHashtableJsonObject<string>(RequestData, UserQuery.Column_Password) ?? "";
                 if (username.Trim() != "" && password.Trim() != "")
@@ -781,7 +778,7 @@ namespace Milimoe.FunGame.Server.Controller
             string roomid = "-1";
             if (RequestData.Count >= 1)
             {
-                ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + Server.GetClientName() + " -> GetRoomPlayerCount");
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest), InvokeMessageType.DataRequest);
                 roomid = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomid") ?? "-1";
             }
             ResultData.Add("count", Config.RoomList.GetPlayerCount(roomid));

@@ -113,18 +113,18 @@ void StartServer()
                         {
                             ClientModel.Start();
                         });
-                        ClientModel.SetTaskAndClientName(t, clientip);
+                        ClientModel.SetClientName(clientip);
                     }
                     else
                     {
-                        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。");
+                        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
                     }
                     Config.ConnectingPlayerCount--;
                 }
                 catch (Exception e)
                 {
                     if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
-                    ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！");
+                    ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
                     ServerHelper.Error(e);
                 }
             }
@@ -156,15 +156,15 @@ bool GetGameModeList()
 {
     // 同时读取Implement预设的模组和gamemods目录下的模组，最后合成一个总的列表
     List<string> supported = [];
-    GameModeLoader loader = GameModeLoader.LoadGameModes();
-    string[] mods = (string[]?)Implement.GetFunGameImplValue(InterfaceType.IGameModeSupported, InterfaceMethod.GameModeList, false) ?? [];
+    Config.GameModeLoader = GameModeLoader.LoadGameModes(Config.FunGameType, [new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameMode))]);
+    string[] mods = (string[]?)Implement.GetFunGameImplValue(InterfaceType.IServer, InterfaceMethod.GameModeList, false) ?? [];
     if (mods.Length > 0)
     {
         supported.AddRange(mods);
         // 检查已安装的模组中是否在Implement预设的模组中存在
         foreach (string mod in mods)
         {
-            if (!loader.Modes.ContainsKey(mod))
+            if (!Config.GameModeLoader.ServerModes.ContainsKey(mod))
             {
                 ServerHelper.WriteLine("[GameMode] Load Failed: " + mod + " 不存在或未正确安装");
                 supported.Remove(mod);
@@ -172,17 +172,17 @@ bool GetGameModeList()
         }
     }
     // 检查模组是否有相对应的地图
-    foreach (GameMode mode in loader.Modes.Values)
+    foreach (GameModeServer mode in Config.GameModeLoader.ServerModes.Values)
     {
         string modename = mode.Name;
-        if (loader.Maps.ContainsKey(mode.DefaultMap))
+        if (Config.GameModeLoader.Maps.ContainsKey(mode.DefaultMap))
         {
             supported.Add(modename);
         }
         else
         {
             ServerHelper.WriteLine("[GameMode] Load Failed: " + modename + " 没有找到相对应的地图，加载失败");
-            loader.Modes.Remove(modename);
+            Config.GameModeLoader.ServerModes.Remove(modename);
             supported.Remove(modename);
         }
     }
@@ -207,18 +207,18 @@ bool Connect(ClientSocket socket, Guid token, string clientip, ref bool isDebugM
             if (Config.ConnectingPlayerCount + Config.OnlinePlayerCount > Config.MaxPlayers)
             {
                 SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
-                ServerHelper.WriteLine("服务器可接受的连接数量已上限！");
+                ServerHelper.WriteLine("服务器可接受的连接数量已上限！", InvokeMessageType.Core);
                 return false;
             }
-            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 正在连接服务器 . . .");
+            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 正在连接服务器 . . .", InvokeMessageType.Core);
             if (IsIPBanned(ListeningSocket, clientip))
             {
                 SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
-                ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(clientip) + " 为黑名单用户，已禁止其连接！");
+                ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(clientip) + " 为黑名单用户，已禁止其连接！", InvokeMessageType.Core);
                 return false;
             }
 
-            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(read.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP));
+            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(read.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP), InvokeMessageType.Core);
 
             // 读取参数
             // 参数1：客户端的游戏模组列表，没有服务器的需要拒绝
@@ -233,29 +233,30 @@ bool Connect(ClientSocket socket, Guid token, string clientip, ref bool isDebugM
             if (strDontHave != "")
             {
                 strDontHave = "客户端缺少服务器所需的模组：" + strDontHave;
-                ServerHelper.WriteLine(strDontHave);
+                ServerHelper.WriteLine(strDontHave, InvokeMessageType.Core);
                 msg += strDontHave;
             }
 
             if (msg == "" && socket.Send(SocketMessageType.Connect, true, msg, token, Config.ServerName, Config.ServerNotice) == SocketResult.Success)
             {
-                ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接");
+                ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已确认连接", InvokeMessageType.Core);
                 return true;
             }
             else if (msg != "" && socket.Send(SocketMessageType.Connect, false, msg) == SocketResult.Success)
             {
-                ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "拒绝连接");
+                ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "拒绝连接", InvokeMessageType.Core);
                 return false;
             }
             else
             {
-                ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
+                ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。", InvokeMessageType.Core);
                 return false;
             }
         }
     }
 
-    ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。");
+    SendRefuseConnect(socket, "服务器已拒绝连接。");
+    ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。", InvokeMessageType.Core);
     return false;
 }
 
@@ -265,12 +266,12 @@ bool SendRefuseConnect(ClientSocket socket, string msg)
     msg = "连接被拒绝，如有疑问请联系服务器管理员：" + msg;
     if (socket.Send(SocketMessageType.Connect, false, msg) == SocketResult.Success)
     {
-        ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已拒绝连接");
+        ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已拒绝连接", InvokeMessageType.Core);
         return true;
     }
     else
     {
-        ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。");
+        ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。", InvokeMessageType.Core);
         return false;
     }
 }
