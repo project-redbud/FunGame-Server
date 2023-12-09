@@ -11,18 +11,44 @@ namespace Milimoe.FunGame.Server.Utility
     {
         public static string GetPrefix(InvokeMessageType type)
         {
-            string prefix = type switch
+            string prefix = "";
+            switch (type)
             {
-                InvokeMessageType.Core => "[Core] ",
-                InvokeMessageType.Error => "[Error] ",
-                InvokeMessageType.System => "[System] ",
-                InvokeMessageType.Api => "[Api] ",
-                InvokeMessageType.Interface => "[Interface] ",
-                InvokeMessageType.DataRequest => "[DataRequest] ",
-                InvokeMessageType.Plugin => "[Plugin] ",
-                InvokeMessageType.GameMode => "[GameMode] ",
-                _ => ""
-            };
+                case InvokeMessageType.Core:
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    prefix = "[Core] ";
+                    break;
+                case InvokeMessageType.Error:
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    prefix = "[Error] ";
+                    break;
+                case InvokeMessageType.Api:
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    prefix = "[Api] ";
+                    break;
+                case InvokeMessageType.Interface:
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    prefix = "[Interface] ";
+                    break;
+                case InvokeMessageType.DataRequest:
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    prefix = "[DataRequest] ";
+                    break;
+                case InvokeMessageType.Plugin:
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    prefix = "[Plugin] ";
+                    break;
+                case InvokeMessageType.GameMode:
+                    Console.ForegroundColor = ConsoleColor.Blue;
+                    prefix = "[GameMode] ";
+                    break;
+                case InvokeMessageType.System:
+                case InvokeMessageType.None:
+                default:
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                    prefix = "[System] ";
+                    break;
+            }
             DateTime now = DateTime.Now;
             return now.AddMilliseconds(-now.Millisecond).ToString() + " " + prefix + Config.ServerName + "：";
         }
@@ -30,6 +56,7 @@ namespace Milimoe.FunGame.Server.Utility
         public static void Error(Exception e)
         {
             Console.Write("\r" + GetPrefix(InvokeMessageType.Error) + e.Message + "\n" + e.StackTrace + "\n\r> ");
+            Console.ResetColor();
         }
 
         public static void Write(string msg, InvokeMessageType type = InvokeMessageType.System)
