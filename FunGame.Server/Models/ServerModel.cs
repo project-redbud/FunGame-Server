@@ -434,16 +434,15 @@ namespace Milimoe.FunGame.Server.Model
             return Send(socket, SocketMessageType.HeartBeat, "");
         }
 
-        public void StartMatching(string roomtype_string, User user)
+        public void StartMatching(RoomType type, User user)
         {
             IsMatching = true;
-            ServerHelper.WriteLine(GetClientName() + " 开始匹配。类型：" + roomtype_string);
+            ServerHelper.WriteLine(GetClientName() + " 开始匹配。类型：" + RoomSet.GetTypeString(type));
             TaskUtility.NewTask(async () =>
             {
                 if (IsMatching)
                 {
-                    RoomType roomtype = RoomSet.GetRoomType(roomtype_string);
-                    Room room = await MatchingRoom(roomtype, user);
+                    Room room = await MatchingRoom(type, user);
                     if (IsMatching && Socket != null)
                     {
                         Send(Socket, SocketMessageType.MatchRoom, room);

@@ -167,11 +167,11 @@ namespace Milimoe.FunGame.Server.Controller
             Room room = General.HallInstance;
             if (RequestData.Count >= 3)
             {
-                string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? RoomSet.All;
+                RoomType type = DataRequest.GetHashtableJsonObject<RoomType>(RequestData, "roomtype");
                 string gamemode = DataRequest.GetHashtableJsonObject<string>(RequestData, "gamemode") ?? "";
                 string gamemap = DataRequest.GetHashtableJsonObject<string>(RequestData, "gamemap") ?? "";
                 bool isrank = DataRequest.GetHashtableJsonObject<bool>(RequestData, "isrank");
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : " + roomtype_string + " (" + string.Join(", ", [gamemode, gamemap]) + ")", InvokeMessageType.DataRequest);
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gamemode, gamemap]) + ")", InvokeMessageType.DataRequest);
                 if (gamemode == "" || gamemap == "")
                 {
                     ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
@@ -181,11 +181,10 @@ namespace Milimoe.FunGame.Server.Controller
                 User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "master") ?? Factory.GetUser();
                 string password = DataRequest.GetHashtableJsonObject<string>(RequestData, "password") ?? "";
 
-                if (!string.IsNullOrWhiteSpace(roomtype_string) && user.Id != 0)
+                if (user.Id != 0)
                 {
-                    RoomType roomtype = RoomSet.GetRoomType(roomtype_string);
                     string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
-                    SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, roomtype, gamemode, gamemap, isrank, password ?? ""));
+                    SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, type, gamemode, gamemap, isrank, password ?? ""));
                     if (SQLHelper.Result == SQLResult.Success)
                     {
                         ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
@@ -278,9 +277,9 @@ namespace Milimoe.FunGame.Server.Controller
                 if (!iscancel)
                 {
                     ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : Start", InvokeMessageType.DataRequest);
-                    string roomtype_string = DataRequest.GetHashtableJsonObject<string>(RequestData, "roomtype") ?? RoomSet.All;
+                    RoomType type = DataRequest.GetHashtableJsonObject<RoomType>(RequestData, "roomtype");
                     User user = DataRequest.GetHashtableJsonObject<User>(RequestData, "matcher") ?? Factory.GetUser();
-                    Server.StartMatching(roomtype_string, user);
+                    Server.StartMatching(type, user);
                 }
                 else
                 {
