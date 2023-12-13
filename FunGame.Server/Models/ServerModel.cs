@@ -83,7 +83,7 @@ namespace Milimoe.FunGame.Server.Model
                 // 验证Token
                 if (type != SocketMessageType.HeartBeat && token != Token)
                 {
-                    ServerHelper.WriteLine(GetClientName() + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + ServerSocket.GetTypeString(type) + "] ");
+                    ServerHelper.WriteLine(GetClientName() + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + SocketSet.GetTypeString(type) + "] ");
                     return false;
                 }
 
@@ -111,7 +111,7 @@ namespace Milimoe.FunGame.Server.Model
                 switch (type)
                 {
                     case SocketMessageType.Disconnect:
-                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(SocketMessageType.DataRequest) + "] " + GetClientName() + " -> Disconnect", InvokeMessageType.Core);
+                        ServerHelper.WriteLine("[" + SocketSet.GetTypeString(SocketMessageType.DataRequest) + "] " + GetClientName() + " -> Disconnect", InvokeMessageType.Core);
                         msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
                         break;
                 }
@@ -139,9 +139,7 @@ namespace Milimoe.FunGame.Server.Model
                         type = SocketObject.GetParam<DataRequestType>(0);
                         Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? [];
 
-                        SQLHelper.NewTransaction();
                         result = DataRequestController.GetResultData(type, data);
-                        SQLHelper.Commit();
                     }
                     catch (Exception e)
                     {
@@ -207,7 +205,7 @@ namespace Milimoe.FunGame.Server.Model
                     }
                     object obj = objs[0];
                     if (obj.GetType() == typeof(string) && (string)obj != "")
-                        ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(type) + "] " + GetClientName() + " <- " + obj, InvokeMessageType.Core);
+                        ServerHelper.WriteLine("[" + SocketSet.GetTypeString(type) + "] " + GetClientName() + " <- " + obj, InvokeMessageType.Core);
                     return true;
                 }
                 throw new CanNotSendToClientException();
@@ -565,7 +563,7 @@ namespace Milimoe.FunGame.Server.Model
 
         private void CreateStreamReader()
         {
-            Thread.Sleep(100);
+            Thread.Sleep(20);
             ServerHelper.WriteLine("Creating: StreamReader -> " + GetClientName() + " ...OK");
             while (Running)
             {
@@ -598,13 +596,24 @@ namespace Milimoe.FunGame.Server.Model
 
         private void CreatePeriodicalQuerier()
         {
-            Thread.Sleep(100);
+            Thread.Sleep(20);
             ServerHelper.WriteLine("Creating: PeriodicalQuerier -> " + GetClientName() + " ...OK");
             while (Running)
             {
                 // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
-                Thread.Sleep(2 * 1000 * 3600);
-                SQLHelper?.ExecuteDataSet(UserQuery.Select_IsExistUsername(UserName));
+                try
+                {
+                    Thread.Sleep(2 * 1000 * 3600);
+                    SQLHelper?.ExecuteDataSet(UserQuery.Select_IsExistUsername(UserName));
+                }
+                catch (Exception e)
+                {
+                    ServerHelper.Error(e);
+                    RemoveUser();
+                    Close();
+                    ServerHelper.WriteLine(GetClientName() + " Error -> Socket is Closed.");
+                    ServerHelper.WriteLine(GetClientName() + " Close -> StringStream is Closed.");
+                }
             }
         }
 

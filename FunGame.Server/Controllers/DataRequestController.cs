@@ -489,26 +489,28 @@ namespace Milimoe.FunGame.Server.Controller
                             else
                             {
                                 // 发送验证码，需要先删除之前过期的验证码
+                                SQLHelper.NewTransaction();
                                 SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
                                 RegVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
                                 SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCode(username, email, RegVerify));
                                 if (SQLHelper.Result == SQLResult.Success)
                                 {
+                                    SQLHelper.Commit();
                                     if (MailSender != null)
                                     {
                                         // 发送验证码
                                         string ServerName = Config.ServerName;
                                         string Subject = $"[{ServerName}] FunGame 注册验证码";
-                                        string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {RegVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
-                                        string[] To = new string[] { email };
+                                        string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {RegVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
+                                        string[] To = [email];
                                         if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
                                         {
                                             ServerHelper.WriteLine(Server.GetClientName() + $" 已向{email}发送验证码：{RegVerify}");
                                         }
                                         else
                                         {
-                                            ServerHelper.WriteLine(Server.GetClientName() + " 无法发送验证码");
-                                            ServerHelper.WriteLine(MailSender.ErrorMsg);
+                                            ServerHelper.WriteLine(Server.GetClientName() + " 无法发送验证码", InvokeMessageType.Error);
+                                            ServerHelper.WriteLine(MailSender.ErrorMsg, InvokeMessageType.Error);
                                         }
                                     }
                                     else // 不使用MailSender的情况
@@ -517,6 +519,7 @@ namespace Milimoe.FunGame.Server.Controller
                                     }
                                     returnType = RegInvokeType.InputVerifyCode;
                                 }
+                                else SQLHelper.Rollback();
                             }
                         }
                     }
@@ -540,6 +543,7 @@ namespace Milimoe.FunGame.Server.Controller
                             // 注册
                             if (RegVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
                             {
+                                SQLHelper.NewTransaction();
                                 ServerHelper.WriteLine("[Reg] UserName: " + username + " Email: " + email);
                                 SQLHelper.Execute(UserQuery.Insert_Register(username, password, email, Server.Socket?.ClientIP ?? ""));
                                 if (SQLHelper.Result == SQLResult.Success)
@@ -547,9 +551,11 @@ namespace Milimoe.FunGame.Server.Controller
                                     success = true;
                                     msg = "注册成功！请牢记您的账号与密码！";
                                     SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
+                                    SQLHelper.Commit();
                                 }
                                 else
                                 {
+                                    SQLHelper.Rollback();
                                     msg = "服务器无法处理您的注册，注册失败！";
                                 }
                             }
@@ -704,8 +710,8 @@ namespace Milimoe.FunGame.Server.Controller
                                     // 发送验证码
                                     string ServerName = Config.ServerName;
                                     string Subject = $"[{ServerName}] FunGame 找回密码验证码";
-                                    string Body = $"亲爱的 {username}， <br/>    您正在找回[{ServerName}]账号的密码，您的验证码是 {ForgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.DateOnly)}";
-                                    string[] To = new string[] { email };
+                                    string Body = $"亲爱的 {username}， <br/>    您正在找回[{ServerName}]账号的密码，您的验证码是 {ForgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
+                                    string[] To = [email];
                                     if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
                                     {
                                         ServerHelper.WriteLine(Server.GetClientName() + $" 已向{email}发送验证码：{ForgetVerify}");

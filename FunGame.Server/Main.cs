@@ -224,7 +224,7 @@ bool Connect(ClientSocket socket, Guid token, string clientip, ref bool isDebugM
                 return false;
             }
 
-            ServerHelper.WriteLine("[" + ServerSocket.GetTypeString(read.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP), InvokeMessageType.Core);
+            ServerHelper.WriteLine("[" + SocketSet.GetTypeString(read.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP), InvokeMessageType.Core);
 
             // 读取参数
             // 参数1：客户端的游戏模组列表，没有服务器的需要拒绝
