@@ -74,7 +74,14 @@ namespace Milimoe.FunGame.Server.Model
                 // 禁止GameModeServer调用
                 if ((IServerModel)this is GameModeServer) throw new NotSupportedException("请勿在GameModeServer类中调用此方法");
 
-                SocketObject SocketObject = socket.Receive();
+                SocketObject[] SocketObjects = socket.Receive();
+                if (SocketObjects.Length == 0)
+                {
+                    ServerHelper.WriteLine(GetClientName() + " 发送了空信息。");
+                    return false;
+                }
+                SocketObject SocketObject = SocketObjects[0];
+
                 SocketMessageType type = SocketObject.SocketType;
                 Guid token = SocketObject.Token;
                 object[] args = SocketObject.Parameters;
@@ -83,7 +90,7 @@ namespace Milimoe.FunGame.Server.Model
                 // 验证Token
                 if (type != SocketMessageType.HeartBeat && token != Token)
                 {
-                    ServerHelper.WriteLine(GetClientName() + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + SocketSet.GetTypeString(type) + "] ");
+                    ServerHelper.WriteLine(GetClientName() + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + SocketSet.GetTypeString(type) + "]");
                     return false;
                 }
 

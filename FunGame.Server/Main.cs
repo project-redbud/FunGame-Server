@@ -206,7 +206,7 @@ bool GetGameModeList()
 bool Connect(ClientSocket socket, Guid token, string clientip, ref bool isDebugMode)
 {
     // 接收客户端消息
-    foreach (SocketObject read in socket.ReceiveArray())
+    foreach (SocketObject read in socket.Receive())
     {
         if (read.SocketType == SocketMessageType.Connect)
         {
