@@ -28,8 +28,8 @@ namespace Milimoe.FunGame.Server.Model
             get => _Room;
             set => _Room = value;
         }
-        public MySQLHelper? SQLHelper { get; }
-        public MailSender? MailSender { get; }
+        public MySQLHelper? SQLHelper => _SQLHelper;
+        public MailSender? MailSender => _MailSender;
         public bool IsDebugMode { get; }
 
         /**
@@ -42,6 +42,8 @@ namespace Milimoe.FunGame.Server.Model
         private User _User = General.UnknownUserInstance;
         private Room _Room = General.HallInstance;
         private string _ClientName = "";
+        public MySQLHelper? _SQLHelper = null;
+        public MailSender? _MailSender = null;
 
         private Guid CheckLoginKey = Guid.Empty;
         private int FailedTimes = 0; // 超过一定次数断开连接
@@ -61,8 +63,8 @@ namespace Milimoe.FunGame.Server.Model
             _Running = running;
             Token = socket.Token;
             this.IsDebugMode = isDebugMode;
-            if (Config.SQLMode) SQLHelper = new(this);
-            MailSender = SmtpHelper.GetMailSender();
+            if (Config.SQLMode) _SQLHelper = new(this);
+            _MailSender = SmtpHelper.GetMailSender();
             DataRequestController = new(this);
         }
 
@@ -629,7 +631,9 @@ namespace Milimoe.FunGame.Server.Model
             try
             {
                 SQLHelper?.Close();
+                _SQLHelper = null;
                 MailSender?.Dispose();
+                _MailSender = null;
                 Socket?.Close();
                 _Socket = null;
                 _Running = false;
