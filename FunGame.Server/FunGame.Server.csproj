@@ -39,13 +39,13 @@
       <HintPath>..\..\FunGame.Core\bin\Debug\net8.0\FunGame.Core.dll</HintPath>
     </Reference>
     <Reference Include="MySql.Data">
-      <HintPath>..\bin\Debug\net7.0\MySql.Data.dll</HintPath>
+      <HintPath>DLL\MySql.Data.dll</HintPath>
     </Reference>
     <Reference Include="System.Configuration.ConfigurationManager">
-      <HintPath>..\bin\Debug\net7.0\System.Configuration.ConfigurationManager.dll</HintPath>
+      <HintPath>DLL\System.Configuration.ConfigurationManager.dll</HintPath>
     </Reference>
     <Reference Include="System.Security.Permissions">
-      <HintPath>..\bin\Debug\net7.0\System.Security.Permissions.dll</HintPath>
+      <HintPath>DLL\System.Security.Permissions.dll</HintPath>
     </Reference>
   </ItemGroup>
 
