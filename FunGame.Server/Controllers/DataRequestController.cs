@@ -168,11 +168,11 @@ namespace Milimoe.FunGame.Server.Controller
             if (RequestData.Count >= 3)
             {
                 RoomType type = DataRequest.GetHashtableJsonObject<RoomType>(RequestData, "roomtype");
-                string gamemode = DataRequest.GetHashtableJsonObject<string>(RequestData, "gamemode") ?? "";
+                string GameModule = DataRequest.GetHashtableJsonObject<string>(RequestData, "GameModule") ?? "";
                 string gamemap = DataRequest.GetHashtableJsonObject<string>(RequestData, "gamemap") ?? "";
                 bool isrank = DataRequest.GetHashtableJsonObject<bool>(RequestData, "isrank");
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gamemode, gamemap]) + ")", InvokeMessageType.DataRequest);
-                if (gamemode == "" || gamemap == "")
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [GameModule, gamemap]) + ")", InvokeMessageType.DataRequest);
+                if (GameModule == "" || gamemap == "")
                 {
                     ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
                     ResultData.Add("room", room);
@@ -184,7 +184,7 @@ namespace Milimoe.FunGame.Server.Controller
                 if (user.Id != 0)
                 {
                     string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
-                    SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, type, gamemode, gamemap, isrank, password ?? ""));
+                    SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, type, GameModule, gamemap, isrank, password ?? ""));
                     if (SQLHelper.Result == SQLResult.Success)
                     {
                         ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);

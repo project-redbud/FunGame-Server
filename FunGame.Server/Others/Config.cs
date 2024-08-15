@@ -80,7 +80,7 @@ namespace Milimoe.FunGame.Server.Others
         /// <summary>
         /// FunGame Runtime
         /// </summary>
-        public static FunGameInfo.FunGame FunGameType { get; } = FunGameInfo.FunGame.FunGame_Server;
+        public static FunGameInfo.FunGame FunGameType => FunGameInfo.FunGame.FunGame_Server;
 
         /// <summary>
         /// 服务器指令列表
@@ -100,12 +100,12 @@ namespace Milimoe.FunGame.Server.Others
         /// <summary>
         /// Server实际安装的模组
         /// </summary>
-        public static GameModeLoader? GameModeLoader { get; set; }
+        public static GameModuleLoader? GameModuleLoader { get; set; }
 
         /// <summary>
-        /// 未LoadGameMods时，此属性表示至少需要安装的模组
+        /// 未Loadmodules时，此属性表示至少需要安装的模组
         /// </summary>
-        public static string[] GameModeSupported { get; set; } = [];
+        public static string[] GameModuleSupported { get; set; } = [];
 
         /// <summary>
         /// 全局数据库连接器
