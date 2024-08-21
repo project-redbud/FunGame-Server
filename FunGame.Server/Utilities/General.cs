@@ -38,9 +38,9 @@ namespace Milimoe.FunGame.Server.Utility
                     Console.ForegroundColor = ConsoleColor.Green;
                     prefix = "[Plugin] ";
                     break;
-                case InvokeMessageType.GameMode:
+                case InvokeMessageType.GameModule:
                     Console.ForegroundColor = ConsoleColor.Blue;
-                    prefix = "[GameMode] ";
+                    prefix = "[GameModule] ";
                     break;
                 case InvokeMessageType.System:
                 case InvokeMessageType.None:

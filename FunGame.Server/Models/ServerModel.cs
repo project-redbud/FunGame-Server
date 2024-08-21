@@ -35,7 +35,7 @@ namespace Milimoe.FunGame.Server.Model
         /**
          * Private
          */
-        private GameModeServer? NowGamingServer = null;
+        private GameModuleServer? NowGamingServer = null;
 
         private ClientSocket? _Socket = null;
         private bool _Running = false;
@@ -73,8 +73,8 @@ namespace Milimoe.FunGame.Server.Model
             // 接收客户端消息
             try
             {
-                // 禁止GameModeServer调用
-                if ((IServerModel)this is GameModeServer) throw new NotSupportedException("请勿在GameModeServer类中调用此方法");
+                // 禁止GameModuleServer调用
+                if ((IServerModel)this is GameModuleServer) throw new NotSupportedException("请勿在GameModuleServer类中调用此方法");
 
                 SocketObject[] SocketObjects = socket.Receive();
                 if (SocketObjects.Length == 0)
@@ -229,7 +229,7 @@ namespace Milimoe.FunGame.Server.Model
 
         public void Start()
         { 
-            if ((IServerModel)this is GameModeServer) throw new NotSupportedException("请勿在GameModeServer类中调用此方法"); // 禁止GameModeServer调用
+            if ((IServerModel)this is GameModuleServer) throw new NotSupportedException("请勿在GameModuleServer类中调用此方法"); // 禁止GameModuleServer调用
             Task StreamReader = Task.Factory.StartNew(CreateStreamReader);
             Task PeriodicalQuerier = Task.Factory.StartNew(CreatePeriodicalQuerier);
         }
@@ -390,11 +390,11 @@ namespace Milimoe.FunGame.Server.Model
             // 启动服务器
             TaskUtility.NewTask(() =>
             {
-                if (Config.GameModeLoader != null && Config.GameModeLoader.ServerModes.ContainsKey(room.GameMode))
+                if (Config.GameModuleLoader != null && Config.GameModuleLoader.ServerModules.ContainsKey(room.GameModule))
                 {
-                    NowGamingServer = Config.GameModeLoader.GetServerMode(room.GameMode);
+                    NowGamingServer = Config.GameModuleLoader.GetServerMode(room.GameModule);
                     Dictionary<string, IServerModel> others = Server.UserList.Cast<IServerModel>().Where(model => usernames.Contains(model.User.Username) && model.User.Username != UserName).ToDictionary(k => k.User.Username, v => v);
-                    if (NowGamingServer.StartServer(room.GameMode, room, users, this, others))
+                    if (NowGamingServer.StartServer(room.GameModule, room, users, this, others))
                     {
                         foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Contains(model.User.Username)))
                         {

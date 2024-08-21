@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Collections.Generic;
 using Milimoe.FunGame;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Addon;
@@ -59,7 +60,7 @@ void StartServer()
             ServerHelper.InitOrderList();
 
             // 读取游戏模组
-            if (!GetGameModeList())
+            if (!GetGameModuleList())
             {
                 ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
             }
@@ -153,54 +154,43 @@ void StartServer()
     });
 }
 
-bool GetGameModeList()
+bool GetGameModuleList()
 {
-    // 同时读取Implement预设的模组和gamemods目录下的模组，最后合成一个总的列表
     List<string> supported = [];
     // 构建AddonController
     Hashtable delegates = [];
-    delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameMode)));
+    delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameModule)));
     delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
-    // 开始读取
-    Config.GameModeLoader = GameModeLoader.LoadGameModes(Config.FunGameType, delegates);
-    string[] mods = (string[]?)Implement.GetFunGameImplValue(InterfaceType.IServer, InterfaceMethod.GameModeList, false) ?? [];
-    if (mods.Length > 0)
+    // 读取modules目录下的模组
+    Config.GameModuleLoader = GameModuleLoader.LoadGameModules(Config.FunGameType, delegates);
+    foreach (GameModule module in Config.GameModuleLoader.AssociatedServers.Keys)
     {
-        supported.AddRange(mods);
-        // 检查已安装的模组中是否在Implement预设的模组中存在
-        foreach (string mod in mods)
+        bool check = true;
+        // 检查模组是否存在对应的模组服务器
+        if (Config.GameModuleLoader.AssociatedServers[module] is null)
         {
-            if (!Config.GameModeLoader.ServerModes.ContainsKey(mod))
-            {
-                ServerHelper.WriteLine("[GameMode] Load Failed: " + mod + " 不存在或未正确安装");
-                supported.Remove(mod);
-            }
+            ServerHelper.WriteLine("[GameModule] Load Failed: " + module.Name + " 缺少模组服务器");
+            check = false;
+        }
+        // 检查模组是否有相对应的地图
+        if (!Config.GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
+        {
+            ServerHelper.WriteLine("[GameModule] Load Failed: " + module + " 没有找到相对应的地图，加载失败");
+            check = false;
+        }
+        if (check)
+        {
+            supported.Add(module.Name);
         }
     }
-    // 检查模组是否有相对应的地图
-    foreach (GameModeServer mode in Config.GameModeLoader.ServerModes.Values)
-    {
-        string modename = mode.Name;
-        if (Config.GameModeLoader.Maps.ContainsKey(mode.DefaultMap))
-        {
-            supported.Add(modename);
-        }
-        else
-        {
-            ServerHelper.WriteLine("[GameMode] Load Failed: " + modename + " 没有找到相对应的地图，加载失败");
-            Config.GameModeLoader.ServerModes.Remove(modename);
-            supported.Remove(modename);
-        }
-    }
-
     // 设置全局
-    Config.GameModeSupported = supported.Distinct().ToArray();
-    foreach (string modename in Config.GameModeSupported)
+    Config.GameModuleSupported = supported.Distinct().ToArray();
+    foreach (string modename in Config.GameModuleSupported)
     {
-        ServerHelper.WriteLine("[GameMode] Loaded: " + modename);
+        ServerHelper.WriteLine("[GameModule] Loaded: " + modename);
     }
 
-    return Config.GameModeSupported.Length > 0;
+    return Config.GameModuleSupported.Length > 0;
 }
 
 bool Connect(ClientSocket socket, Guid token, string clientip, ref bool isDebugMode)
@@ -235,7 +225,7 @@ bool Connect(ClientSocket socket, Guid token, string clientip, ref bool isDebugM
 
             string msg = "";
             List<string> ClientDontHave = [];
-            string strDontHave = string.Join("\r\n", Config.GameModeSupported.Where(mode => !modes.Contains(mode)));
+            string strDontHave = string.Join("\r\n", Config.GameModuleSupported.Where(mode => !modes.Contains(mode)));
             if (strDontHave != "")
             {
                 strDontHave = "客户端缺少服务器所需的模组：" + strDontHave;
