@@ -1,0 +1,6 @@
+@FunGame.WebAPI_HostAddress = http://localhost:5117
+
+GET {{FunGame.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

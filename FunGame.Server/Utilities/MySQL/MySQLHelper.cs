@@ -12,6 +12,7 @@ namespace Milimoe.FunGame.Server.Utility
     public class MySQLHelper : SQLHelper
     {
         public override FunGameInfo.FunGame FunGameType => Config.FunGameType;
+        public override SQLMode Mode => SQLMode.MySQL;
         public override string Script { get; set; } = "";
         public override CommandType CommandType { get; set; } = CommandType.Text;
         public override SQLResult Result => _Result;

@@ -28,7 +28,7 @@ namespace Milimoe.FunGame.Server.Model
             get => _Room;
             set => _Room = value;
         }
-        public MySQLHelper? SQLHelper => _SQLHelper;
+        public SQLHelper? SQLHelper => _SQLHelper;
         public MailSender? MailSender => _MailSender;
         public bool IsDebugMode { get; }
 
@@ -42,7 +42,7 @@ namespace Milimoe.FunGame.Server.Model
         private User _User = General.UnknownUserInstance;
         private Room _Room = General.HallInstance;
         private string _ClientName = "";
-        public MySQLHelper? _SQLHelper = null;
+        public SQLHelper? _SQLHelper = null;
         public MailSender? _MailSender = null;
 
         private Guid CheckLoginKey = Guid.Empty;
@@ -63,7 +63,8 @@ namespace Milimoe.FunGame.Server.Model
             _Running = running;
             Token = socket.Token;
             this.IsDebugMode = isDebugMode;
-            if (Config.SQLMode) _SQLHelper = new(this);
+            if (Config.SQLMode == SQLMode.MySQL) _SQLHelper = new MySQLHelper(this);
+            else if (Config.SQLMode == SQLMode.SQLite) _SQLHelper = Config.SQLHelper;
             _MailSender = SmtpHelper.GetMailSender();
             DataRequestController = new(this);
         }
@@ -96,6 +97,11 @@ namespace Milimoe.FunGame.Server.Model
                     return false;
                 }
 
+                if (type == SocketMessageType.HeartBeat)
+                {
+                    return HeartBeat(socket);
+                }
+
                 if (type == SocketMessageType.EndGame)
                 {
                     NowGamingServer = null;
@@ -107,14 +113,14 @@ namespace Milimoe.FunGame.Server.Model
                     return DataRequestHandler(socket, SocketObject);
                 }
 
+                if (type == SocketMessageType.GamingRequest)
+                {
+                    return GamingRequestHandler(socket, SocketObject);
+                }
+                
                 if (type == SocketMessageType.Gaming)
                 {
                     return GamingMessageHandler(socket, SocketObject);
-                }
-
-                if (type == SocketMessageType.HeartBeat)
-                {
-                    return HeartBeat(socket);
                 }
 
                 switch (type)
@@ -138,7 +144,8 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (SQLHelper != null)
             {
-                Hashtable result = [];
+                Dictionary<string, object> result = [];
+                Guid requestID = Guid.Empty;
                 DataRequestType type = DataRequestType.UnKnown;
 
                 if (SocketObject.Parameters.Length > 0)
@@ -146,7 +153,8 @@ namespace Milimoe.FunGame.Server.Model
                     try
                     {
                         type = SocketObject.GetParam<DataRequestType>(0);
-                        Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? [];
+                        requestID = SocketObject.GetParam<Guid>(1);
+                        Dictionary<string, object> data = SocketObject.GetParam<Dictionary<string, object>>(2) ?? [];
 
                         result = DataRequestController.GetResultData(type, data);
                     }
@@ -154,21 +162,22 @@ namespace Milimoe.FunGame.Server.Model
                     {
                         ServerHelper.Error(e);
                         SQLHelper.Rollback();
-                        return Send(socket, SocketMessageType.DataRequest, type, result);
+                        return Send(socket, SocketMessageType.DataRequest, type, requestID, result);
                     }
                 }
 
-                return Send(socket, SocketMessageType.DataRequest, type, result);
+                return Send(socket, SocketMessageType.DataRequest, type, requestID, result);
             }
 
             return false;
         }
 
-        public bool GamingMessageHandler(ClientSocket socket, SocketObject SocketObject)
+        public bool GamingRequestHandler(ClientSocket socket, SocketObject SocketObject)
         {
             if (NowGamingServer != null)
             {
-                Hashtable result = [];
+                Dictionary<string, object> result = [];
+                Guid requestID = Guid.Empty;
                 GamingType type = GamingType.None;
 
                 if (SocketObject.Parameters.Length > 0)
@@ -176,7 +185,37 @@ namespace Milimoe.FunGame.Server.Model
                     try
                     {
                         type = SocketObject.GetParam<GamingType>(0);
-                        Hashtable data = SocketObject.GetParam<Hashtable>(1) ?? [];
+                        requestID = SocketObject.GetParam<Guid>(1);
+                        Dictionary<string, object> data = SocketObject.GetParam<Dictionary<string, object>>(2) ?? [];
+
+                        result = NowGamingServer.GamingMessageHandler(UserName, type, data);
+                    }
+                    catch (Exception e)
+                    {
+                        ServerHelper.Error(e);
+                        return Send(socket, SocketMessageType.GamingRequest, type, requestID, result);
+                    }
+                }
+
+                return Send(socket, SocketMessageType.GamingRequest, type, requestID, result);
+            }
+
+            return false;
+        }
+        
+        public bool GamingMessageHandler(ClientSocket socket, SocketObject SocketObject)
+        {
+            if (NowGamingServer != null)
+            {
+                Dictionary<string, object> result = [];
+                GamingType type = GamingType.None;
+
+                if (SocketObject.Parameters.Length > 0)
+                {
+                    try
+                    {
+                        type = SocketObject.GetParam<GamingType>(0);
+                        Dictionary<string, object> data = SocketObject.GetParam<Dictionary<string, object>>(1) ?? [];
 
                         result = NowGamingServer.GamingMessageHandler(UserName, type, data);
                     }
@@ -228,10 +267,10 @@ namespace Milimoe.FunGame.Server.Model
         }
 
         public void Start()
-        { 
+        {
             if ((IServerModel)this is GameModuleServer) throw new NotSupportedException("请勿在GameModuleServer类中调用此方法"); // 禁止GameModuleServer调用
-            Task StreamReader = Task.Factory.StartNew(CreateStreamReader);
-            Task PeriodicalQuerier = Task.Factory.StartNew(CreatePeriodicalQuerier);
+            TaskUtility.NewTask(CreateStreamReader);
+            TaskUtility.NewTask(CreatePeriodicalQuerier);
         }
 
         public void SetClientName(string ClientName)
@@ -393,8 +432,8 @@ namespace Milimoe.FunGame.Server.Model
                 if (Config.GameModuleLoader != null && Config.GameModuleLoader.ServerModules.ContainsKey(room.GameModule))
                 {
                     NowGamingServer = Config.GameModuleLoader.GetServerMode(room.GameModule);
-                    Dictionary<string, IServerModel> others = Server.UserList.Cast<IServerModel>().Where(model => usernames.Contains(model.User.Username) && model.User.Username != UserName).ToDictionary(k => k.User.Username, v => v);
-                    if (NowGamingServer.StartServer(room.GameModule, room, users, this, others))
+                    Dictionary<string, IServerModel> all = Server.UserList.Cast<IServerModel>().ToDictionary(k => k.User.Username, v => v);
+                    if (NowGamingServer.StartServer(room.GameModule, room, users, this, all))
                     {
                         foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Contains(model.User.Username)))
                         {
@@ -485,16 +524,16 @@ namespace Milimoe.FunGame.Server.Model
                 foreach (Room room in targets)
                 {
                     // 计算房间平均Elo
-                    List<User> players = Config.RoomList.GetPlayerList(room.Roomid);
-                    if (players.Count > 0)
-                    {
-                        decimal avgelo = players.Sum(u => u.Statistics.EloStats.ContainsKey(0) ? u.Statistics.EloStats[0] : 0M) / players.Count;
-                        decimal userelo = user.Statistics.EloStats.ContainsKey(0) ? user.Statistics.EloStats[0] : 0M;
-                        if (userelo >= avgelo - (300 * i) && userelo <= avgelo + (300 * i))
-                        {
-                            return room;
-                        }
-                    }
+                    //List<User> players = Config.RoomList.GetPlayerList(room.Roomid);
+                    //if (players.Count > 0)
+                    //{
+                    //    decimal avgelo = players.Sum(u => u.Statistics.EloStats.ContainsKey(0) ? u.Statistics.EloStats[0] : 0M) / players.Count;
+                    //    decimal userelo = user.Statistics.EloStats.ContainsKey(0) ? user.Statistics.EloStats[0] : 0M;
+                    //    if (userelo >= avgelo - (300 * i) && userelo <= avgelo + (300 * i))
+                    //    {
+                    //        return room;
+                    //    }
+                    //}
                 }
 
                 if (!IsMatching) break;
@@ -549,7 +588,7 @@ namespace Milimoe.FunGame.Server.Model
                 LogoutTime = DateTime.Now.Ticks;
                 int TotalMinutes = Convert.ToInt32((new DateTime(LogoutTime) - new DateTime(LoginTime)).TotalMinutes);
                 SQLHelper?.Execute(UserQuery.Update_GameTime(User.Username, TotalMinutes));
-                if (SQLHelper?.Result == SQLResult.Success)
+                if (SQLHelper != null && SQLHelper.Result == SQLResult.Success)
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 本次已游玩" + TotalMinutes + "分钟");
                 }
@@ -570,9 +609,9 @@ namespace Milimoe.FunGame.Server.Model
             ServerHelper.WriteLine($"目前在线客户端数量: {Server.ClientCount}（已登录的玩家数量：{Server.UserCount}）");
         }
 
-        private void CreateStreamReader()
+        private async Task CreateStreamReader()
         {
-            Thread.Sleep(20);
+            await Task.Delay(20);
             ServerHelper.WriteLine("Creating: StreamReader -> " + GetClientName() + " ...OK");
             while (Running)
             {
@@ -603,16 +642,16 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        private void CreatePeriodicalQuerier()
+        private async Task CreatePeriodicalQuerier()
         {
-            Thread.Sleep(20);
+            await Task.Delay(20);
             ServerHelper.WriteLine("Creating: PeriodicalQuerier -> " + GetClientName() + " ...OK");
             while (Running)
             {
                 // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
                 try
                 {
-                    Thread.Sleep(2 * 1000 * 3600);
+                    await Task.Delay(2 * 1000 * 3600);
                     SQLHelper?.ExecuteDataSet(UserQuery.Select_IsExistUsername(UserName));
                 }
                 catch (Exception e)

@@ -7,6 +7,7 @@ using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Core.Model;
 using Milimoe.FunGame.Server.Utility;
+using Milimoe.FunGame.Server.Utility.DataUtility;
 
 namespace Milimoe.FunGame.Server.Others
 {
@@ -95,7 +96,7 @@ namespace Milimoe.FunGame.Server.Others
         /// <summary>
         /// 是否运行数据库模式
         /// </summary>
-        public static bool SQLMode { get; set; } = false;
+        public static SQLMode SQLMode { get; set; } = SQLMode.None;
 
         /// <summary>
         /// Server实际安装的模组
@@ -114,7 +115,7 @@ namespace Milimoe.FunGame.Server.Others
         {
             get
             {
-                if (_SQLHelper is null) throw new MySQLConfigException();
+                if (_SQLHelper is null) throw new SQLServiceException();
                 return _SQLHelper;
             }
         }
@@ -128,12 +129,26 @@ namespace Milimoe.FunGame.Server.Others
         {
             try
             {
-                _SQLHelper = new MySQLHelper("", false);
-                if (((MySQLHelper)_SQLHelper).Connection != null)
+                if (INIHelper.ExistINIFile())
                 {
-                    SQLMode = true;
-                    ServerLogin();
-                    ClearRoomList();
+                    if (INIHelper.ReadINI("MySQL", "UseMySQL").Trim() == "true")
+                    {
+                        _SQLHelper = new MySQLHelper("", false);
+                        if (((MySQLHelper)_SQLHelper).Connection != null)
+                        {
+                            SQLMode = _SQLHelper.Mode;
+                            ServerLogin();
+                            ClearRoomList();
+                        }
+                    }
+                    else if (INIHelper.ReadINI("SQLite", "UseSQLite").Trim() == "true")
+                    {
+                        _SQLHelper = new SQLiteHelper();
+                        SQLMode = _SQLHelper.Mode;
+                        ServerLogin();
+                        ClearRoomList();
+                    }
+                    else SQLMode = SQLMode.None;
                 }
             }
             catch (Exception e)
@@ -147,7 +162,7 @@ namespace Milimoe.FunGame.Server.Others
         /// </summary>
         public static void ServerLogin()
         {
-            if (SQLMode)
+            if (SQLMode != SQLMode.None)
             {
                 SQLHelper.Execute(ServerLoginLogs.Insert_ServerLoginLogs(ServerName, ServerKey));
             }
@@ -158,7 +173,7 @@ namespace Milimoe.FunGame.Server.Others
         /// </summary>
         public static void ClearRoomList()
         {
-            if (SQLMode)
+            if (SQLMode != SQLMode.None)
             {
                 SQLHelper.Execute(RoomQuery.Delete_Rooms());
             }
