@@ -167,11 +167,11 @@ namespace Milimoe.FunGame.Server.Controller
             if (RequestData.Count >= 3)
             {
                 RoomType type = DataRequest.GetDictionaryJsonObject<RoomType>(RequestData, "roomtype");
-                string GameModule = DataRequest.GetDictionaryJsonObject<string>(RequestData, "gamemodule") ?? "";
+                string gamemodule = DataRequest.GetDictionaryJsonObject<string>(RequestData, "gamemoduleserver") ?? "";
                 string gamemap = DataRequest.GetDictionaryJsonObject<string>(RequestData, "gamemap") ?? "";
                 bool isrank = DataRequest.GetDictionaryJsonObject<bool>(RequestData, "isrank");
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [GameModule, gamemap]) + ")", InvokeMessageType.DataRequest);
-                if (GameModule == "" || gamemap == "")
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_LastRequest) + " : " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gamemodule, gamemap]) + ")", InvokeMessageType.DataRequest);
+                if (gamemodule == "" || gamemap == "" || Config.GameModuleLoader is null || !Config.GameModuleLoader.ModuleServers.ContainsKey(gamemodule) || !Config.GameModuleLoader.Maps.ContainsKey(gamemap))
                 {
                     ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
                     ResultData.Add("room", room);
@@ -185,7 +185,7 @@ namespace Milimoe.FunGame.Server.Controller
                     string roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
                     if (SQLHelper != null)
                     {
-                        SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, type, GameModule, gamemap, isrank, password ?? ""));
+                        SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, type, gamemodule, gamemap, isrank, password ?? ""));
                         if (SQLHelper.Result == SQLResult.Success)
                         {
                             ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
@@ -401,7 +401,7 @@ namespace Milimoe.FunGame.Server.Controller
                         else
                         {
                             List<User> users = Config.RoomList.GetPlayerList(roomid);
-                            if (users.Count < 1)
+                            if (users.Count < 2)
                             {
                                 Server.SendSystemMessage(ShowMessageType.None, "玩家数量不足，无法开始游戏。", "", 0, Server.User.Username);
                             }

@@ -62,15 +62,18 @@ namespace Milimoe.FunGame.Server.Utility
         public static void Write(string msg, InvokeMessageType type = InvokeMessageType.System)
         {
             if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type) + msg + "> ");
+            Console.ResetColor();
         }
 
         public static void WriteLine(string msg, InvokeMessageType type = InvokeMessageType.System)
         {
             if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type) + msg + "\n\r> ");
+            Console.ResetColor();
         }
 
         public static void Type()
         {
+            Console.ResetColor();
             Console.Write("\r> ");
         }
 
@@ -86,7 +89,7 @@ namespace Milimoe.FunGame.Server.Utility
 
         private static Hashtable GetServerSettingHashtable()
         {
-            Hashtable settings = new();
+            Hashtable settings = [];
             if (INIHelper.ExistINIFile())
             {
                 settings.Add("Name", INIHelper.ReadINI("Server", "Name"));

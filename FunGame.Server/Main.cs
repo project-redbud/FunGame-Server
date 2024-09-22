@@ -162,15 +162,9 @@ bool GetGameModuleList()
     delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
     // 读取modules目录下的模组
     Config.GameModuleLoader = GameModuleLoader.LoadGameModules(Config.FunGameType, delegates);
-    foreach (GameModule module in Config.GameModuleLoader.AssociatedServers.Keys)
+    foreach (GameModuleServer module in Config.GameModuleLoader.ModuleServers.Values)
     {
         bool check = true;
-        // 检查模组是否存在对应的模组服务器
-        if (Config.GameModuleLoader.AssociatedServers[module] is null)
-        {
-            ServerHelper.WriteLine("[GameModule] Load Failed: " + module.Name + " 缺少模组服务器");
-            check = false;
-        }
         // 检查模组是否有相对应的地图
         if (!Config.GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
         {

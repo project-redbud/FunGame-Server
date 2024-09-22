@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Data;
+﻿using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
@@ -30,13 +29,12 @@ namespace Milimoe.FunGame.Server.Model
         }
         public SQLHelper? SQLHelper => _SQLHelper;
         public MailSender? MailSender => _MailSender;
-        public bool IsDebugMode { get; }
+        public bool IsDebugMode { get; } = false;
+        public GameModuleServer? NowGamingServer { get; set; } = null;
 
         /**
          * Private
          */
-        private GameModuleServer? NowGamingServer = null;
-
         private ClientSocket? _Socket = null;
         private bool _Running = false;
         private User _User = General.UnknownUserInstance;
@@ -166,9 +164,15 @@ namespace Milimoe.FunGame.Server.Model
                     }
                 }
 
-                return Send(socket, SocketMessageType.DataRequest, type, requestID, result);
+                bool sendResult = Send(socket, SocketMessageType.DataRequest, type, requestID, result);
+                if (!sendResult)
+                {
+                    ServerHelper.WriteLine("[ " + User.Username + " ] " + nameof(DataRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
+                }
+                return sendResult;
             }
 
+            ServerHelper.WriteLine("[ " + User.Username + " ] " + nameof(DataRequestHandler) + ": " + false, InvokeMessageType.Error);
             return false;
         }
 
@@ -197,9 +201,15 @@ namespace Milimoe.FunGame.Server.Model
                     }
                 }
 
-                return Send(socket, SocketMessageType.GamingRequest, type, requestID, result);
+                bool sendResult = Send(socket, SocketMessageType.GamingRequest, type, requestID, result);
+                if (!sendResult)
+                {
+                    ServerHelper.WriteLine("[ " + User.Username + " ] " + nameof(GamingRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
+                }
+                return sendResult;
             }
 
+            ServerHelper.WriteLine("[ " + User.Username + " ] " + nameof(GamingRequestHandler) + ": " + false, InvokeMessageType.Error);
             return false;
         }
         
@@ -226,9 +236,15 @@ namespace Milimoe.FunGame.Server.Model
                     }
                 }
 
-                return Send(socket, SocketMessageType.Gaming, type, result);
+                bool sendResult = Send(socket, SocketMessageType.Gaming, type, result);
+                if (!sendResult)
+                {
+                    ServerHelper.WriteLine("[ " + User.Username + " ] "+ nameof(GamingMessageHandler) + ": " + sendResult, InvokeMessageType.Error);
+                }
+                return sendResult;
             }
 
+            ServerHelper.WriteLine("[ " + User.Username + " ] " + nameof(GamingMessageHandler) + ": " + false, InvokeMessageType.Error);
             return false;
         }
 
@@ -429,10 +445,15 @@ namespace Milimoe.FunGame.Server.Model
             // 启动服务器
             TaskUtility.NewTask(() =>
             {
-                if (Config.GameModuleLoader != null && Config.GameModuleLoader.ServerModules.ContainsKey(room.GameModule))
+                if (Config.GameModuleLoader != null && Config.GameModuleLoader.ModuleServers.ContainsKey(room.GameModule))
                 {
                     NowGamingServer = Config.GameModuleLoader.GetServerMode(room.GameModule);
                     Dictionary<string, IServerModel> all = Server.UserList.Cast<IServerModel>().ToDictionary(k => k.User.Username, v => v);
+                    // 给其他玩家赋值模组服务器
+                    foreach (IServerModel model in all.Values.Where(s => s.User.Username != User.Username))
+                    {
+                        model.NowGamingServer = NowGamingServer;
+                    }
                     if (NowGamingServer.StartServer(room.GameModule, room, users, this, all))
                     {
                         foreach (ServerModel serverTask in Server.UserList.Cast<ServerModel>().Where(model => usernames.Contains(model.User.Username)))
@@ -477,7 +498,12 @@ namespace Milimoe.FunGame.Server.Model
 
         public bool HeartBeat(ClientSocket socket)
         {
-            return Send(socket, SocketMessageType.HeartBeat, "");
+            bool result = Send(socket, SocketMessageType.HeartBeat, "");
+            if (!result)
+            {
+                ServerHelper.WriteLine("[ " + User.Username + " ] " + nameof(HeartBeat) + ": " + result, InvokeMessageType.Error);
+            }
+            return result;
         }
 
         public void StartMatching(RoomType type, User user)
