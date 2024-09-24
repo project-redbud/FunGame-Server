@@ -86,7 +86,7 @@ void StartServer()
             ListeningSocket = ServerSocket.StartListening();
 
             // 开始监听连接
-            AddBannedList(ListeningSocket);
+            ListeningSocket.BannedList.AddRange(Config.ServerBannedList);
             ServerHelper.WriteLine("Listen -> " + Config.ServerPort);
             ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
 
@@ -102,7 +102,7 @@ void StartServer()
                 try
                 {
                     Guid token = Guid.NewGuid();
-                    socket = ListeningSocket.Accept(token);
+                    socket = ServerSocket.Accept(token);
                     clientip = socket.ClientIP;
                     Config.ConnectingPlayerCount++;
                     // 开始处理客户端连接请求
@@ -262,15 +262,6 @@ bool SendRefuseConnect(ClientSocket socket, string msg)
     {
         ServerHelper.WriteLine("无法传输数据，与客户端的连接可能丢失。", InvokeMessageType.Core);
         return false;
-    }
-}
-
-void AddBannedList(ServerSocket server)
-{
-    string[] bans = Config.ServerBannedList.Split(',');
-    foreach (string banned in bans)
-    {
-        server.BannedList.Add(banned.Trim());
     }
 }
 

@@ -127,7 +127,7 @@ namespace Milimoe.FunGame.Server.Utility
                     if (Describe != null) Config.ServerDescription = Describe;
                     if (Notice != null) Config.ServerNotice = Notice;
                     if (Key != null) Config.ServerKey = Key;
-                    if (BannedList != null) Config.ServerBannedList = BannedList;
+                    if (BannedList != null) Config.ServerBannedList = BannedList.Split(',').Select(s => s.Trim()).ToList();
 
                     string? OfficialMail = (string?)settings["OfficialMail"];
                     string? SupportMail = (string?)settings["SupportMail"];

@@ -51,7 +51,7 @@ namespace Milimoe.FunGame.Server.Others
         /// <summary>
         /// 禁止连接的黑名单
         /// </summary>
-        public static string ServerBannedList { get; set; } = "";
+        public static List<string> ServerBannedList { get; set; } = [];
 
         /// <summary>
         /// 最多接受连接的玩家数量

@@ -19,7 +19,7 @@ namespace Milimoe.FunGame.Server.Model
          * Public
          */
         public bool Running => _Running;
-        public ClientSocket? Socket => _Socket;
+        public ISocketMessageProcessor? Socket => _Socket;
         public string ClientName => _ClientName;
         public User User => _User;
         public Room Room
@@ -35,7 +35,7 @@ namespace Milimoe.FunGame.Server.Model
         /**
          * Private
          */
-        private ClientSocket? _Socket = null;
+        private ISocketMessageProcessor? _Socket = null;
         private bool _Running = false;
         private User _User = General.UnknownUserInstance;
         private Room _Room = General.HallInstance;
@@ -67,7 +67,7 @@ namespace Milimoe.FunGame.Server.Model
             DataRequestController = new(this);
         }
 
-        public bool Read(ClientSocket socket)
+        public bool Read(ISocketMessageProcessor socket)
         {
             // 接收客户端消息
             try
@@ -75,60 +75,71 @@ namespace Milimoe.FunGame.Server.Model
                 // 禁止GameModuleServer调用
                 if ((IServerModel)this is GameModuleServer) throw new NotSupportedException("请勿在GameModuleServer类中调用此方法");
 
-                SocketObject[] SocketObjects = socket.Receive();
+                SocketObject[] SocketObjects = [];
+                // 确保 socket 是 ClientSocket
+                if (socket is ClientSocket realSocket)
+                {
+                    SocketObjects = realSocket.Receive();
+                }
+
                 if (SocketObjects.Length == 0)
                 {
                     ServerHelper.WriteLine(GetClientName() + " 发送了空信息。");
                     return false;
                 }
-                SocketObject SocketObject = SocketObjects[0];
 
-                SocketMessageType type = SocketObject.SocketType;
-                Guid token = SocketObject.Token;
-                object[] args = SocketObject.Parameters;
-                string msg = "";
-
-                // 验证Token
-                if (type != SocketMessageType.HeartBeat && token != Token)
+                foreach (SocketObject SocketObject in SocketObjects)
                 {
-                    ServerHelper.WriteLine(GetClientName() + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + SocketSet.GetTypeString(type) + "]");
-                    return false;
+                    SocketMessageType type = SocketObject.SocketType;
+                    Guid token = SocketObject.Token;
+                    object[] args = SocketObject.Parameters;
+                    string msg = "";
+
+                    // 验证Token
+                    if (type != SocketMessageType.HeartBeat && token != Token)
+                    {
+                        ServerHelper.WriteLine(GetClientName() + " 使用了非法方式传输消息，服务器拒绝回应 -> [" + SocketSet.GetTypeString(type) + "]");
+                        return false;
+                    }
+
+                    if (type == SocketMessageType.HeartBeat)
+                    {
+                        return HeartBeat(socket);
+                    }
+
+                    if (type == SocketMessageType.EndGame)
+                    {
+                        NowGamingServer = null;
+                        return true;
+                    }
+
+                    if (type == SocketMessageType.DataRequest)
+                    {
+                        return DataRequestHandler(socket, SocketObject);
+                    }
+
+                    if (type == SocketMessageType.GamingRequest)
+                    {
+                        return GamingRequestHandler(socket, SocketObject);
+                    }
+
+                    if (type == SocketMessageType.Gaming)
+                    {
+                        return GamingMessageHandler(socket, SocketObject);
+                    }
+
+                    switch (type)
+                    {
+                        case SocketMessageType.Disconnect:
+                            ServerHelper.WriteLine("[" + SocketSet.GetTypeString(SocketMessageType.DataRequest) + "] " + GetClientName() + " -> Disconnect", InvokeMessageType.Core);
+                            msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
+                            break;
+                    }
+
+                    return Send(socket, type, msg);
                 }
 
-                if (type == SocketMessageType.HeartBeat)
-                {
-                    return HeartBeat(socket);
-                }
-
-                if (type == SocketMessageType.EndGame)
-                {
-                    NowGamingServer = null;
-                    return true;
-                }
-
-                if (type == SocketMessageType.DataRequest)
-                {
-                    return DataRequestHandler(socket, SocketObject);
-                }
-
-                if (type == SocketMessageType.GamingRequest)
-                {
-                    return GamingRequestHandler(socket, SocketObject);
-                }
-                
-                if (type == SocketMessageType.Gaming)
-                {
-                    return GamingMessageHandler(socket, SocketObject);
-                }
-
-                switch (type)
-                {
-                    case SocketMessageType.Disconnect:
-                        ServerHelper.WriteLine("[" + SocketSet.GetTypeString(SocketMessageType.DataRequest) + "] " + GetClientName() + " -> Disconnect", InvokeMessageType.Core);
-                        msg = "你已成功断开与服务器的连接: " + Config.ServerName + "。 ";
-                        break;
-                }
-                return Send(socket, type, msg);
+                throw new SocketWrongInfoException();
             }
             catch (Exception e)
             {
@@ -138,7 +149,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public bool DataRequestHandler(ClientSocket socket, SocketObject SocketObject)
+        public bool DataRequestHandler(ISocketMessageProcessor socket, SocketObject SocketObject)
         {
             if (SQLHelper != null)
             {
@@ -176,7 +187,7 @@ namespace Milimoe.FunGame.Server.Model
             return false;
         }
 
-        public bool GamingRequestHandler(ClientSocket socket, SocketObject SocketObject)
+        public bool GamingRequestHandler(ISocketMessageProcessor socket, SocketObject SocketObject)
         {
             if (NowGamingServer != null)
             {
@@ -213,7 +224,7 @@ namespace Milimoe.FunGame.Server.Model
             return false;
         }
         
-        public bool GamingMessageHandler(ClientSocket socket, SocketObject SocketObject)
+        public bool GamingMessageHandler(ISocketMessageProcessor socket, SocketObject SocketObject)
         {
             if (NowGamingServer != null)
             {
@@ -248,7 +259,7 @@ namespace Milimoe.FunGame.Server.Model
             return false;
         }
 
-        public bool Send(ClientSocket socket, SocketMessageType type, params object[] objs)
+        public bool Send(ISocketMessageProcessor socket, SocketMessageType type, params object[] objs)
         {
             // 发送消息给客户端
             try
@@ -496,7 +507,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public bool HeartBeat(ClientSocket socket)
+        public bool HeartBeat(ISocketMessageProcessor socket)
         {
             bool result = Send(socket, SocketMessageType.HeartBeat, "");
             if (!result)
