@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
+using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
 using Milimoe.FunGame.Server.Model;
@@ -28,7 +29,7 @@ namespace Milimoe.FunGame.Server.Utility
         private DataSet _DataSet = new();
         private MySQLConnection? _Connection;
         private MySqlTransaction? _Transaction;
-        private readonly ServerModel? ServerModel;
+        private readonly IServerModel? ServerModel;
         private readonly bool _IsOneTime = false;
 
         /// <summary>
@@ -124,7 +125,7 @@ namespace Milimoe.FunGame.Server.Utility
         /// 创建为SocketModel服务的SQLHelper
         /// </summary>
         /// <param name="ServerModel">SocketModel</param>
-        public MySQLHelper(ServerModel ServerModel)
+        public MySQLHelper(IServerModel ServerModel)
         {
             this.ServerModel = ServerModel;
             Script = "";

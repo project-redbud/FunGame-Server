@@ -1,5 +1,4 @@
 ﻿using Milimoe.FunGame.Core.Interface.Base;
-using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
@@ -7,7 +6,7 @@ namespace Milimoe.FunGame.Server.Model
 {
     public class ConsoleModel
     {
-        public static void Order(ServerSocket? server, string order)
+        public static void Order<T>(ISocketListener<T>? server, string order) where T : ISocketMessageProcessor
         {
             try
             {
@@ -19,7 +18,7 @@ namespace Milimoe.FunGame.Server.Model
                             string client = Console.ReadLine() ?? "";
                             if (client != "" && server != null)
                             {
-                                ((ServerModel)server.GetClient(client))?.Kick("您已被服务器管理员踢出此服务器。");
+                                ((BaseServerModel<T>)server.ClientList[client])?.Kick("您已被服务器管理员踢出此服务器。");
                             }
                             break;
                         }
@@ -29,7 +28,7 @@ namespace Milimoe.FunGame.Server.Model
                             string user = Console.ReadLine() ?? "";
                             if (user != "" && server != null)
                             {
-                                ((ServerModel)server.GetUser(user))?.ForceLogOut("您已被服务器管理员强制下线。");
+                                ((BaseServerModel<T>)server.UserList[user])?.ForceLogOut("您已被服务器管理员强制下线。");
                             }
                             break;
                         }
@@ -56,7 +55,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        private static void ShowClients(ServerSocket? server)
+        private static void ShowClients<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
         {
             if (server != null)
             {
@@ -69,7 +68,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        private static void ShowUsers(ServerSocket? server)
+        private static void ShowUsers<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
         {
             if (server != null)
             {

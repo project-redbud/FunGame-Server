@@ -19,9 +19,34 @@ namespace Milimoe.FunGame.Server.Others
         public static string ServerName { get; set; } = "FunGame Server";
 
         /// <summary>
-        /// 默认端口
+        /// Socket 端口
         /// </summary>
         public static int ServerPort { get; set; } = 22222;
+
+        /// <summary>
+        /// 使用 WebSocket
+        /// </summary>
+        public static bool UseWebSocket { get; set; } = false;
+
+        /// <summary>
+        /// WebSocket 监听地址
+        /// </summary>
+        public static string WebSocketAddress { get; set; } = "localhost";
+
+        /// <summary>
+        /// WebSocket 端口
+        /// </summary>
+        public static int WebSocketPort { get; set; } = 22222;
+        
+        /// <summary>
+        /// WebSocket 监听子路径
+        /// </summary>
+        public static string WebSocketSubUrl { get; set; } = "ws";
+
+        /// <summary>
+        /// WebSocket 开启 SSL
+        /// </summary>
+        public static bool WebSocketSSL { get; set; } = false;
 
         /// <summary>
         /// 默认状态：1可连接 0不可连接 -1不可用

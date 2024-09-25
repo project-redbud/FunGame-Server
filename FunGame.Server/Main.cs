@@ -1,10 +1,13 @@
 ﻿using System.Collections;
+using System.Security.Principal;
 using Milimoe.FunGame;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Model;
+using Milimoe.FunGame.Server.Models;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
@@ -12,7 +15,8 @@ Console.Title = Config.ServerName;
 Console.WriteLine(FunGameInfo.GetInfo(Config.FunGameType));
 
 bool Running = true;
-ServerSocket? ListeningSocket = null;
+ServerSocket? SocketListener = null;
+HTTPListener? WebSocketListener = null;
 
 StartServer();
 
@@ -31,7 +35,7 @@ while (Running)
                 Running = false;
                 break;
             case OrderDictionary.Restart:
-                if (ListeningSocket == null)
+                if (SocketListener is null || WebSocketListener is null)
                 {
                     ServerHelper.WriteLine("重启服务器");
                     StartServer();
@@ -39,7 +43,14 @@ while (Running)
                 else ServerHelper.WriteLine("服务器正在运行，拒绝重启！");
                 break;
             default:
-                ConsoleModel.Order(ListeningSocket, order);
+                if (SocketListener != null)
+                {
+                    ConsoleModel.Order(SocketListener, order);
+                }
+                else
+                {
+                    ConsoleModel.Order(WebSocketListener, order);
+                }
                 break;
         }
     }
@@ -50,7 +61,7 @@ Console.ReadKey();
 
 void StartServer()
 {
-    Task t = Task.Factory.StartNew(() =>
+    TaskUtility.NewTask(async () =>
     {
         try
         {
@@ -82,51 +93,115 @@ void StartServer()
             // 创建全局SQLHelper
             Config.InitSQLHelper();
 
-            // 创建监听
-            ListeningSocket = ServerSocket.StartListening();
+            // 使用Socket还是WebSocket
+            bool useWebSocket = Config.UseWebSocket;
 
-            // 开始监听连接
-            ListeningSocket.BannedList.AddRange(Config.ServerBannedList);
-            ServerHelper.WriteLine("Listen -> " + Config.ServerPort);
-            ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
-
-            if (Config.ServerNotice != "")
-                ServerHelper.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
-            else
-                ServerHelper.WriteLine("无法读取服务器公告");
-
-            while (Running)
+            if (!useWebSocket)
             {
-                ClientSocket socket;
-                string clientip = "";
-                try
+                // 创建监听
+                ServerSocket listener = ServerSocket.StartListening(Config.ServerPort, Config.MaxPlayers);
+                SocketListener = listener;
+
+                // 开始监听连接
+                listener.BannedList.AddRange(Config.ServerBannedList);
+                ServerHelper.WriteLine("Listen -> " + Config.ServerPort);
+                ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
+
+                if (Config.ServerNotice != "")
+                    ServerHelper.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
+                else
+                    ServerHelper.WriteLine("无法读取服务器公告");
+
+                while (Running)
                 {
-                    Guid token = Guid.NewGuid();
-                    socket = ServerSocket.Accept(token);
-                    clientip = socket.ClientIP;
-                    Config.ConnectingPlayerCount++;
-                    // 开始处理客户端连接请求
-                    bool isDebugMode = false;
-                    if (Connect(socket, token, clientip, ref isDebugMode))
+                    ClientSocket socket;
+                    string clientip = "";
+                    try
                     {
-                        ServerModel ClientModel = new(ListeningSocket, socket, Running, isDebugMode);
-                        Task t = Task.Factory.StartNew(() =>
+                        Guid token = Guid.NewGuid();
+                        socket = listener.Accept(token);
+                        clientip = socket.ClientIP;
+                        Config.ConnectingPlayerCount++;
+                        bool isDebugMode = false;
+
+                        // 开始处理客户端连接请求
+                        SocketObject[] objs = socket.Receive();
+                        if (Connect(listener, socket, token, clientip, ref isDebugMode, objs))
                         {
-                            ClientModel.Start();
-                        });
-                        ClientModel.SetClientName(clientip);
+                            BaseServerModel<ClientSocket> ClientModel = new ClientSocketServerModel(listener, socket, Running, isDebugMode);
+                            Task t = Task.Factory.StartNew(() =>
+                            {
+                                ClientModel.Start();
+                            });
+                            ClientModel.SetClientName(clientip);
+                        }
+                        else
+                        {
+                            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
+                        }
+                        Config.ConnectingPlayerCount--;
                     }
-                    else
+                    catch (Exception e)
                     {
-                        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
+                        if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
+                        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
+                        ServerHelper.Error(e);
                     }
-                    Config.ConnectingPlayerCount--;
                 }
-                catch (Exception e)
+            }
+            else
+            {
+                // 创建监听
+                HTTPListener listener = HTTPListener.StartListening(Config.WebSocketAddress, Config.WebSocketPort, Config.WebSocketSubUrl, Config.WebSocketSSL);
+                WebSocketListener = listener;
+
+                // 开始监听连接
+                listener.BannedList.AddRange(Config.ServerBannedList);
+                ServerHelper.WriteLine("Listen -> " + listener.Instance.Prefixes.First());
+                ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
+
+                if (Config.ServerNotice != "")
+                    ServerHelper.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
+                else
+                    ServerHelper.WriteLine("无法读取服务器公告");
+
+                while (Running)
                 {
-                    if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
-                    ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
-                    ServerHelper.Error(e);
+                    ClientWebSocket socket;
+                    string clientip = "";
+                    try
+                    {
+                        Guid token = Guid.NewGuid();
+                        socket = await listener.Accept(token);
+                        clientip = socket.ClientIP;
+                        Config.ConnectingPlayerCount++;
+                        bool isDebugMode = false;
+
+                        // 开始处理客户端连接请求
+                        SocketObject[] objs = await socket.ReceiveAsync();
+                        Console.WriteLine(NetworkUtility.JsonSerialize(objs));
+                        if (Connect(listener, socket, token, clientip, ref isDebugMode, objs))
+                        {
+                            BaseServerModel<ClientWebSocket> ClientModel = new ClientWebSocketServerModel(listener, socket, Running, isDebugMode);
+                            Task t = Task.Factory.StartNew(() =>
+                            {
+                                ClientModel.Start();
+                            });
+                            ClientModel.SetClientName(clientip);
+                        }
+                        else
+                        {
+                            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
+                            socket.Close();
+                        }
+                        Config.ConnectingPlayerCount--;
+                    }
+                    catch (Exception e)
+                    {
+                        if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
+                        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
+                        ServerHelper.Error(e);
+                    }
                 }
             }
         }
@@ -134,20 +209,30 @@ void StartServer()
         {
             if (e.Message.Equals(new ServerErrorException().Message))
             {
-                if (ListeningSocket != null)
+                if (SocketListener != null)
                 {
-                    ListeningSocket.Close();
-                    ListeningSocket = null;
+                    SocketListener.Close();
+                    SocketListener = null;
+                }
+                if (WebSocketListener != null)
+                {
+                    WebSocketListener.Close();
+                    WebSocketListener = null;
                 }
             }
             ServerHelper.Error(e);
         }
         finally
         {
-            if (ListeningSocket != null)
+            if (SocketListener != null)
             {
-                ListeningSocket.Close();
-                ListeningSocket = null;
+                SocketListener.Close();
+                SocketListener = null;
+            }
+            if (WebSocketListener != null)
+            {
+                WebSocketListener.Close();
+                WebSocketListener = null;
             }
         }
     });
@@ -186,34 +271,33 @@ bool GetGameModuleList()
     return Config.GameModuleSupported.Length > 0;
 }
 
-bool Connect(ClientSocket socket, Guid token, string clientip, ref bool isDebugMode)
+bool Connect<T>(ISocketListener<T> listener, ISocketMessageProcessor socket, Guid token, string clientip, ref bool isDebugMode, IEnumerable<SocketObject> objs) where T : ISocketMessageProcessor
 {
-    // 接收客户端消息
-    foreach (SocketObject read in socket.Receive())
+    foreach (SocketObject obj in objs)
     {
-        if (read.SocketType == SocketMessageType.Connect)
+        if (obj.SocketType == SocketMessageType.Connect)
         {
             if (Config.ConnectingPlayerCount + Config.OnlinePlayerCount > Config.MaxPlayers)
             {
-                SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
+                _ = SendRefuseConnect(socket, "服务器可接受的连接数量已上限！");
                 ServerHelper.WriteLine("服务器可接受的连接数量已上限！", InvokeMessageType.Core);
                 return false;
             }
             ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 正在连接服务器 . . .", InvokeMessageType.Core);
-            if (IsIPBanned(ListeningSocket, clientip))
+            if (IsIPBanned(listener, clientip))
             {
-                SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
+                _ = SendRefuseConnect(socket, "服务器已拒绝黑名单用户连接。");
                 ServerHelper.WriteLine("检测到 " + ServerHelper.MakeClientName(clientip) + " 为黑名单用户，已禁止其连接！", InvokeMessageType.Core);
                 return false;
             }
 
-            ServerHelper.WriteLine("[" + SocketSet.GetTypeString(read.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP), InvokeMessageType.Core);
+            ServerHelper.WriteLine("[" + SocketSet.GetTypeString(obj.SocketType) + "] " + ServerHelper.MakeClientName(socket.ClientIP), InvokeMessageType.Core);
 
             // 读取参数
             // 参数1：客户端的游戏模组列表，没有服务器的需要拒绝
-            string[] modes = read.GetParam<string[]>(0) ?? [];
+            string[] modes = obj.GetParam<string[]>(0) ?? [];
             // 参数2：客户端是否开启了开发者模式，开启开发者模式部分功能不可用
-            isDebugMode = read.GetParam<bool>(1);
+            isDebugMode = obj.GetParam<bool>(1);
             if (isDebugMode) ServerHelper.WriteLine("客户端已开启开发者模式");
 
             string msg = "";
@@ -244,16 +328,16 @@ bool Connect(ClientSocket socket, Guid token, string clientip, ref bool isDebugM
         }
     }
 
-    SendRefuseConnect(socket, "服务器已拒绝连接。");
+    _ = SendRefuseConnect(socket, "服务器已拒绝连接。");
     ServerHelper.WriteLine("客户端发送了不符合FunGame规定的字符，拒绝连接。", InvokeMessageType.Core);
     return false;
 }
 
-bool SendRefuseConnect(ClientSocket socket, string msg)
+async Task<bool> SendRefuseConnect(ISocketMessageProcessor socket, string msg)
 {
     // 发送消息给客户端
     msg = "连接被拒绝，如有疑问请联系服务器管理员：" + msg;
-    if (socket.Send(SocketMessageType.Connect, false, msg) == SocketResult.Success)
+    if (await socket.SendAsync(SocketMessageType.Connect, false, msg) == SocketResult.Success)
     {
         ServerHelper.WriteLine(ServerHelper.MakeClientName(socket.ClientIP) + " <- " + "已拒绝连接", InvokeMessageType.Core);
         return true;
@@ -265,7 +349,7 @@ bool SendRefuseConnect(ClientSocket socket, string msg)
     }
 }
 
-bool IsIPBanned(ServerSocket server, string ip)
+bool IsIPBanned<T>(ISocketListener<T> server, string ip) where T : ISocketMessageProcessor
 {
     string[] strs = ip.Split(":");
     if (strs.Length == 2 && server.BannedList.Contains(strs[0]))

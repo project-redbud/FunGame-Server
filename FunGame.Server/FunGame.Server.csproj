@@ -16,6 +16,7 @@
     <FileVersion>1.0</FileVersion>
     <AssemblyName>FunGameServer</AssemblyName>
     <RootNamespace>Milimoe.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

@@ -2,6 +2,7 @@
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
+using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
@@ -11,9 +12,9 @@ using Milimoe.FunGame.Server.Utility;
 
 namespace Milimoe.FunGame.Server.Controller
 {
-    public class DataRequestController
+    public class DataRequestController<T> where T : ISocketMessageProcessor
     {
-        public ServerModel Server { get; }
+        public BaseServerModel<T> Server { get; }
         public SQLHelper? SQLHelper => Server.SQLHelper;
         public MailSender? MailSender => Server.MailSender;
         public Authenticator? Authenticator { get; }
@@ -24,7 +25,7 @@ namespace Milimoe.FunGame.Server.Controller
         private DataRequestType _LastRequest = DataRequestType.UnKnown;
         private readonly bool[] isReadyCheckCD = [false, false];
 
-        public DataRequestController(ServerModel server)
+        public DataRequestController(BaseServerModel<T> server)
         {
             Server = server;
             if (SQLHelper != null) Authenticator = new(Server, SQLHelper, MailSender);
@@ -551,7 +552,7 @@ namespace Milimoe.FunGame.Server.Controller
                                 if (RegVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
                                 {
                                     SQLHelper.NewTransaction();
-                                    ServerHelper.WriteLine("[Reg] UserName: " + username + " Email: " + email);
+                                    ServerHelper.WriteLine("[Reg] Username: " + username + " Email: " + email);
                                     SQLHelper.Execute(UserQuery.Insert_Register(username, password, email, Server.Socket?.ClientIP ?? ""));
                                     if (SQLHelper.Result == SQLResult.Success)
                                     {
@@ -615,7 +616,7 @@ namespace Milimoe.FunGame.Server.Controller
                     // 验证登录
                     if (username != null && password != null)
                     {
-                        ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] UserName: " + username);
+                        ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] Username: " + username);
                         if (SQLHelper != null)
                         {
                             SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password));
@@ -689,7 +690,7 @@ namespace Milimoe.FunGame.Server.Controller
                                 // 检查验证码是否正确
                                 if (ForgetVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode]))
                                 {
-                                    ServerHelper.WriteLine("[ForgerPassword] UserName: " + username + " Email: " + email);
+                                    ServerHelper.WriteLine("[ForgerPassword] Username: " + username + " Email: " + email);
                                     SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email));
                                     msg = "";
                                 }

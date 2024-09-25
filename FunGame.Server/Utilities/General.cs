@@ -102,6 +102,11 @@ namespace Milimoe.FunGame.Server.Utility
                 settings.Add("OfficialMail", INIHelper.ReadINI("ServerMail", "OfficialMail"));
                 settings.Add("SupportMail", INIHelper.ReadINI("ServerMail", "SupportMail"));
                 settings.Add("Port", Convert.ToInt32(INIHelper.ReadINI("Socket", "Port")));
+                settings.Add("UseWebSocket", Convert.ToBoolean(INIHelper.ReadINI("Socket", "UseWebSocket")));
+                settings.Add("WebSocketAddress", Convert.ToString(INIHelper.ReadINI("Socket", "WebSocketAddress")));
+                settings.Add("WebSocketPort", Convert.ToInt32(INIHelper.ReadINI("Socket", "WebSocketPort")));
+                settings.Add("WebSocketSubUrl", Convert.ToString(INIHelper.ReadINI("Socket", "WebSocketSubUrl")));
+                settings.Add("WebSocketSSL", Convert.ToBoolean(INIHelper.ReadINI("Socket", "WebSocketSSL")));
                 settings.Add("MaxPlayer", Convert.ToInt32(INIHelper.ReadINI("Socket", "MaxPlayer")));
                 settings.Add("MaxConnectFailed", Convert.ToInt32(INIHelper.ReadINI("Socket", "MaxConnectFailed")));
             }
@@ -137,18 +142,28 @@ namespace Milimoe.FunGame.Server.Utility
 
                     int? Status = (int?)settings["Status"];
                     int? Port = (int?)settings["Port"];
+                    bool? UseWebSocket = (bool?)settings["UseWebSocket"];
+                    string? WebSocketAddress = (string?)settings["WebSocketAddress"];
+                    int? WebSocketPort = (int?)settings["WebSocketPort"];
+                    string? WebSocketSubUrl = (string?)settings["WebSocketSubUrl"];
+                    bool? WebSocketSSL = (bool?)settings["WebSocketSSL"];
                     int? MaxPlayer = (int?)settings["MaxPlayer"];
                     int? MaxConnectFailed = (int?)settings["MaxConnectFailed"];
 
                     if (Status != null) Config.ServerStatus = (int)Status;
                     if (Port != null) Config.ServerPort = (int)Port;
+                    if (UseWebSocket != null) Config.UseWebSocket = (bool)UseWebSocket;
+                    if (WebSocketAddress != null) Config.WebSocketAddress = WebSocketAddress;
+                    if (WebSocketPort != null) Config.WebSocketPort = (int)WebSocketPort;
+                    if (WebSocketSubUrl != null) Config.WebSocketSubUrl = WebSocketSubUrl;
+                    if (WebSocketSSL != null) Config.WebSocketSSL = (bool)WebSocketSSL;
                     if (MaxPlayer != null) Config.MaxPlayers = (int)MaxPlayer;
                     if (MaxConnectFailed != null) Config.MaxConnectionFaileds = (int)MaxConnectFailed;
                 }
             }
             catch (Exception e)
             {
-                ServerHelper.WriteLine(e.StackTrace ?? "");
+                Error(e);
             }
         }
 

@@ -28,18 +28,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="FunGame.Core">
-      <HintPath>..\..\FunGame.Core\bin\Debug\net8.0\FunGame.Core.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <Folder Include="Controllers\" />
     <Folder Include="Models\" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FunGame.Server\FunGame.Server.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="FunGame.Core">
+      <HintPath>..\..\FunGame.Core\bin\Debug\net8.0\FunGame.Core.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
