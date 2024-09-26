@@ -6,7 +6,7 @@ namespace Milimoe.FunGame.Server.Model
 {
     public class ConsoleModel
     {
-        public static void Order<T>(ISocketListener<T>? server, string order) where T : ISocketMessageProcessor
+        public static async Task Order<T>(ISocketListener<T>? server, string order) where T : ISocketMessageProcessor
         {
             try
             {
@@ -18,7 +18,7 @@ namespace Milimoe.FunGame.Server.Model
                             string client = Console.ReadLine() ?? "";
                             if (client != "" && server != null)
                             {
-                                ((BaseServerModel<T>)server.ClientList[client])?.Kick("您已被服务器管理员踢出此服务器。");
+                                await Kick((BaseServerModel<T>)server.ClientList[client]);
                             }
                             break;
                         }
@@ -28,7 +28,7 @@ namespace Milimoe.FunGame.Server.Model
                             string user = Console.ReadLine() ?? "";
                             if (user != "" && server != null)
                             {
-                                ((BaseServerModel<T>)server.UserList[user])?.ForceLogOut("您已被服务器管理员强制下线。");
+                                ForceLogOut((BaseServerModel<T>)server.UserList[user]);
                             }
                             break;
                         }
@@ -45,7 +45,7 @@ namespace Milimoe.FunGame.Server.Model
                         ShowUsers(server);
                         break;
                     case OrderDictionary.Help:
-                        ServerHelper.WriteLine("Milimoe -> 帮助");
+                        ShowHelp();
                         break;
                 }
             }
@@ -55,7 +55,17 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        private static void ShowClients<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
+        public static async Task Kick<T>(BaseServerModel<T> clientModel) where T : ISocketMessageProcessor
+        {
+            await clientModel.Kick("您已被服务器管理员踢出此服务器。");
+        }
+        
+        public static void ForceLogOut<T>(BaseServerModel<T> clientModel) where T : ISocketMessageProcessor
+        {
+            clientModel.ForceLogOut("您已被服务器管理员强制下线。");
+        }
+
+        public static void ShowClients<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
         {
             if (server != null)
             {
@@ -68,7 +78,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        private static void ShowUsers<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
+        public static void ShowUsers<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
         {
             if (server != null)
             {
@@ -79,6 +89,11 @@ namespace Milimoe.FunGame.Server.Model
                     ServerHelper.WriteLine(index++ + ". " + (user.User.Username) + " (客户端：" + user.ClientName + ")");
                 }
             }
+        }
+
+        public static void ShowHelp()
+        {
+            ServerHelper.WriteLine("Milimoe -> 帮助");
         }
     }
 }

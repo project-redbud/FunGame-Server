@@ -15,19 +15,18 @@ namespace Milimoe.FunGame.Server.Models
         public override DataRequestController<ClientSocket> DataRequestController { get; }
         public override bool IsDebugMode { get; }
 
-        public ClientSocketServerModel(ServerSocket server, ClientSocket socket, bool running, bool isDebugMode)
+        public ClientSocketServerModel(ServerSocket server, ClientSocket socket, bool isDebugMode)
         {
             Listener = server;
             Socket = socket;
-            _Running = running;
             DataRequestController = new(this);
             IsDebugMode = isDebugMode;
-            if (Config.SQLMode == SQLMode.MySQL) _SQLHelper = new MySQLHelper(this);
-            else if (Config.SQLMode == SQLMode.SQLite) _SQLHelper = Config.SQLHelper;
-            _MailSender = SmtpHelper.GetMailSender();
+            if (Config.SQLMode == SQLMode.MySQL) _sqlHelper = new MySQLHelper(this);
+            else if (Config.SQLMode == SQLMode.SQLite) _sqlHelper = Config.SQLHelper;
+            _mailer = SmtpHelper.GetMailSender();
         }
 
-        public bool Read(ISocketMessageProcessor socket)
+        public override async Task<bool> Read(ISocketMessageProcessor socket)
         {
             // 接收客户端消息
             try
@@ -47,7 +46,7 @@ namespace Milimoe.FunGame.Server.Models
 
                 foreach (SocketObject obj in objs)
                 {
-                    SocketMessageHandler(socket, obj);
+                    await SocketMessageHandler(socket, obj);
                 }
 
                 return true;
@@ -68,24 +67,24 @@ namespace Milimoe.FunGame.Server.Models
             {
                 if (Socket != null)
                 {
-                    if (!Read(Socket))
+                    if (!await Read(Socket))
                     {
-                        FailedTimes++;
-                        if (FailedTimes >= Config.MaxConnectionFaileds)
+                        _failedTimes++;
+                        if (_failedTimes >= Config.MaxConnectionFaileds)
                         {
                             RemoveUser();
-                            Close();
+                            await Close();
                             ServerHelper.WriteLine(GetClientName() + " Error -> Too Many Faileds.");
                             ServerHelper.WriteLine(GetClientName() + " Close -> StreamReader is Closed.");
                             break;
                         }
                     }
-                    else if (FailedTimes - 1 >= 0) FailedTimes--;
+                    else if (_failedTimes - 1 >= 0) _failedTimes--;
                 }
                 else
                 {
                     RemoveUser();
-                    Close();
+                    await Close();
                     ServerHelper.WriteLine(GetClientName() + " Error -> Socket is Closed.");
                     ServerHelper.WriteLine(GetClientName() + " Close -> StringStream is Closed.");
                     break;

@@ -2,6 +2,7 @@
 using System.Text;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
@@ -180,6 +181,39 @@ namespace Milimoe.FunGame.Server.Others
             {
                 ServerHelper.Error(e);
             }
+        }
+
+        public static bool GetGameModuleList()
+        {
+            List<string> supported = [];
+            // 构建AddonController
+            Hashtable delegates = [];
+            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameModule)));
+            delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
+            // 读取modules目录下的模组
+            GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates);
+            foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
+            {
+                bool check = true;
+                // 检查模组是否有相对应的地图
+                if (!GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
+                {
+                    ServerHelper.WriteLine("GameModule Load Failed: " + module + " 没有找到相对应的地图，加载失败", InvokeMessageType.Error);
+                    check = false;
+                }
+                if (check)
+                {
+                    supported.Add(module.Name);
+                }
+            }
+            // 设置全局
+            GameModuleSupported = supported.Distinct().ToArray();
+            foreach (string modename in GameModuleSupported)
+            {
+                ServerHelper.WriteLine("Loaded: " + modename, InvokeMessageType.GameModule);
+            }
+
+            return GameModuleSupported.Length > 0;
         }
 
         /// <summary>

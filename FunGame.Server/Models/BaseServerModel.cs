@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Net.Sockets;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
@@ -19,15 +18,15 @@ namespace Milimoe.FunGame.Server.Model
         /**
          * Public
          */
-        public bool Running => _Running;
+        public bool Running => _running;
         public abstract ISocketMessageProcessor Socket { get; }
         public abstract ISocketListener<T> Listener { get; }
         public Guid Token => Socket?.Token ?? Guid.Empty;
-        public string ClientName => _ClientName;
-        public User User => _User;
+        public string ClientName => _clientName;
+        public User User => _user;
         public Room InRoom { get; set; } = General.HallInstance;
-        public SQLHelper? SQLHelper => _SQLHelper;
-        public MailSender? MailSender => _MailSender;
+        public SQLHelper? SQLHelper => _sqlHelper;
+        public MailSender? MailSender => _mailer;
         public abstract DataRequestController<T> DataRequestController { get; }
         public abstract bool IsDebugMode { get; }
         public GameModuleServer? NowGamingServer { get; set; } = null;
@@ -35,21 +34,21 @@ namespace Milimoe.FunGame.Server.Model
         /**
          * protected
          */
-        protected bool _Running = false;
-        protected User _User = General.UnknownUserInstance;
-        protected string _ClientName = "";
-        protected SQLHelper? _SQLHelper = null;
-        protected MailSender? _MailSender = null;
+        protected bool _running = true;
+        protected User _user = General.UnknownUserInstance;
+        protected string _clientName = "";
+        protected SQLHelper? _sqlHelper = null;
+        protected MailSender? _mailer = null;
 
-        protected Guid CheckLoginKey = Guid.Empty;
-        protected int FailedTimes = 0; // 超过一定次数断开连接
-        protected string Username = "";
-        protected DataSet DsUser = new();
-        protected long LoginTime;
-        protected long LogoutTime;
-        protected bool IsMatching;
+        protected Guid _checkLoginKey = Guid.Empty;
+        protected int _failedTimes = 0; // 超过一定次数断开连接
+        protected string _username = "";
+        protected DataSet _dsUser = new();
+        protected long _loginTime;
+        protected long _logoutTime;
+        protected bool _isMatching;
 
-        public bool SocketMessageHandler(ISocketMessageProcessor socket, SocketObject obj)
+        public async Task<bool> SocketMessageHandler(ISocketMessageProcessor socket, SocketObject obj)
         {
             // 读取收到的消息
             SocketMessageType type = obj.SocketType;
@@ -65,7 +64,7 @@ namespace Milimoe.FunGame.Server.Model
 
             if (type == SocketMessageType.HeartBeat)
             {
-                return HeartBeat(socket);
+                return await HeartBeat(socket);
             }
 
             if (type == SocketMessageType.EndGame)
@@ -76,17 +75,17 @@ namespace Milimoe.FunGame.Server.Model
 
             if (type == SocketMessageType.DataRequest)
             {
-                return DataRequestHandler(socket, obj);
+                return await DataRequestHandler(socket, obj);
             }
 
             if (type == SocketMessageType.GamingRequest)
             {
-                return GamingRequestHandler(socket, obj);
+                return await GamingRequestHandler(socket, obj);
             }
 
             if (type == SocketMessageType.Gaming)
             {
-                return GamingMessageHandler(socket, obj);
+                return await GamingMessageHandler(socket, obj);
             }
 
             switch (type)
@@ -97,20 +96,20 @@ namespace Milimoe.FunGame.Server.Model
                     break;
             }
 
-            return Send(socket, type, msg);
+            return await Send(socket, type, msg);
         }
 
-        public bool HeartBeat(ISocketMessageProcessor socket)
+        public async Task<bool> HeartBeat(ISocketMessageProcessor socket)
         {
-            bool result = Send(socket, SocketMessageType.HeartBeat, "");
+            bool result = await Send(socket, SocketMessageType.HeartBeat);
             if (!result)
             {
-                ServerHelper.WriteLine("[ " + Username + " ] " + nameof(HeartBeat) + ": " + result, InvokeMessageType.Error);
+                ServerHelper.WriteLine("[ " + _username + " ] " + nameof(HeartBeat) + ": " + result, InvokeMessageType.Error);
             }
             return result;
         }
 
-        protected bool DataRequestHandler(ISocketMessageProcessor socket, SocketObject obj)
+        protected async Task<bool> DataRequestHandler(ISocketMessageProcessor socket, SocketObject obj)
         {
             if (SQLHelper != null)
             {
@@ -132,23 +131,23 @@ namespace Milimoe.FunGame.Server.Model
                     {
                         ServerHelper.Error(e);
                         SQLHelper.Rollback();
-                        return Send(socket, SocketMessageType.DataRequest, type, requestID, result);
+                        return await Send(socket, SocketMessageType.DataRequest, type, requestID, result);
                     }
                 }
 
-                bool sendResult = Send(socket, SocketMessageType.DataRequest, type, requestID, result);
+                bool sendResult = await Send(socket, SocketMessageType.DataRequest, type, requestID, result);
                 if (!sendResult)
                 {
-                    ServerHelper.WriteLine("[ " + Username + " ] " + nameof(DataRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
+                    ServerHelper.WriteLine("[ " + _username + " ] " + nameof(DataRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
                 }
                 return sendResult;
             }
 
-            ServerHelper.WriteLine("[ " + Username + " ] " + nameof(DataRequestHandler) + ": " + false, InvokeMessageType.Error);
+            ServerHelper.WriteLine("[ " + _username + " ] " + nameof(DataRequestHandler) + ": " + false, InvokeMessageType.Error);
             return false;
         }
 
-        protected bool GamingRequestHandler(ISocketMessageProcessor socket, SocketObject obj)
+        protected async Task<bool> GamingRequestHandler(ISocketMessageProcessor socket, SocketObject obj)
         {
             if (NowGamingServer != null)
             {
@@ -164,28 +163,28 @@ namespace Milimoe.FunGame.Server.Model
                         requestID = obj.GetParam<Guid>(1);
                         Dictionary<string, object> data = obj.GetParam<Dictionary<string, object>>(2) ?? [];
 
-                        result = NowGamingServer.GamingMessageHandler(Username, type, data);
+                        result = NowGamingServer.GamingMessageHandler(_username, type, data);
                     }
                     catch (Exception e)
                     {
                         ServerHelper.Error(e);
-                        return Send(socket, SocketMessageType.GamingRequest, type, requestID, result);
+                        return await Send(socket, SocketMessageType.GamingRequest, type, requestID, result);
                     }
                 }
 
-                bool sendResult = Send(socket, SocketMessageType.GamingRequest, type, requestID, result);
+                bool sendResult = await Send(socket, SocketMessageType.GamingRequest, type, requestID, result);
                 if (!sendResult)
                 {
-                    ServerHelper.WriteLine("[ " + Username + " ] " + nameof(GamingRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
+                    ServerHelper.WriteLine("[ " + _username + " ] " + nameof(GamingRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
                 }
                 return sendResult;
             }
 
-            ServerHelper.WriteLine("[ " + Username + " ] " + nameof(GamingRequestHandler) + ": " + false, InvokeMessageType.Error);
+            ServerHelper.WriteLine("[ " + _username + " ] " + nameof(GamingRequestHandler) + ": " + false, InvokeMessageType.Error);
             return false;
         }
 
-        protected bool GamingMessageHandler(ISocketMessageProcessor socket, SocketObject obj)
+        protected async Task<bool> GamingMessageHandler(ISocketMessageProcessor socket, SocketObject obj)
         {
             if (NowGamingServer != null)
             {
@@ -199,33 +198,35 @@ namespace Milimoe.FunGame.Server.Model
                         type = obj.GetParam<GamingType>(0);
                         Dictionary<string, object> data = obj.GetParam<Dictionary<string, object>>(1) ?? [];
 
-                        result = NowGamingServer.GamingMessageHandler(Username, type, data);
+                        result = NowGamingServer.GamingMessageHandler(_username, type, data);
                     }
                     catch (Exception e)
                     {
                         ServerHelper.Error(e);
-                        return Send(socket, SocketMessageType.Gaming, type, result);
+                        return await Send(socket, SocketMessageType.Gaming, type, result);
                     }
                 }
 
-                bool sendResult = Send(socket, SocketMessageType.Gaming, type, result);
+                bool sendResult = await Send(socket, SocketMessageType.Gaming, type, result);
                 if (!sendResult)
                 {
-                    ServerHelper.WriteLine("[ " + Username + " ] " + nameof(GamingMessageHandler) + ": " + sendResult, InvokeMessageType.Error);
+                    ServerHelper.WriteLine("[ " + _username + " ] " + nameof(GamingMessageHandler) + ": " + sendResult, InvokeMessageType.Error);
                 }
                 return sendResult;
             }
 
-            ServerHelper.WriteLine("[ " + Username + " ] " + nameof(GamingMessageHandler) + ": " + false, InvokeMessageType.Error);
+            ServerHelper.WriteLine("[ " + _username + " ] " + nameof(GamingMessageHandler) + ": " + false, InvokeMessageType.Error);
             return false;
         }
 
-        public bool Send(ISocketMessageProcessor socket, SocketMessageType type, params object[] objs)
+        public abstract Task<bool> Read(ISocketMessageProcessor socket);
+
+        public async Task<bool> Send(ISocketMessageProcessor socket, SocketMessageType type, params object[] objs)
         {
             // 发送消息给客户端
             try
             {
-                if (socket.Send(type, objs) == SocketResult.Success)
+                if (await socket.SendAsync(type, objs) == SocketResult.Success)
                 {
                     switch (type)
                     {
@@ -234,14 +235,15 @@ namespace Milimoe.FunGame.Server.Model
                             break;
                         case SocketMessageType.Disconnect:
                             RemoveUser();
-                            Close();
+                            await Close();
                             break;
                         case SocketMessageType.Chat:
                             return true;
                     }
-                    object obj = objs[0];
-                    if (obj.GetType() == typeof(string) && (string)obj != "")
-                        ServerHelper.WriteLine("[" + SocketSet.GetTypeString(type) + "] " + GetClientName() + " <- " + obj, InvokeMessageType.Core);
+                    if (objs.Length > 0 && objs[0] is string str && str != "")
+                    {
+                        ServerHelper.WriteLine("[" + SocketSet.GetTypeString(type) + "] " + GetClientName() + " <- " + str, InvokeMessageType.Core);
+                    }
                     return true;
                 }
                 throw new CanNotSendToClientException();
@@ -254,18 +256,17 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public void Start()
+        public async Task Start()
         {
-            if ((IServerModel)this is GameModuleServer) throw new NotSupportedException("请勿在GameModuleServer类中调用此方法"); // 禁止GameModuleServer调用
-            TaskUtility.NewTask(CreateStreamReader);
             TaskUtility.NewTask(CreatePeriodicalQuerier);
+            await CreateStreamReader();
         }
 
         public void SetClientName(string ClientName)
         {
-            _ClientName = ClientName;
+            _clientName = ClientName;
             // 添加客户端到列表中
-            Listener.ClientList.Add(_ClientName, this);
+            Listener.ClientList.Add(_clientName, this);
             Config.OnlinePlayerCount++;
             GetUsersCount();
         }
@@ -288,28 +289,28 @@ namespace Milimoe.FunGame.Server.Model
 
         public void PreLogin(DataSet dsuser, string username, Guid checkloginkey)
         {
-            DsUser = dsuser;
-            Username = username;
-            CheckLoginKey = checkloginkey;
+            _dsUser = dsuser;
+            _username = username;
+            _checkLoginKey = checkloginkey;
         }
 
         public void CheckLogin()
         {
             // 创建User对象
-            _User = Factory.GetUser(DsUser);
+            _user = Factory.GetUser(_dsUser);
             // 检查有没有重复登录的情况
             KickUser();
             // 添加至玩家列表
             AddUser();
             GetUsersCount();
             // CheckLogin
-            LoginTime = DateTime.Now.Ticks;
-            SQLHelper?.Execute(UserQuery.Update_CheckLogin(Username, Socket?.ClientIP.Split(':')[0] ?? "127.0.0.1"));
+            _loginTime = DateTime.Now.Ticks;
+            SQLHelper?.Execute(UserQuery.Update_CheckLogin(_username, Socket?.ClientIP.Split(':')[0] ?? "127.0.0.1"));
         }
 
         public bool IsLoginKey(Guid key)
         {
-            return key == CheckLoginKey;
+            return key == _checkLoginKey;
         }
 
         public void LogOut()
@@ -317,12 +318,12 @@ namespace Milimoe.FunGame.Server.Model
             // 从玩家列表移除
             RemoveUser();
             GetUsersCount();
-            CheckLoginKey = Guid.Empty;
+            _checkLoginKey = Guid.Empty;
         }
 
         public void ForceLogOut(string msg, string username = "")
         {
-            IServerModel serverTask = Listener.UserList[username == "" ? Username : username];
+            IServerModel serverTask = Listener.UserList[username == "" ? _username : username];
             if (serverTask.Socket != null)
             {
                 serverTask.InRoom = General.HallInstance;
@@ -374,7 +375,7 @@ namespace Milimoe.FunGame.Server.Model
             return result;
         }
 
-        public void Kick(string msg, string clientname = "")
+        public async Task Kick(string msg, string clientname = "")
         {
             // 将客户端踢出服务器
             IServerModel serverTask = Listener.ClientList[clientname == "" ? ClientName : clientname];
@@ -386,9 +387,9 @@ namespace Milimoe.FunGame.Server.Model
                     QuitRoom(room.Roomid, room.RoomMaster.Id == User.Id);
                 }
                 RemoveUser();
-                serverTask.Send(serverTask.Socket, SocketMessageType.Disconnect, msg);
+                await serverTask.Send(serverTask.Socket, SocketMessageType.Disconnect, msg);
             }
-            Close();
+            await Close();
         }
 
         public void Chat(string msg)
@@ -470,32 +471,32 @@ namespace Milimoe.FunGame.Server.Model
 
         public void StartMatching(RoomType type, User user)
         {
-            IsMatching = true;
+            _isMatching = true;
             ServerHelper.WriteLine(GetClientName() + " 开始匹配。类型：" + RoomSet.GetTypeString(type));
             TaskUtility.NewTask(async () =>
             {
-                if (IsMatching)
+                if (_isMatching)
                 {
                     Room room = await MatchingRoom(type, user);
-                    if (IsMatching && Socket != null)
+                    if (_isMatching && Socket != null)
                     {
-                        Send(Socket, SocketMessageType.MatchRoom, room);
+                        await Send(Socket, SocketMessageType.MatchRoom, room);
                     }
-                    IsMatching = false;
+                    _isMatching = false;
                 }
             }).OnError(e =>
             {
                 ServerHelper.Error(e);
-                IsMatching = false;
+                _isMatching = false;
             });
         }
 
         public void StopMatching()
         {
-            if (IsMatching)
+            if (_isMatching)
             {
                 ServerHelper.WriteLine(GetClientName() + " 取消了匹配。");
-                IsMatching = false;
+                _isMatching = false;
             }
         }
 
@@ -503,7 +504,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             int i = 1;
             int time = 0;
-            while (IsMatching)
+            while (_isMatching)
             {
                 // 先列出符合条件的房间
                 List<Room> targets = Config.RoomList.ListRoom.Where(r => r.RoomType == roomtype).ToList();
@@ -524,7 +525,7 @@ namespace Milimoe.FunGame.Server.Model
                     //}
                 }
 
-                if (!IsMatching) break;
+                if (!_isMatching) break;
 
                 // 等待10秒
                 await Task.Delay(10 * 1000);
@@ -562,7 +563,7 @@ namespace Milimoe.FunGame.Server.Model
             if (User.Id != 0 && this != null)
             {
                 Listener.UserList.Add(User.Username, this);
-                Username = User.Username;
+                _username = User.Username;
                 ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
                 return true;
             }
@@ -573,8 +574,8 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (User.Id != 0 && this != null)
             {
-                LogoutTime = DateTime.Now.Ticks;
-                int TotalMinutes = Convert.ToInt32((new DateTime(LogoutTime) - new DateTime(LoginTime)).TotalMinutes);
+                _logoutTime = DateTime.Now.Ticks;
+                int TotalMinutes = Convert.ToInt32((new DateTime(_logoutTime) - new DateTime(_loginTime)).TotalMinutes);
                 SQLHelper?.Execute(UserQuery.Update_GameTime(User.Username, TotalMinutes));
                 if (SQLHelper != null && SQLHelper.Result == SQLResult.Success)
                 {
@@ -584,7 +585,7 @@ namespace Milimoe.FunGame.Server.Model
                 if (Listener.UserList.Remove(User.Username))
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已移除");
-                    _User = General.UnknownUserInstance;
+                    _user = General.UnknownUserInstance;
                     return true;
                 }
                 else ServerHelper.WriteLine("OnlinePlayers: 移除玩家 " + User.Username + " 失败");
@@ -597,10 +598,7 @@ namespace Milimoe.FunGame.Server.Model
             ServerHelper.WriteLine($"目前在线客户端数量: {Listener.ClientList.Count}（已登录的玩家数量：{Listener.UserList.Count}）");
         }
 
-        protected virtual async Task CreateStreamReader()
-        {
-            await Task.Delay(100);
-        }
+        protected abstract Task CreateStreamReader();
 
         protected async Task CreatePeriodicalQuerier()
         {
@@ -612,29 +610,29 @@ namespace Milimoe.FunGame.Server.Model
                 try
                 {
                     await Task.Delay(2 * 1000 * 3600);
-                    SQLHelper?.ExecuteDataSet(UserQuery.Select_IsExistUsername(Username));
+                    SQLHelper?.ExecuteDataSet(UserQuery.Select_IsExistUsername(_username));
                 }
                 catch (Exception e)
                 {
                     ServerHelper.Error(e);
                     RemoveUser();
-                    Close();
+                    await Close();
                     ServerHelper.WriteLine(GetClientName() + " Error -> Socket is Closed.");
                     ServerHelper.WriteLine(GetClientName() + " Close -> StringStream is Closed.");
                 }
             }
         }
 
-        protected void Close()
+        protected async Task Close()
         {
             try
             {
                 SQLHelper?.Close();
-                _SQLHelper = null;
+                _sqlHelper = null;
                 MailSender?.Dispose();
-                _MailSender = null;
-                Socket.Close();
-                _Running = false;
+                _mailer = null;
+                await Socket.CloseAsync();
+                _running = false;
                 Listener.ClientList.Remove(ClientName);
                 Config.OnlinePlayerCount--;
                 GetUsersCount();
