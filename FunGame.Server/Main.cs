@@ -1,13 +1,9 @@
-﻿using System.Collections;
-using Milimoe.FunGame;
+﻿using Milimoe.FunGame;
 using Milimoe.FunGame.Core.Api.Utility;
-using Milimoe.FunGame.Core.Interface.Base;
-using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Controller;
 using Milimoe.FunGame.Server.Model;
-using Milimoe.FunGame.Server.Models;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
@@ -15,7 +11,7 @@ Console.Title = Config.ServerName;
 Console.WriteLine(FunGameInfo.GetInfo(Config.FunGameType));
 
 bool Running = true;
-ServerSocket? SocketListener = null;
+SocketListener? SocketListener = null;
 HTTPListener? WebSocketListener = null;
 
 StartServer();
@@ -99,7 +95,7 @@ void StartServer()
             if (!useWebSocket)
             {
                 // 创建监听
-                ServerSocket listener = ServerSocket.StartListening(Config.ServerPort, Config.MaxPlayers);
+                SocketListener listener = SocketListener.StartListening(Config.ServerPort, Config.MaxPlayers);
                 SocketListener = listener;
 
                 // 开始监听连接
@@ -114,42 +110,54 @@ void StartServer()
 
                 while (Running)
                 {
-                    ClientSocket socket;
+                    ServerSocket socket;
                     string clientip = "";
                     try
                     {
                         Guid token = Guid.NewGuid();
                         socket = listener.Accept(token);
-                        clientip = socket.ClientIP;
-                        Config.ConnectingPlayerCount++;
-                        bool isConnected = false;
-                        bool isDebugMode = false;
 
-                        // 开始处理客户端连接请求
-                        SocketObject[] objs = socket.Receive();
-                        (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs);
-                        if (isConnected)
+                        TaskUtility.NewTask(async () =>
                         {
-                            BaseServerModel<ClientSocket> ClientModel = new ClientSocketServerModel(listener, socket, isDebugMode);
-                            ClientModel.SetClientName(clientip);
-                            await ClientModel.Start();
-                        }
-                        else
+                            clientip = socket.ClientIP;
+                            Config.ConnectingPlayerCount++;
+                            bool isConnected = false;
+                            bool isDebugMode = false;
+
+                            // 开始处理客户端连接请求
+                            SocketObject[] objs = socket.Receive();
+                            (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs);
+                            if (isConnected)
+                            {
+                                ServerModel<ServerSocket> ClientModel = new(listener, socket, isDebugMode);
+                                ClientModel.SetClientName(clientip);
+                                Task t = Task.Run(ClientModel.Start);
+                            }
+                            else
+                            {
+                                ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
+                            }
+                            Config.ConnectingPlayerCount--;
+                        }).OnError(e =>
                         {
-                            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
-                        }
-                        Config.ConnectingPlayerCount--;
+                            if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
+                            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
+                            ServerHelper.Error(e);
+                        });
                     }
                     catch (Exception e)
                     {
-                        if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
-                        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
                         ServerHelper.Error(e);
                     }
                 }
             }
             else
             {
+                if (Config.WebSocketAddress == "*")
+                {
+                    ServerHelper.WriteLine("WebSocket 监听 * 地址要求权限提升，如果提示拒绝访问请以管理员身份运行服务器。", InvokeMessageType.Warning);
+                }
+
                 // 创建监听
                 HTTPListener listener = HTTPListener.StartListening(Config.WebSocketAddress, Config.WebSocketPort, Config.WebSocketSubUrl, Config.WebSocketSSL);
                 WebSocketListener = listener;
@@ -166,41 +174,48 @@ void StartServer()
 
                 while (Running)
                 {
-                    ClientWebSocket socket;
+                    ServerWebSocket socket;
                     string clientip = "";
                     try
                     {
                         Guid token = Guid.NewGuid();
                         socket = await listener.Accept(token);
-                        clientip = socket.ClientIP;
-                        Config.ConnectingPlayerCount++;
-                        bool isConnected = false;
-                        bool isDebugMode = false;
 
-                        // 开始处理客户端连接请求
-                        IEnumerable<SocketObject> objs = [];
-                        while (!objs.Any(o => o.SocketType == SocketMessageType.Connect))
+                        TaskUtility.NewTask(async () =>
                         {
-                            objs = objs.Union(await socket.ReceiveAsync());
-                        }
-                        (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs.Where(o => o.SocketType == SocketMessageType.Connect));
-                        if (isConnected)
+                            clientip = socket.ClientIP;
+                            Config.ConnectingPlayerCount++;
+                            bool isConnected = false;
+                            bool isDebugMode = false;
+
+                            // 开始处理客户端连接请求
+                            IEnumerable<SocketObject> objs = [];
+                            while (!objs.Any(o => o.SocketType == SocketMessageType.Connect))
+                            {
+                                objs = objs.Union(await socket.ReceiveAsync());
+                            }
+                            (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs.Where(o => o.SocketType == SocketMessageType.Connect));
+                            if (isConnected)
+                            {
+                                ServerModel<ServerWebSocket> ClientModel = new(listener, socket, isDebugMode);
+                                ClientModel.SetClientName(clientip);
+                                Task t = Task.Run(ClientModel.Start);
+                            }
+                            else
+                            {
+                                ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
+                                await socket.CloseAsync();
+                            }
+                            Config.ConnectingPlayerCount--;
+                        }).OnError(e =>
                         {
-                            BaseServerModel<ClientWebSocket> ClientModel = new ClientWebSocketServerModel(listener, socket, isDebugMode);
-                            ClientModel.SetClientName(clientip);
-                            await ClientModel.Start();
-                        }
-                        else
-                        {
-                            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
-                            await socket.CloseAsync();
-                        }
-                        Config.ConnectingPlayerCount--;
+                            if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
+                            ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
+                            ServerHelper.Error(e);
+                        });
                     }
                     catch (Exception e)
                     {
-                        if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
-                        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
                         ServerHelper.Error(e);
                     }
                 }

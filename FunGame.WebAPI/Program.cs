@@ -5,11 +5,9 @@ using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Controller;
 using Milimoe.FunGame.Server.Model;
-using Milimoe.FunGame.Server.Models;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 using Milimoe.FunGame.WebAPI.Architecture;
-using ClientWebSocket = Milimoe.FunGame.Core.Library.Common.Network.ClientWebSocket;
 
 WebAPIListener listener = new();
 
@@ -118,9 +116,9 @@ try
     listener.BannedList.AddRange(Config.ServerBannedList);
 
     if (Config.ServerNotice != "")
-        ServerHelper.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
+        Console.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
     else
-        ServerHelper.WriteLine("无法读取服务器公告");
+        Console.WriteLine("无法读取服务器公告");
 
     Task order = Task.Factory.StartNew(GetConsoleOrder);
 
@@ -161,7 +159,7 @@ async Task WebSocketConnectionHandler(HttpContext context)
             clientip = context.Connection.RemoteIpAddress?.ToString() + ":" + context.Connection.RemotePort;
 
             Guid token = Guid.NewGuid();
-            ClientWebSocket socket = new(listener, instance, clientip, clientip, token);
+            ServerWebSocket socket = new(listener, instance, clientip, clientip, token);
             Config.ConnectingPlayerCount++;
             bool isConnected = false;
             bool isDebugMode = false;
@@ -175,7 +173,7 @@ async Task WebSocketConnectionHandler(HttpContext context)
             (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs.Where(o => o.SocketType == SocketMessageType.Connect));
             if (isConnected)
             {
-                BaseServerModel<ClientWebSocket> ClientModel = new ClientWebSocketServerModel(listener, socket, isDebugMode);
+                ServerModel<ServerWebSocket> ClientModel = new(listener, socket, isDebugMode);
                 ClientModel.SetClientName(clientip);
                 await ClientModel.Start();
             }

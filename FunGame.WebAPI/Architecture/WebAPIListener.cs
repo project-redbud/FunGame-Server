@@ -4,13 +4,13 @@ using Milimoe.FunGame.Core.Library.Common.Network;
 
 namespace Milimoe.FunGame.WebAPI.Architecture
 {
-    public class WebAPIListener : ISocketListener<ClientWebSocket>
+    public class WebAPIListener : ISocketListener<ServerWebSocket>
     {
-        public ConcurrentModelList<IServerModel> ClientList => [];
+        public ConcurrentModelList<IServerModel> ClientList { get; } = [];
 
-        public ConcurrentModelList<IServerModel> UserList => [];
+        public ConcurrentModelList<IServerModel> UserList { get; } = [];
 
-        public List<string> BannedList => [];
+        public List<string> BannedList { get; } = [];
 
         public void Close()
         {
