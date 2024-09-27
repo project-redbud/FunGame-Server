@@ -23,9 +23,12 @@ namespace Milimoe.FunGame.Server.Utility
                     prefix = "[Error] ";
                     break;
                 case InvokeMessageType.Api:
-                case InvokeMessageType.Warning:
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     prefix = "[Api] ";
+                    break;
+                case InvokeMessageType.Warning:
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    prefix = "[Warning] ";
                     break;
                 case InvokeMessageType.Interface:
                     Console.ForegroundColor = ConsoleColor.Magenta;
