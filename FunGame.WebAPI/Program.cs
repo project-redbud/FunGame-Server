@@ -1,10 +1,14 @@
 using System.Net.WebSockets;
 using System.Text;
+using System.Text.Encodings.Web;
+using System.Text.Json.Serialization;
+using System.Text.Unicode;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.JsonConverter;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Controller;
@@ -59,7 +63,23 @@ try
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
     // Add services to the container.
-    builder.Services.AddControllers();
+    builder.Services.AddControllers().AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.WriteIndented = true;
+        options.JsonSerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        options.JsonSerializerOptions.Converters.Add(new DateTimeConverter());
+        options.JsonSerializerOptions.Converters.Add(new DataTableConverter());
+        options.JsonSerializerOptions.Converters.Add(new DataSetConverter());
+        options.JsonSerializerOptions.Converters.Add(new UserConverter());
+        options.JsonSerializerOptions.Converters.Add(new RoomConverter());
+        options.JsonSerializerOptions.Converters.Add(new CharacterConverter());
+        options.JsonSerializerOptions.Converters.Add(new MagicResistanceConverter());
+        options.JsonSerializerOptions.Converters.Add(new EquipSlotConverter());
+        options.JsonSerializerOptions.Converters.Add(new SkillConverter());
+        options.JsonSerializerOptions.Converters.Add(new EffectConverter());
+        options.JsonSerializerOptions.Converters.Add(new ItemConverter());
+    });
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
