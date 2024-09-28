@@ -1,5 +1,9 @@
 using System.Net.WebSockets;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
@@ -8,6 +12,7 @@ using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 using Milimoe.FunGame.WebAPI.Architecture;
+using Milimoe.FunGame.WebAPI.Services;
 
 WebAPIListener listener = new();
 
@@ -40,6 +45,10 @@ try
         ServerHelper.GetServerSettings();
     }
 
+    // 创建单例
+    RESTfulAPIListener apiListener = new();
+    Singleton.Add(apiListener);
+
     ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
 
     // 创建全局SQLHelper
@@ -53,7 +62,32 @@ try
     builder.Services.AddControllers();
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+    builder.Services.AddSwaggerGen(options =>
+    {
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "Bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "输入 Auth 返回的 BearerToken",
+        });
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    }
+                },
+                Array.Empty<string>()
+            }
+        });
+    });
     // 添加 CORS 服务
     builder.Services.AddCors(options =>
     {
@@ -63,6 +97,21 @@ try
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
+    });
+    // 添加 JWT 认证
+    builder.Services.AddScoped<JWTService>();
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "undefined"))
+        };
     });
 
     WebApplication app = builder.Build();

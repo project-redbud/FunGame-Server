@@ -38,7 +38,7 @@ namespace Milimoe.FunGame.Server.Others
         /// WebSocket 端口
         /// </summary>
         public static int WebSocketPort { get; set; } = 22222;
-        
+
         /// <summary>
         /// WebSocket 监听子路径
         /// </summary>

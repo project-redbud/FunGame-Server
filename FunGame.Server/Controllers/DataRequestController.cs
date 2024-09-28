@@ -1005,7 +1005,7 @@ namespace Milimoe.FunGame.Server.Controller
 
                 // 如果匹配停止，则退出
                 if (!_isMatching) break;
-                
+
                 // 检查是否已经过了10秒，扩大匹配范围
                 if (time >= expandInterval * i)
                 {

@@ -59,7 +59,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             await clientModel.Kick("您已被服务器管理员踢出此服务器。");
         }
-        
+
         public static async Task ForceLogOut<T>(ServerModel<T> clientModel) where T : ISocketMessageProcessor
         {
             await clientModel.ForceLogOut("您已被服务器管理员强制下线。");

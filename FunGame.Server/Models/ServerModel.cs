@@ -13,7 +13,7 @@ using Milimoe.FunGame.Server.Utility;
 
 namespace Milimoe.FunGame.Server.Model
 {
-    public partial class ServerModel<T> : IServerModel where T : ISocketMessageProcessor
+    public class ServerModel<T> : IServerModel where T : ISocketMessageProcessor
     {
         /**
          * Public
@@ -54,7 +54,7 @@ namespace Milimoe.FunGame.Server.Model
             _mailer = SmtpHelper.GetMailSender();
         }
 
-        public async Task<bool> SocketMessageHandler(ISocketMessageProcessor socket, SocketObject obj)
+        public virtual async Task<bool> SocketMessageHandler(ISocketMessageProcessor socket, SocketObject obj)
         {
             // 读取收到的消息
             SocketMessageType type = obj.SocketType;
@@ -225,7 +225,7 @@ namespace Milimoe.FunGame.Server.Model
             return false;
         }
 
-        public async Task<bool> Send(SocketMessageType type, params object[] objs)
+        public virtual async Task<bool> Send(SocketMessageType type, params object[] objs)
         {
             // 发送消息给客户端
             try
@@ -434,7 +434,7 @@ namespace Milimoe.FunGame.Server.Model
             ServerHelper.WriteLine($"目前在线客户端数量: {Listener.ClientList.Count}（已登录的玩家数量：{Listener.UserList.Count}）");
         }
 
-        protected async Task<bool> Read(ISocketMessageProcessor socket)
+        protected virtual async Task<bool> Read(ISocketMessageProcessor socket)
         {
             // 接收客户端消息
             try

@@ -3,7 +3,6 @@ using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
-using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility.DataUtility;
 using MySql.Data.MySqlClient;
