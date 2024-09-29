@@ -6,6 +6,8 @@ namespace Milimoe.FunGame.WebAPI.Architecture
 {
     public class WebAPIListener : ISocketListener<ServerWebSocket>
     {
+        public string Name => "WebAPIListener";
+
         public ConcurrentModelList<IServerModel> ClientList { get; } = [];
 
         public ConcurrentModelList<IServerModel> UserList { get; } = [];

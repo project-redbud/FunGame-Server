@@ -5,6 +5,8 @@ namespace Milimoe.FunGame.WebAPI.Architecture
 {
     public class RESTfulAPIListener : ISocketListener<RESTfulAPI>
     {
+        public string Name => "RESTfulAPIListener";
+
         public ConcurrentModelList<IServerModel> ClientList { get; } = [];
 
         public ConcurrentModelList<IServerModel> UserList { get; } = [];

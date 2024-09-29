@@ -51,6 +51,7 @@ namespace Milimoe.FunGame.Server.Model
             IsDebugMode = isDebugMode;
             if (Config.SQLMode == SQLMode.MySQL) _sqlHelper = new MySQLHelper(this);
             else if (Config.SQLMode == SQLMode.SQLite) _sqlHelper = Config.SQLHelper;
+            else ServerHelper.WriteLine("SQL 服务处于关闭状态", InvokeMessageType.Warning);
             _mailer = SmtpHelper.GetMailSender();
         }
 
@@ -431,7 +432,7 @@ namespace Milimoe.FunGame.Server.Model
 
         public void GetUsersCount()
         {
-            ServerHelper.WriteLine($"目前在线客户端数量: {Listener.ClientList.Count}（已登录的玩家数量：{Listener.UserList.Count}）");
+            ServerHelper.WriteLine($"{Listener.Name} 的目前在线客户端数量: {Listener.ClientList.Count}（已登录的玩家数量：{Listener.UserList.Count}）");
         }
 
         protected virtual async Task<bool> Read(ISocketMessageProcessor socket)

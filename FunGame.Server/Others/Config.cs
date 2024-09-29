@@ -174,7 +174,11 @@ namespace Milimoe.FunGame.Server.Others
                         ServerLogin();
                         ClearRoomList();
                     }
-                    else SQLMode = SQLMode.None;
+                    else
+                    {
+                        SQLMode = SQLMode.None;
+                        ServerHelper.WriteLine("未开启 SQL 服务，某些请求将无法处理。", InvokeMessageType.Warning);
+                    }
                 }
             }
             catch (Exception e)
