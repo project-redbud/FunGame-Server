@@ -103,7 +103,7 @@ namespace Milimoe.FunGame.Server.Controller
                     StartGame(data, result);
                     break;
 
-                case DataRequestType.Reg_GetRegVerifyCode:
+                case DataRequestType.Reg_Reg:
                     Reg(data, result);
                     break;
 
