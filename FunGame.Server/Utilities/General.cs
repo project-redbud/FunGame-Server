@@ -26,6 +26,10 @@ namespace Milimoe.FunGame.Server.Utility
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     prefix = "[Api] ";
                     break;
+                case InvokeMessageType.Warning:
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    prefix = "[Warning] ";
+                    break;
                 case InvokeMessageType.Interface:
                     Console.ForegroundColor = ConsoleColor.Magenta;
                     prefix = "[Interface] ";
@@ -62,15 +66,18 @@ namespace Milimoe.FunGame.Server.Utility
         public static void Write(string msg, InvokeMessageType type = InvokeMessageType.System)
         {
             if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type) + msg + "> ");
+            Console.ResetColor();
         }
 
         public static void WriteLine(string msg, InvokeMessageType type = InvokeMessageType.System)
         {
             if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type) + msg + "\n\r> ");
+            Console.ResetColor();
         }
 
         public static void Type()
         {
+            Console.ResetColor();
             Console.Write("\r> ");
         }
 
@@ -86,7 +93,7 @@ namespace Milimoe.FunGame.Server.Utility
 
         private static Hashtable GetServerSettingHashtable()
         {
-            Hashtable settings = new();
+            Hashtable settings = [];
             if (INIHelper.ExistINIFile())
             {
                 settings.Add("Name", INIHelper.ReadINI("Server", "Name"));
@@ -99,6 +106,11 @@ namespace Milimoe.FunGame.Server.Utility
                 settings.Add("OfficialMail", INIHelper.ReadINI("ServerMail", "OfficialMail"));
                 settings.Add("SupportMail", INIHelper.ReadINI("ServerMail", "SupportMail"));
                 settings.Add("Port", Convert.ToInt32(INIHelper.ReadINI("Socket", "Port")));
+                settings.Add("UseWebSocket", Convert.ToBoolean(INIHelper.ReadINI("Socket", "UseWebSocket")));
+                settings.Add("WebSocketAddress", Convert.ToString(INIHelper.ReadINI("Socket", "WebSocketAddress")));
+                settings.Add("WebSocketPort", Convert.ToInt32(INIHelper.ReadINI("Socket", "WebSocketPort")));
+                settings.Add("WebSocketSubUrl", Convert.ToString(INIHelper.ReadINI("Socket", "WebSocketSubUrl")));
+                settings.Add("WebSocketSSL", Convert.ToBoolean(INIHelper.ReadINI("Socket", "WebSocketSSL")));
                 settings.Add("MaxPlayer", Convert.ToInt32(INIHelper.ReadINI("Socket", "MaxPlayer")));
                 settings.Add("MaxConnectFailed", Convert.ToInt32(INIHelper.ReadINI("Socket", "MaxConnectFailed")));
             }
@@ -124,7 +136,7 @@ namespace Milimoe.FunGame.Server.Utility
                     if (Describe != null) Config.ServerDescription = Describe;
                     if (Notice != null) Config.ServerNotice = Notice;
                     if (Key != null) Config.ServerKey = Key;
-                    if (BannedList != null) Config.ServerBannedList = BannedList;
+                    if (BannedList != null) Config.ServerBannedList = BannedList.Split(',').Select(s => s.Trim()).ToList();
 
                     string? OfficialMail = (string?)settings["OfficialMail"];
                     string? SupportMail = (string?)settings["SupportMail"];
@@ -134,18 +146,28 @@ namespace Milimoe.FunGame.Server.Utility
 
                     int? Status = (int?)settings["Status"];
                     int? Port = (int?)settings["Port"];
+                    bool? UseWebSocket = (bool?)settings["UseWebSocket"];
+                    string? WebSocketAddress = (string?)settings["WebSocketAddress"];
+                    int? WebSocketPort = (int?)settings["WebSocketPort"];
+                    string? WebSocketSubUrl = (string?)settings["WebSocketSubUrl"];
+                    bool? WebSocketSSL = (bool?)settings["WebSocketSSL"];
                     int? MaxPlayer = (int?)settings["MaxPlayer"];
                     int? MaxConnectFailed = (int?)settings["MaxConnectFailed"];
 
                     if (Status != null) Config.ServerStatus = (int)Status;
                     if (Port != null) Config.ServerPort = (int)Port;
+                    if (UseWebSocket != null) Config.UseWebSocket = (bool)UseWebSocket;
+                    if (WebSocketAddress != null) Config.WebSocketAddress = WebSocketAddress;
+                    if (WebSocketPort != null) Config.WebSocketPort = (int)WebSocketPort;
+                    if (WebSocketSubUrl != null) Config.WebSocketSubUrl = WebSocketSubUrl;
+                    if (WebSocketSSL != null) Config.WebSocketSSL = (bool)WebSocketSSL;
                     if (MaxPlayer != null) Config.MaxPlayers = (int)MaxPlayer;
                     if (MaxConnectFailed != null) Config.MaxConnectionFaileds = (int)MaxConnectFailed;
                 }
             }
             catch (Exception e)
             {
-                ServerHelper.WriteLine(e.StackTrace ?? "");
+                Error(e);
             }
         }
 
@@ -192,7 +214,7 @@ namespace Milimoe.FunGame.Server.Utility
                                 if (SmtpPort > 0) return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, OpenSSL);
                             }
                         }
-                        ServerHelper.WriteLine("Smtp服务处于关闭状态");
+                        ServerHelper.WriteLine("SMTP 服务处于关闭状态", InvokeMessageType.Warning);
                         return null;
                     }
                     throw new SmtpHelperException();

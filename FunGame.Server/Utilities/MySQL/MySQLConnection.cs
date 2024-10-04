@@ -1,41 +1,8 @@
-﻿using Milimoe.FunGame.Core.Api.Utility;
-using Milimoe.FunGame.Core.Model;
+﻿using Milimoe.FunGame.Core.Model;
 using MySql.Data.MySqlClient;
 
 namespace Milimoe.FunGame.Server.Utility.DataUtility
 {
-    public class ConnectProperties
-    {
-        public static string Name { get; set; } = "";
-        public static string DataSource { get; set; } = "";
-        public static string Port { get; set; } = "";
-        public static string DataBase { get; set; } = "";
-        public static string User { get; set; } = "";
-        public static string Password { get; set; } = "";
-
-        /// <summary>
-        /// 读取MySQL服务器配置文件
-        /// </summary>
-        /// <returns></returns>
-        public static string GetConnectProperties()
-        {
-            if (Name == "" && DataSource == "" && Port == "" && DataBase == "" && User == "" && Password == "")
-            {
-                if (INIHelper.ExistINIFile())
-                {
-                    DataSource = INIHelper.ReadINI("MySQL", "DBServer");
-                    Port = INIHelper.ReadINI("MySQL", "DBPort");
-                    DataBase = INIHelper.ReadINI("MySQL", "DBName");
-                    User = INIHelper.ReadINI("MySQL", "DBUser");
-                    Password = INIHelper.ReadINI("MySQL", "DBPassword");
-                    return "data source = " + DataSource + "; port = " + Port + "; database = " + DataBase + "; user = " + User + "; password = " + Password + "; charset = utf8mb4;";
-                }
-                else ServerHelper.Error(new MySQLConfigException());
-            }
-            return "data source = " + DataSource + "; port = " + Port + "; database = " + DataBase + "; user = " + User + "; password = " + Password + "; charset = utf8mb4;";
-        }
-    }
-
     public class MySQLConnection
     {
         public MySqlConnection? Connection
@@ -87,15 +54,15 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         {
             try
             {
-                string _GetConnection = ConnectProperties.GetConnectProperties();
-                if (_GetConnection != null)
+                string connectionString = ConnectProperties.GetConnectPropertiesForMySQL();
+                if (connectionString != null)
                 {
-                    string[] DataSetting = _GetConnection.Split(";");
-                    if (DataSetting.Length > 1 && DataSetting[0].Length > 14 && DataSetting[1].Length > 8)
+                    string[] strings = connectionString.Split(";");
+                    if (strings.Length > 1 && strings[0].Length > 14 && strings[1].Length > 8)
                     {
-                        ServerHelper.WriteLine("Connect -> MySQL://" + DataSetting[0][14..] + ":" + DataSetting[1][8..]);
+                        ServerHelper.WriteLine("Connect -> MySQL://" + strings[0][14..] + ":" + strings[1][8..]);
                     }
-                    _Connection = new MySqlConnection(_GetConnection);
+                    _Connection = new MySqlConnection(connectionString);
                     _Connection.Open();
                     if (_Connection.State == System.Data.ConnectionState.Open)
                     {

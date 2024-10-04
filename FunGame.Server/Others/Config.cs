@@ -2,11 +2,13 @@
 using System.Text;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Core.Model;
 using Milimoe.FunGame.Server.Utility;
+using Milimoe.FunGame.Server.Utility.DataUtility;
 
 namespace Milimoe.FunGame.Server.Others
 {
@@ -18,9 +20,34 @@ namespace Milimoe.FunGame.Server.Others
         public static string ServerName { get; set; } = "FunGame Server";
 
         /// <summary>
-        /// 默认端口
+        /// Socket 端口
         /// </summary>
         public static int ServerPort { get; set; } = 22222;
+
+        /// <summary>
+        /// 使用 WebSocket
+        /// </summary>
+        public static bool UseWebSocket { get; set; } = false;
+
+        /// <summary>
+        /// WebSocket 监听地址
+        /// </summary>
+        public static string WebSocketAddress { get; set; } = "localhost";
+
+        /// <summary>
+        /// WebSocket 端口
+        /// </summary>
+        public static int WebSocketPort { get; set; } = 22222;
+
+        /// <summary>
+        /// WebSocket 监听子路径
+        /// </summary>
+        public static string WebSocketSubUrl { get; set; } = "ws";
+
+        /// <summary>
+        /// WebSocket 开启 SSL
+        /// </summary>
+        public static bool WebSocketSSL { get; set; } = false;
 
         /// <summary>
         /// 默认状态：1可连接 0不可连接 -1不可用
@@ -50,7 +77,7 @@ namespace Milimoe.FunGame.Server.Others
         /// <summary>
         /// 禁止连接的黑名单
         /// </summary>
-        public static string ServerBannedList { get; set; } = "";
+        public static List<string> ServerBannedList { get; set; } = [];
 
         /// <summary>
         /// 最多接受连接的玩家数量
@@ -95,7 +122,7 @@ namespace Milimoe.FunGame.Server.Others
         /// <summary>
         /// 是否运行数据库模式
         /// </summary>
-        public static bool SQLMode { get; set; } = false;
+        public static SQLMode SQLMode { get; set; } = SQLMode.None;
 
         /// <summary>
         /// Server实际安装的模组
@@ -114,7 +141,7 @@ namespace Milimoe.FunGame.Server.Others
         {
             get
             {
-                if (_SQLHelper is null) throw new MySQLConfigException();
+                if (_SQLHelper is null) throw new SQLServiceException();
                 return _SQLHelper;
             }
         }
@@ -128,12 +155,30 @@ namespace Milimoe.FunGame.Server.Others
         {
             try
             {
-                _SQLHelper = new MySQLHelper("", false);
-                if (((MySQLHelper)_SQLHelper).Connection != null)
+                if (INIHelper.ExistINIFile())
                 {
-                    SQLMode = true;
-                    ServerLogin();
-                    ClearRoomList();
+                    if (INIHelper.ReadINI("MySQL", "UseMySQL").Trim() == "true")
+                    {
+                        _SQLHelper = new MySQLHelper("", false);
+                        if (((MySQLHelper)_SQLHelper).Connection != null)
+                        {
+                            SQLMode = _SQLHelper.Mode;
+                            ServerLogin();
+                            ClearRoomList();
+                        }
+                    }
+                    else if (INIHelper.ReadINI("SQLite", "UseSQLite").Trim() == "true")
+                    {
+                        _SQLHelper = new SQLiteHelper();
+                        SQLMode = _SQLHelper.Mode;
+                        ServerLogin();
+                        ClearRoomList();
+                    }
+                    else
+                    {
+                        SQLMode = SQLMode.None;
+                        ServerHelper.WriteLine("未开启 SQL 服务，某些请求将无法处理。", InvokeMessageType.Warning);
+                    }
                 }
             }
             catch (Exception e)
@@ -142,12 +187,45 @@ namespace Milimoe.FunGame.Server.Others
             }
         }
 
+        public static bool GetGameModuleList()
+        {
+            List<string> supported = [];
+            // 构建AddonController
+            Hashtable delegates = [];
+            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameModule)));
+            delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
+            // 读取modules目录下的模组
+            GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates);
+            foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
+            {
+                bool check = true;
+                // 检查模组是否有相对应的地图
+                if (!GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
+                {
+                    ServerHelper.WriteLine("GameModule Load Failed: " + module + " 没有找到相对应的地图，加载失败", InvokeMessageType.Error);
+                    check = false;
+                }
+                if (check)
+                {
+                    supported.Add(module.Name);
+                }
+            }
+            // 设置全局
+            GameModuleSupported = supported.Distinct().ToArray();
+            foreach (string modename in GameModuleSupported)
+            {
+                ServerHelper.WriteLine("Loaded: " + modename, InvokeMessageType.GameModule);
+            }
+
+            return GameModuleSupported.Length > 0;
+        }
+
         /// <summary>
         /// 服务器启动登记
         /// </summary>
         public static void ServerLogin()
         {
-            if (SQLMode)
+            if (SQLMode != SQLMode.None)
             {
                 SQLHelper.Execute(ServerLoginLogs.Insert_ServerLoginLogs(ServerName, ServerKey));
             }
@@ -158,7 +236,7 @@ namespace Milimoe.FunGame.Server.Others
         /// </summary>
         public static void ClearRoomList()
         {
-            if (SQLMode)
+            if (SQLMode != SQLMode.None)
             {
                 SQLHelper.Execute(RoomQuery.Delete_Rooms());
             }

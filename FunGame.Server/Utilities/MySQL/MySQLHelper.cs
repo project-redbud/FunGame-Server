@@ -1,8 +1,8 @@
 ﻿using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
+using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
-using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility.DataUtility;
 using MySql.Data.MySqlClient;
@@ -12,6 +12,7 @@ namespace Milimoe.FunGame.Server.Utility
     public class MySQLHelper : SQLHelper
     {
         public override FunGameInfo.FunGame FunGameType => Config.FunGameType;
+        public override SQLMode Mode => SQLMode.MySQL;
         public override string Script { get; set; } = "";
         public override CommandType CommandType { get; set; } = CommandType.Text;
         public override SQLResult Result => _Result;
@@ -27,7 +28,7 @@ namespace Milimoe.FunGame.Server.Utility
         private DataSet _DataSet = new();
         private MySQLConnection? _Connection;
         private MySqlTransaction? _Transaction;
-        private readonly ServerModel? ServerModel;
+        private readonly IServerModel? ServerModel;
         private readonly bool _IsOneTime = false;
 
         /// <summary>
@@ -123,7 +124,7 @@ namespace Milimoe.FunGame.Server.Utility
         /// 创建为SocketModel服务的SQLHelper
         /// </summary>
         /// <param name="ServerModel">SocketModel</param>
-        public MySQLHelper(ServerModel ServerModel)
+        public MySQLHelper(IServerModel ServerModel)
         {
             this.ServerModel = ServerModel;
             Script = "";

@@ -1,7 +1,7 @@
 ﻿using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Server.Model;
 
 namespace Milimoe.FunGame.Server.Controller
 {
@@ -9,11 +9,11 @@ namespace Milimoe.FunGame.Server.Controller
     {
         public TwoFactorAuthenticator Login2FA = new();
 
-        private readonly ServerModel Server;
+        private readonly IServerModel Server;
         private readonly SQLHelper SQLHelper;
         private readonly MailSender? MailSender;
 
-        public Authenticator(ServerModel Server, SQLHelper SQLHelper, MailSender? MailSender) : base(SQLHelper)
+        public Authenticator(IServerModel Server, SQLHelper SQLHelper, MailSender? MailSender) : base(SQLHelper)
         {
             this.Server = Server;
             this.SQLHelper = SQLHelper;
