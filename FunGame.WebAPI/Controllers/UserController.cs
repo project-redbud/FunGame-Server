@@ -51,7 +51,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                             model.GetUsersCount();
                             string token = jwtTokenService.GenerateToken(username);
                             Config.ConnectingPlayerCount--;
-                            return Ok(new { BearerToken = token, InternalToken = model.Token });
+                            return Ok(new { BearerToken = token, OpenToken = model.Token });
                         }
                     }
                     else msg = "服务器暂时无法处理登录请求。";
