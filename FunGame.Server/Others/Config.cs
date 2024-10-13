@@ -242,7 +242,7 @@ namespace Milimoe.FunGame.Server.Others
         public static void GetWebAPIPlugins()
         {
             Dictionary<string, object> delegates = [];
-            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameModule)));
+            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.Plugin)));
             delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
             try
             {
