@@ -1,13 +1,16 @@
 using System.Net.WebSockets;
+using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
 using System.Text.Unicode;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.JsonConverter;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
@@ -34,6 +37,9 @@ try
     {
         ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
     }
+
+    // 读取Web API插件
+    Config.GetWebAPIPlugins();
 
     // 检查是否存在配置文件
     if (!INIHelper.ExistINIFile())
@@ -63,6 +69,21 @@ try
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
     // Add services to the container.
+    // 读取扩展控制器
+    if (Config.WebAPIPluginLoader != null)
+    {
+        foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
+        {
+            Assembly? pluginAssembly = Assembly.GetAssembly(plugin.GetType());
+
+            if (pluginAssembly != null)
+            {
+                // 注册所有控制器
+                builder.Services.AddControllers().PartManager.ApplicationParts.Add(new AssemblyPart(pluginAssembly));
+            }
+        }
+    }
+    // 添加 JSON 转换器
     builder.Services.AddControllers().AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.WriteIndented = true;

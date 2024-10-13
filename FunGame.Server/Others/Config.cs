@@ -128,6 +128,11 @@ namespace Milimoe.FunGame.Server.Others
         /// Server实际安装的模组
         /// </summary>
         public static GameModuleLoader? GameModuleLoader { get; set; }
+        
+        /// <summary>
+        /// Web API插件
+        /// </summary>
+        public static WebAPIPluginLoader? WebAPIPluginLoader { get; set; }
 
         /// <summary>
         /// 未Loadmodules时，此属性表示至少需要安装的模组
@@ -191,24 +196,38 @@ namespace Milimoe.FunGame.Server.Others
         {
             List<string> supported = [];
             // 构建AddonController
-            Hashtable delegates = [];
+            Dictionary<string, object> delegates = [];
             delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameModule)));
             delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
             // 读取modules目录下的模组
-            GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates);
-            foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
+            try
             {
-                bool check = true;
-                // 检查模组是否有相对应的地图
-                if (!GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
+                GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates);
+                foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
                 {
-                    ServerHelper.WriteLine("GameModule Load Failed: " + module + " 没有找到相对应的地图，加载失败", InvokeMessageType.Error);
-                    check = false;
+                    try
+                    {
+                        bool check = true;
+                        // 检查模组是否有相对应的地图
+                        if (!GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
+                        {
+                            ServerHelper.WriteLine("GameModule Load Failed: " + module + " 没有找到相对应的地图，加载失败", InvokeMessageType.Error);
+                            check = false;
+                        }
+                        if (check)
+                        {
+                            supported.Add(module.Name);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        ServerHelper.Error(e);
+                    }
                 }
-                if (check)
-                {
-                    supported.Add(module.Name);
-                }
+            }
+            catch (Exception e2)
+            {
+                ServerHelper.Error(e2);
             }
             // 设置全局
             GameModuleSupported = supported.Distinct().ToArray();
@@ -218,6 +237,26 @@ namespace Milimoe.FunGame.Server.Others
             }
 
             return GameModuleSupported.Length > 0;
+        }
+        
+        public static void GetWebAPIPlugins()
+        {
+            Dictionary<string, object> delegates = [];
+            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameModule)));
+            delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
+            try
+            {
+                // 读取modules目录下的模组
+                WebAPIPluginLoader = WebAPIPluginLoader.LoadPlugins(delegates);
+                foreach (WebAPIPlugin plugin in WebAPIPluginLoader.Plugins.Values)
+                {
+                    ServerHelper.WriteLine("Loaded: " + plugin.Name, InvokeMessageType.Plugin);
+                }
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+            }
         }
 
         /// <summary>
