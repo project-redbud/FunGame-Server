@@ -246,7 +246,7 @@ namespace Milimoe.FunGame.Server.Others
             delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
             try
             {
-                // 读取modules目录下的模组
+                // 读取plugins目录下的插件
                 WebAPIPluginLoader = WebAPIPluginLoader.LoadPlugins(delegates);
                 foreach (WebAPIPlugin plugin in WebAPIPluginLoader.Plugins.Values)
                 {
