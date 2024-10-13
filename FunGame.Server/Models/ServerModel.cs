@@ -49,10 +49,11 @@ namespace Milimoe.FunGame.Server.Model
             Socket = socket;
             DataRequestController = new(this);
             IsDebugMode = isDebugMode;
-            if (Config.SQLMode == SQLMode.MySQL) _sqlHelper = new MySQLHelper(this);
-            else if (Config.SQLMode == SQLMode.SQLite) _sqlHelper = Config.SQLHelper;
-            else ServerHelper.WriteLine("SQL 服务处于关闭状态", InvokeMessageType.Warning);
-            _mailer = SmtpHelper.GetMailSender();
+            if (Config.SQLMode != SQLMode.None)
+            {
+                _sqlHelper = Config.SQLHelper;
+            }
+            _mailer = Config.MailSender;
         }
 
         public virtual async Task<bool> SocketMessageHandler(ISocketMessageProcessor socket, SocketObject obj)
@@ -523,10 +524,6 @@ namespace Milimoe.FunGame.Server.Model
         {
             try
             {
-                SQLHelper?.Close();
-                _sqlHelper = null;
-                MailSender?.Dispose();
-                _mailer = null;
                 await Socket.CloseAsync();
                 _running = false;
                 Listener.ClientList.Remove(ClientName);

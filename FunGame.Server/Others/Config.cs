@@ -133,7 +133,7 @@ namespace Milimoe.FunGame.Server.Others
         /// Server插件
         /// </summary>
         public static ServerPluginLoader? ServerPluginLoader { get; set; }
-        
+
         /// <summary>
         /// Web API插件
         /// </summary>
@@ -156,7 +156,20 @@ namespace Milimoe.FunGame.Server.Others
             }
         }
 
+        /// <summary>
+        /// 全局邮件发送器
+        /// </summary>
+        public static MailSender MailSender
+        {
+            get
+            {
+                if (_MailSender is null) throw new SmtpHelperException();
+                return _MailSender;
+            }
+        }
+
         private static SQLHelper? _SQLHelper;
+        private static MailSender? _MailSender;
 
         /// <summary>
         /// 初始化数据库连接器
@@ -197,6 +210,21 @@ namespace Milimoe.FunGame.Server.Others
             }
         }
 
+        /// <summary>
+        /// 初始化邮件发送器
+        /// </summary>
+        public static void InitMailSender()
+        {
+            try
+            {
+                _MailSender = SmtpHelper.GetMailSender();
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+            }
+        }
+
         public static bool GetGameModuleList()
         {
             List<string> supported = [];
@@ -207,7 +235,7 @@ namespace Milimoe.FunGame.Server.Others
             // 读取modules目录下的模组
             try
             {
-                GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates);
+                GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates, SQLHelper, MailSender);
                 foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
                 {
                     try
@@ -243,7 +271,7 @@ namespace Milimoe.FunGame.Server.Others
 
             return GameModuleSupported.Length > 0;
         }
-        
+
         public static void GetServerPlugins()
         {
             Dictionary<string, object> delegates = [];
@@ -263,7 +291,7 @@ namespace Milimoe.FunGame.Server.Others
                 ServerHelper.Error(e);
             }
         }
-        
+
         public static void GetWebAPIPlugins()
         {
             Dictionary<string, object> delegates = [];

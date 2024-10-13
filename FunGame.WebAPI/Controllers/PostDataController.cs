@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.WebAPI.Architecture;
@@ -22,7 +21,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
         {
             try
             {
-                RESTfulAPIListener? apiListener = Singleton.Get<RESTfulAPIListener>();
+                RESTfulAPIListener? apiListener = RESTfulAPIListener.Instance;
                 if (apiListener != null && apiListener.UserList.ContainsKey(username))
                 {
                     RESTfulAPIModel model = (RESTfulAPIModel)apiListener.UserList[username];

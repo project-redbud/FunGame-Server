@@ -32,6 +32,12 @@ try
     // 初始化命令菜单
     ServerHelper.InitOrderList();
 
+    // 创建全局SQLHelper
+    Config.InitSQLHelper();
+
+    // 创建全局MailSender
+    Config.InitMailSender();
+
     // 读取游戏模组
     if (!Config.GetGameModuleList())
     {
@@ -40,7 +46,7 @@ try
 
     // 读取Server插件
     Config.GetServerPlugins();
-    
+
     // 读取Web API插件
     Config.GetWebAPIPlugins();
 
@@ -60,19 +66,17 @@ try
 
     // 创建单例
     RESTfulAPIListener apiListener = new();
-    Singleton.Add(apiListener);
+    RESTfulAPIListener.Instance = apiListener;
 
     ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
 
-    // 创建全局SQLHelper
-    Config.InitSQLHelper();
-
     if (Config.ServerNotice != "")
-        Console.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
+        Console.WriteLine("\r \n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
     else
         Console.WriteLine("无法读取服务器公告");
 
     ServerHelper.WriteLine("正在启动 Web API 监听 . . .");
+    Console.WriteLine("\r ");
 
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

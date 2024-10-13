@@ -22,7 +22,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
             ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 通过 RESTful API 连接至服务器，正在登录 . . .", Core.Library.Constant.InvokeMessageType.Core);
             string username = loginModel.Username;
             string password = loginModel.Password;
-            RESTfulAPIListener? apiListener = Singleton.Get<RESTfulAPIListener>();
+            RESTfulAPIListener? apiListener = RESTfulAPIListener.Instance;
             if (apiListener != null)
             {
                 // 移除旧模型
@@ -51,7 +51,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                             model.GetUsersCount();
                             string token = jwtTokenService.GenerateToken(username);
                             Config.ConnectingPlayerCount--;
-                            return Ok(new { BearerToken = token, InternalToken = model.Token });
+                            return Ok(new { BearerToken = token, OpenToken = model.Token });
                         }
                     }
                     else msg = "服务器暂时无法处理登录请求。";

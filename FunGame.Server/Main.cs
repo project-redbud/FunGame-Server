@@ -65,6 +65,12 @@ void StartServer()
             // 初始化命令菜单
             ServerHelper.InitOrderList();
 
+            // 创建全局SQLHelper
+            Config.InitSQLHelper();
+
+            // 创建全局MailSender
+            Config.InitMailSender();
+
             // 读取游戏模组
             if (!Config.GetGameModuleList())
             {
@@ -88,9 +94,6 @@ void StartServer()
                 Console.Title = Config.ServerName + " - FunGame Server Port: " + Config.ServerPort;
             }
             ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
-
-            // 创建全局SQLHelper
-            Config.InitSQLHelper();
 
             // 使用Socket还是WebSocket
             bool useWebSocket = Config.UseWebSocket;
