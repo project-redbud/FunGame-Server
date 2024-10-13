@@ -128,6 +128,11 @@ namespace Milimoe.FunGame.Server.Others
         /// Server实际安装的模组
         /// </summary>
         public static GameModuleLoader? GameModuleLoader { get; set; }
+
+        /// <summary>
+        /// Server插件
+        /// </summary>
+        public static ServerPluginLoader? ServerPluginLoader { get; set; }
         
         /// <summary>
         /// Web API插件
@@ -237,6 +242,26 @@ namespace Milimoe.FunGame.Server.Others
             }
 
             return GameModuleSupported.Length > 0;
+        }
+        
+        public static void GetServerPlugins()
+        {
+            Dictionary<string, object> delegates = [];
+            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.Plugin)));
+            delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
+            try
+            {
+                // 读取plugins目录下的插件
+                ServerPluginLoader = ServerPluginLoader.LoadPlugins(delegates);
+                foreach (ServerPlugin plugin in ServerPluginLoader.Plugins.Values)
+                {
+                    ServerHelper.WriteLine("Loaded: " + plugin.Name, InvokeMessageType.Plugin);
+                }
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+            }
         }
         
         public static void GetWebAPIPlugins()

@@ -38,6 +38,9 @@ try
         ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
     }
 
+    // 读取Server插件
+    Config.GetServerPlugins();
+    
     // 读取Web API插件
     Config.GetWebAPIPlugins();
 
@@ -63,6 +66,11 @@ try
 
     // 创建全局SQLHelper
     Config.InitSQLHelper();
+
+    if (Config.ServerNotice != "")
+        Console.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
+    else
+        Console.WriteLine("无法读取服务器公告");
 
     ServerHelper.WriteLine("正在启动 Web API 监听 . . .");
 
@@ -204,11 +212,6 @@ try
 
     // 开始监听连接
     listener.BannedList.AddRange(Config.ServerBannedList);
-
-    if (Config.ServerNotice != "")
-        Console.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
-    else
-        Console.WriteLine("无法读取服务器公告");
 
     Task order = Task.Factory.StartNew(GetConsoleOrder);
 

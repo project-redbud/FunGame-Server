@@ -71,6 +71,9 @@ void StartServer()
                 ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
             }
 
+            // 读取Server插件
+            Config.GetServerPlugins();
+
             // 检查是否存在配置文件
             if (!INIHelper.ExistINIFile())
             {
