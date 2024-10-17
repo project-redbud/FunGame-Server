@@ -185,17 +185,13 @@ namespace Milimoe.FunGame.Server.Others
                         _SQLHelper = new MySQLHelper("", false);
                         if (((MySQLHelper)_SQLHelper).Connection != null)
                         {
-                            SQLMode = _SQLHelper.Mode;
-                            ServerLogin();
-                            ClearRoomList();
+                            AfterCreateSQLService(_SQLHelper);
                         }
                     }
                     else if (INIHelper.ReadINI("SQLite", "UseSQLite").Trim() == "true")
                     {
                         _SQLHelper = new SQLiteHelper();
-                        SQLMode = _SQLHelper.Mode;
-                        ServerLogin();
-                        ClearRoomList();
+                        AfterCreateSQLService(_SQLHelper);
                     }
                     else
                     {
@@ -223,6 +219,10 @@ namespace Milimoe.FunGame.Server.Others
             {
                 ServerHelper.Error(e);
             }
+            if (_MailSender != null)
+            {
+                Singleton.AddOrUpdate(_MailSender);
+            }
         }
 
         public static bool GetGameModuleList()
@@ -235,7 +235,7 @@ namespace Milimoe.FunGame.Server.Others
             // 读取modules目录下的模组
             try
             {
-                GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates, SQLHelper, MailSender);
+                GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates);
                 foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
                 {
                     try
@@ -332,6 +332,14 @@ namespace Milimoe.FunGame.Server.Others
             {
                 SQLHelper.Execute(RoomQuery.Delete_Rooms());
             }
+        }
+
+        public static void AfterCreateSQLService(SQLHelper sqlHelper)
+        {
+            SQLMode = sqlHelper.Mode;
+            Singleton.AddOrUpdate(sqlHelper, true);
+            ServerLogin();
+            ClearRoomList();
         }
     }
 
