@@ -283,7 +283,6 @@ namespace Milimoe.FunGame.Server.Model
 
         public async Task Start()
         {
-            TaskUtility.NewTask(CreatePeriodicalQuerier);
             await CreateStreamReader();
         }
 
@@ -493,29 +492,6 @@ namespace Milimoe.FunGame.Server.Model
                     ServerHelper.WriteLine(GetClientName() + " Error -> Socket is Closed.");
                     ServerHelper.WriteLine(GetClientName() + " Close -> StringStream is Closed.");
                     break;
-                }
-            }
-        }
-
-        protected async Task CreatePeriodicalQuerier()
-        {
-            await Task.Delay(20);
-            ServerHelper.WriteLine("Creating: PeriodicalQuerier -> " + GetClientName() + " ...OK");
-            while (Running)
-            {
-                // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
-                try
-                {
-                    await Task.Delay(2 * 1000 * 3600);
-                    SQLHelper?.ExecuteDataSet(UserQuery.Select_IsExistUsername(_username));
-                }
-                catch (Exception e)
-                {
-                    ServerHelper.Error(e);
-                    RemoveUser();
-                    await Close();
-                    ServerHelper.WriteLine(GetClientName() + " Error -> Socket is Closed.");
-                    ServerHelper.WriteLine(GetClientName() + " Close -> StringStream is Closed.");
                 }
             }
         }

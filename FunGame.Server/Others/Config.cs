@@ -159,14 +159,7 @@ namespace Milimoe.FunGame.Server.Others
         /// <summary>
         /// 全局邮件发送器
         /// </summary>
-        public static MailSender MailSender
-        {
-            get
-            {
-                if (_MailSender is null) throw new SmtpHelperException();
-                return _MailSender;
-            }
-        }
+        public static MailSender? MailSender => _MailSender;
 
         private static SQLHelper? _SQLHelper;
         private static MailSender? _MailSender;
@@ -340,6 +333,22 @@ namespace Milimoe.FunGame.Server.Others
             Singleton.AddOrUpdate(sqlHelper, true);
             ServerLogin();
             ClearRoomList();
+            Task t = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
+                    try
+                    {
+                        await Task.Delay(2 * 1000 * 3600);
+                        SQLHelper?.ExecuteDataSet(ServerLoginLogs.Select_GetLastLoginTime());
+                    }
+                    catch (Exception e)
+                    {
+                        ServerHelper.Error(e);
+                    }
+                }
+            });
         }
     }
 
