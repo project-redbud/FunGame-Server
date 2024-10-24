@@ -365,3 +365,4 @@ FodyWeavers.xsd
 #FunGame.Implement
 FunGame.Implement/*.cs
 FunGame.Implement/Implement/*.cs
+/FunGame.WebAPI/wwwroot/*

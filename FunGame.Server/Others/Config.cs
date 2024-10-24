@@ -130,6 +130,16 @@ namespace Milimoe.FunGame.Server.Others
         public static GameModuleLoader? GameModuleLoader { get; set; }
 
         /// <summary>
+        /// Server插件
+        /// </summary>
+        public static ServerPluginLoader? ServerPluginLoader { get; set; }
+
+        /// <summary>
+        /// Web API插件
+        /// </summary>
+        public static WebAPIPluginLoader? WebAPIPluginLoader { get; set; }
+
+        /// <summary>
         /// 未Loadmodules时，此属性表示至少需要安装的模组
         /// </summary>
         public static string[] GameModuleSupported { get; set; } = [];
@@ -146,7 +156,13 @@ namespace Milimoe.FunGame.Server.Others
             }
         }
 
+        /// <summary>
+        /// 全局邮件发送器
+        /// </summary>
+        public static MailSender? MailSender => _MailSender;
+
         private static SQLHelper? _SQLHelper;
+        private static MailSender? _MailSender;
 
         /// <summary>
         /// 初始化数据库连接器
@@ -162,17 +178,13 @@ namespace Milimoe.FunGame.Server.Others
                         _SQLHelper = new MySQLHelper("", false);
                         if (((MySQLHelper)_SQLHelper).Connection != null)
                         {
-                            SQLMode = _SQLHelper.Mode;
-                            ServerLogin();
-                            ClearRoomList();
+                            AfterCreateSQLService(_SQLHelper);
                         }
                     }
                     else if (INIHelper.ReadINI("SQLite", "UseSQLite").Trim() == "true")
                     {
                         _SQLHelper = new SQLiteHelper();
-                        SQLMode = _SQLHelper.Mode;
-                        ServerLogin();
-                        ClearRoomList();
+                        AfterCreateSQLService(_SQLHelper);
                     }
                     else
                     {
@@ -187,28 +199,61 @@ namespace Milimoe.FunGame.Server.Others
             }
         }
 
+        /// <summary>
+        /// 初始化邮件发送器
+        /// </summary>
+        public static void InitMailSender()
+        {
+            try
+            {
+                _MailSender = SmtpHelper.GetMailSender();
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+            }
+            if (_MailSender != null)
+            {
+                Singleton.AddOrUpdate(_MailSender);
+            }
+        }
+
         public static bool GetGameModuleList()
         {
             List<string> supported = [];
             // 构建AddonController
-            Hashtable delegates = [];
+            Dictionary<string, object> delegates = [];
             delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameModule)));
             delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
             // 读取modules目录下的模组
-            GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates);
-            foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
+            try
             {
-                bool check = true;
-                // 检查模组是否有相对应的地图
-                if (!GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
+                GameModuleLoader = GameModuleLoader.LoadGameModules(FunGameType, delegates);
+                foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
                 {
-                    ServerHelper.WriteLine("GameModule Load Failed: " + module + " 没有找到相对应的地图，加载失败", InvokeMessageType.Error);
-                    check = false;
+                    try
+                    {
+                        bool check = true;
+                        // 检查模组是否有相对应的地图
+                        if (!GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
+                        {
+                            ServerHelper.WriteLine("GameModule Load Failed: " + module + " 没有找到相对应的地图，加载失败", InvokeMessageType.Error);
+                            check = false;
+                        }
+                        if (check)
+                        {
+                            supported.Add(module.Name);
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        ServerHelper.Error(e);
+                    }
                 }
-                if (check)
-                {
-                    supported.Add(module.Name);
-                }
+            }
+            catch (Exception e2)
+            {
+                ServerHelper.Error(e2);
             }
             // 设置全局
             GameModuleSupported = supported.Distinct().ToArray();
@@ -218,6 +263,46 @@ namespace Milimoe.FunGame.Server.Others
             }
 
             return GameModuleSupported.Length > 0;
+        }
+
+        public static void GetServerPlugins()
+        {
+            Dictionary<string, object> delegates = [];
+            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.Plugin)));
+            delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
+            try
+            {
+                // 读取plugins目录下的插件
+                ServerPluginLoader = ServerPluginLoader.LoadPlugins(delegates);
+                foreach (ServerPlugin plugin in ServerPluginLoader.Plugins.Values)
+                {
+                    ServerHelper.WriteLine("Loaded: " + plugin.Name, InvokeMessageType.Plugin);
+                }
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+            }
+        }
+
+        public static void GetWebAPIPlugins()
+        {
+            Dictionary<string, object> delegates = [];
+            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.Plugin)));
+            delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
+            try
+            {
+                // 读取plugins目录下的插件
+                WebAPIPluginLoader = WebAPIPluginLoader.LoadPlugins(delegates);
+                foreach (WebAPIPlugin plugin in WebAPIPluginLoader.Plugins.Values)
+                {
+                    ServerHelper.WriteLine("Loaded: " + plugin.Name, InvokeMessageType.Plugin);
+                }
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+            }
         }
 
         /// <summary>
@@ -240,6 +325,30 @@ namespace Milimoe.FunGame.Server.Others
             {
                 SQLHelper.Execute(RoomQuery.Delete_Rooms());
             }
+        }
+
+        public static void AfterCreateSQLService(SQLHelper sqlHelper)
+        {
+            SQLMode = sqlHelper.Mode;
+            Singleton.AddOrUpdate(sqlHelper, true);
+            ServerLogin();
+            ClearRoomList();
+            Task t = Task.Run(async () =>
+            {
+                while (true)
+                {
+                    // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
+                    try
+                    {
+                        await Task.Delay(2 * 1000 * 3600);
+                        SQLHelper?.ExecuteDataSet(ServerLoginLogs.Select_GetLastLoginTime());
+                    }
+                    catch (Exception e)
+                    {
+                        ServerHelper.Error(e);
+                    }
+                }
+            });
         }
     }
 

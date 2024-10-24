@@ -59,8 +59,9 @@ namespace Milimoe.FunGame.Server.Utility
 
         public static void Error(Exception e)
         {
-            Console.Write("\r" + GetPrefix(InvokeMessageType.Error) + e.Message + "\n" + e.StackTrace + "\n\r> ");
+            Console.WriteLine("\r" + GetPrefix(InvokeMessageType.Error) + e.Message + "\n" + e.StackTrace);
             Console.ResetColor();
+            Console.Write("\r> ");
         }
 
         public static void Write(string msg, InvokeMessageType type = InvokeMessageType.System)
@@ -71,8 +72,9 @@ namespace Milimoe.FunGame.Server.Utility
 
         public static void WriteLine(string msg, InvokeMessageType type = InvokeMessageType.System)
         {
-            if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type) + msg + "\n\r> ");
+            if (msg.Trim() != "") Console.WriteLine("\r" + GetPrefix(type) + msg);
             Console.ResetColor();
+            Console.Write("\r> ");
         }
 
         public static void Type()
@@ -211,7 +213,11 @@ namespace Milimoe.FunGame.Server.Utility
                                     SmtpPort = Port;
                                 if (bool.TryParse(INIHelper.ReadINI("Mailer", "OpenSSL").ToLower(), out bool SSL))
                                     OpenSSL = SSL;
-                                if (SmtpPort > 0) return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, OpenSSL);
+                                if (SmtpPort > 0)
+                                {
+                                    ServerHelper.WriteLine("SMTP 服务已启动！");
+                                    return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, OpenSSL);
+                                }
                             }
                         }
                         ServerHelper.WriteLine("SMTP 服务处于关闭状态", InvokeMessageType.Warning);
