@@ -49,10 +49,11 @@ namespace Milimoe.FunGame.Server.Model
             Socket = socket;
             DataRequestController = new(this);
             IsDebugMode = isDebugMode;
-            if (Config.SQLMode == SQLMode.MySQL) _sqlHelper = new MySQLHelper(this);
-            else if (Config.SQLMode == SQLMode.SQLite) _sqlHelper = Config.SQLHelper;
-            else ServerHelper.WriteLine("SQL 服务处于关闭状态", InvokeMessageType.Warning);
-            _mailer = SmtpHelper.GetMailSender();
+            if (Config.SQLMode != SQLMode.None)
+            {
+                _sqlHelper = Config.SQLHelper;
+            }
+            _mailer = Config.MailSender;
         }
 
         public virtual async Task<bool> SocketMessageHandler(ISocketMessageProcessor socket, SocketObject obj)
@@ -282,7 +283,6 @@ namespace Milimoe.FunGame.Server.Model
 
         public async Task Start()
         {
-            TaskUtility.NewTask(CreatePeriodicalQuerier);
             await CreateStreamReader();
         }
 
@@ -496,37 +496,10 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        protected async Task CreatePeriodicalQuerier()
-        {
-            await Task.Delay(20);
-            ServerHelper.WriteLine("Creating: PeriodicalQuerier -> " + GetClientName() + " ...OK");
-            while (Running)
-            {
-                // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
-                try
-                {
-                    await Task.Delay(2 * 1000 * 3600);
-                    SQLHelper?.ExecuteDataSet(UserQuery.Select_IsExistUsername(_username));
-                }
-                catch (Exception e)
-                {
-                    ServerHelper.Error(e);
-                    RemoveUser();
-                    await Close();
-                    ServerHelper.WriteLine(GetClientName() + " Error -> Socket is Closed.");
-                    ServerHelper.WriteLine(GetClientName() + " Close -> StringStream is Closed.");
-                }
-            }
-        }
-
         protected async Task Close()
         {
             try
             {
-                SQLHelper?.Close();
-                _sqlHelper = null;
-                MailSender?.Dispose();
-                _mailer = null;
                 await Socket.CloseAsync();
                 _running = false;
                 Listener.ClientList.Remove(ClientName);

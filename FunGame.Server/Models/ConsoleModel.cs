@@ -1,4 +1,5 @@
 ﻿using Milimoe.FunGame.Core.Interface.Base;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 
@@ -47,6 +48,23 @@ namespace Milimoe.FunGame.Server.Model
                     case OrderDictionary.Help:
                         ShowHelp();
                         break;
+                    default:
+                        break;
+                }
+                // 广播到插件
+                if (Config.ServerPluginLoader != null)
+                {
+                    foreach (ServerPlugin plugin in Config.ServerPluginLoader.Plugins.Values)
+                    {
+                        plugin.ProcessInput(order);
+                    }
+                }
+                if (Config.WebAPIPluginLoader != null)
+                {
+                    foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
+                    {
+                        plugin.ProcessInput(order);
+                    }
                 }
             }
             catch (Exception e)

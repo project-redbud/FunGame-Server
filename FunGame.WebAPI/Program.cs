@@ -1,13 +1,16 @@
 using System.Net.WebSockets;
+using System.Reflection;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
 using System.Text.Unicode;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.JsonConverter;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
@@ -29,11 +32,23 @@ try
     // 初始化命令菜单
     ServerHelper.InitOrderList();
 
+    // 创建全局SQLHelper
+    Config.InitSQLHelper();
+
+    // 创建全局MailSender
+    Config.InitMailSender();
+
     // 读取游戏模组
     if (!Config.GetGameModuleList())
     {
         ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
     }
+
+    // 读取Server插件
+    Config.GetServerPlugins();
+
+    // 读取Web API插件
+    Config.GetWebAPIPlugins();
 
     // 检查是否存在配置文件
     if (!INIHelper.ExistINIFile())
@@ -51,18 +66,36 @@ try
 
     // 创建单例
     RESTfulAPIListener apiListener = new();
-    Singleton.Add(apiListener);
+    RESTfulAPIListener.Instance = apiListener;
 
     ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
 
-    // 创建全局SQLHelper
-    Config.InitSQLHelper();
+    if (Config.ServerNotice != "")
+        Console.WriteLine("\r \n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
+    else
+        Console.WriteLine("无法读取服务器公告");
 
     ServerHelper.WriteLine("正在启动 Web API 监听 . . .");
+    Console.WriteLine("\r ");
 
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
     // Add services to the container.
+    // 读取扩展控制器
+    if (Config.WebAPIPluginLoader != null)
+    {
+        foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
+        {
+            Assembly? pluginAssembly = Assembly.GetAssembly(plugin.GetType());
+
+            if (pluginAssembly != null)
+            {
+                // 注册所有控制器
+                builder.Services.AddControllers().PartManager.ApplicationParts.Add(new AssemblyPart(pluginAssembly));
+            }
+        }
+    }
+    // 添加 JSON 转换器
     builder.Services.AddControllers().AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.WriteIndented = true;
@@ -146,6 +179,10 @@ try
         app.UseSwaggerUI();
     }
 
+    app.UseDefaultFiles();
+
+    app.UseStaticFiles();
+
     app.UseHttpsRedirection();
 
     app.UseAuthorization();
@@ -183,11 +220,6 @@ try
 
     // 开始监听连接
     listener.BannedList.AddRange(Config.ServerBannedList);
-
-    if (Config.ServerNotice != "")
-        Console.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
-    else
-        Console.WriteLine("无法读取服务器公告");
 
     Task order = Task.Factory.StartNew(GetConsoleOrder);
 
