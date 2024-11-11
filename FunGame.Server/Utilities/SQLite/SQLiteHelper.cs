@@ -17,13 +17,13 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         public override int UpdateRows => _updateRows;
         public override DataSet DataSet => _dataSet;
 
-        private readonly SqliteConnection _connection;
+        private readonly string _connectionString = "";
+        private SqliteConnection? _connection;
         private SqliteTransaction? _transaction;
         private DataSet _dataSet = new();
         private SQLResult _result = SQLResult.NotFound;
         private readonly SQLServerInfo? _serverInfo;
         private int _updateRows = 0;
-        private readonly string _connectionString = "";
 
         public SQLiteHelper(string script = "", CommandType type = CommandType.Text)
         {
@@ -33,10 +33,8 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             string[] strings = _connectionString.Split("=");
             if (strings.Length > 1)
             {
-                ServerHelper.WriteLine("Connect -> SQLite://" + strings[1]);
                 _serverInfo = SQLServerInfo.Create(database: strings[1]);
             }
-            _connection = new SqliteConnection(_connectionString);
         }
 
         /// <summary>
@@ -44,6 +42,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         /// </summary>
         private void OpenConnection()
         {
+            _connection ??= new SqliteConnection(_connectionString);
             if (_connection.State != ConnectionState.Open)
             {
                 _connection.Open();
@@ -56,10 +55,13 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         public override void Close()
         {
             _transaction?.Dispose();
-            if (_connection.State != ConnectionState.Closed)
+            _transaction = null;
+            if (_connection?.State != ConnectionState.Closed)
             {
-                _connection.Close();
+                _connection?.Close();
             }
+            _connection?.Dispose();
+            _connection = null;
         }
 
         /// <summary>
@@ -79,27 +81,35 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         /// <exception cref="Exception"></exception>
         public override int Execute(string script)
         {
+            bool localTransaction = _transaction == null;
+
             try
             {
+                if (localTransaction)
+                {
+                    NewTransaction();
+                }
                 OpenConnection();
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
                 using SqliteCommand command = new(script, _connection);
                 command.CommandType = CommandType;
-                if (_transaction != null)
-                {
-                    command.Transaction = _transaction;
-                }
+                if (_transaction != null) command.Transaction = _transaction;
 
                 _updateRows = command.ExecuteNonQuery();
                 _result = SQLResult.Success;
-                Close();
-                return UpdateRows;
+                if (localTransaction) Commit();
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
+                if (localTransaction) Rollback();
                 _result = SQLResult.Fail;
-                throw new Exception($"SQL execution failed: {ex.Message}", ex);
+                ServerHelper.Error(e);
             }
+            finally
+            {
+                if (localTransaction) Close();
+            }
+            return UpdateRows;
         }
 
         /// <summary>
@@ -119,8 +129,14 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         /// <exception cref="Exception"></exception>
         public override DataSet ExecuteDataSet(string script)
         {
+            bool localTransaction = _transaction == null;
+
             try
             {
+                if (localTransaction)
+                {
+                    NewTransaction();
+                }
                 OpenConnection();
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
                 using SqliteCommand command = new(script, _connection)
@@ -132,42 +148,19 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 DataTable table = new();
                 table.Load(reader);
                 _dataSet.Tables.Add(table);
-                Close();
-                return _dataSet;
+                if (localTransaction) Commit();
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
+                if (localTransaction) Rollback();
                 _result = SQLResult.Fail;
-                throw new Exception($"SQL execution failed: {ex.Message}", ex);
+                ServerHelper.Error(e);
             }
-        }
-
-        /// <summary>
-        /// 执行指定的命令查询DataRow
-        /// </summary>
-        /// <returns></returns>
-        public override DataRow? ExecuteDataRow()
-        {
-            return ExecuteDataRow(Script);
-        }
-
-        /// <summary>
-        /// 执行指定的命令查询DataRow
-        /// </summary>
-        /// <param name="script"></param>
-        /// <returns></returns>
-        public override DataRow? ExecuteDataRow(string script)
-        {
-            OpenConnection();
-            ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
-            DataSet dataSet = ExecuteDataSet(script);
-            if (dataSet.Tables.Count > 0 && dataSet.Tables[0].Rows.Count > 0)
+            finally
             {
-                Close();
-                return dataSet.Tables[0].Rows[0];
+                if (localTransaction) Close();
             }
-            Close();
-            return null;
+            return _dataSet;
         }
 
         /// <summary>
@@ -176,7 +169,10 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         public override void NewTransaction()
         {
             OpenConnection();
-            _transaction = _connection.BeginTransaction();
+            if (_connection != null)
+            {
+                _transaction = _connection.BeginTransaction();
+            }
         }
 
         /// <summary>
@@ -188,13 +184,12 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             try
             {
                 _transaction?.Commit();
-                Close();
                 _result = SQLResult.Success;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
                 _result = SQLResult.Fail;
-                throw new Exception($"Transaction commit failed: {ex.Message}", ex);
+                ServerHelper.Error(e);
             }
         }
 
@@ -207,23 +202,40 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             try
             {
                 _transaction?.Rollback();
-                Close();
                 _result = SQLResult.Success;
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
                 _result = SQLResult.Fail;
-                throw new Exception($"Transaction rollback failed: {ex.Message}", ex);
+                ServerHelper.Error(e);
             }
         }
+
+        private bool _isDisposed = false;
 
         /// <summary>
         /// 资源清理
         /// </summary>
-        public void Dispose()
+        public void Dispose(bool disposing)
         {
-            _transaction?.Dispose();
-            _connection.Dispose();
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    _transaction?.Dispose();
+                    _transaction = null;
+                    _connection?.Close();
+                    _connection?.Dispose();
+                    _connection = null;
+                }
+            }
+            _isDisposed = true;
+        }
+
+        public override void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

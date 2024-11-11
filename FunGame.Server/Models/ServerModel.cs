@@ -6,6 +6,7 @@ using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
+using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Controller;
 using Milimoe.FunGame.Server.Others;
@@ -49,11 +50,8 @@ namespace Milimoe.FunGame.Server.Model
             Socket = socket;
             DataRequestController = new(this);
             IsDebugMode = isDebugMode;
-            if (Config.SQLMode != SQLMode.None)
-            {
-                _sqlHelper = Config.SQLHelper;
-            }
-            _mailer = Config.MailSender;
+            _sqlHelper = Factory.OpenFactory.GetSQLHelper();
+            _mailer = SmtpHelper.GetMailSender();
         }
 
         public virtual async Task<bool> SocketMessageHandler(ISocketMessageProcessor socket, SocketObject obj)
@@ -465,6 +463,33 @@ namespace Milimoe.FunGame.Server.Model
 
         protected async Task CreateStreamReader()
         {
+            CancellationTokenSource cts = new();
+            Task sqlPolling = Task.Run(async () =>
+            {
+                await Task.Delay(30);
+                ServerHelper.WriteLine("Creating: SQLPolling -> " + GetClientName() + " ...OK");
+                while (Running)
+                {
+                    if (cts.Token.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
+                    try
+                    {
+                        await Task.Delay(2 * 1000 * 3600);
+                        SQLHelper?.ExecuteDataSet(ServerLoginLogs.Select_GetLastLoginTime());
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Exception e)
+                    {
+                        ServerHelper.Error(e);
+                    }
+                }
+            }, cts.Token);
             await Task.Delay(20);
             ServerHelper.WriteLine("Creating: StreamReader -> " + GetClientName() + " ...OK");
             while (Running)
@@ -494,6 +519,9 @@ namespace Milimoe.FunGame.Server.Model
                     break;
                 }
             }
+            cts.Cancel();
+            await sqlPolling;
+            cts.Dispose();
         }
 
         protected async Task Close()

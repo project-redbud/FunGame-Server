@@ -9,6 +9,14 @@ namespace Milimoe.FunGame.Server.Utility
 {
     public class ServerHelper
     {
+        public static void PrintFunGameTitle()
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("\r ");
+            Console.WriteLine(FunGameInfo.FunGameServerTitle);
+            Console.ResetColor();
+        }
+
         public static string GetPrefix(InvokeMessageType type)
         {
             string prefix;
@@ -191,7 +199,7 @@ namespace Milimoe.FunGame.Server.Utility
         public static string SenderPassword { get; set; } = "";
         public static string SmtpHost { get; set; } = "";
         public static int SmtpPort { get; set; } = 587;
-        public static bool OpenSSL { get; set; } = true;
+        public static bool SSL { get; set; } = true;
 
         public static MailSender? GetMailSender()
         {
@@ -211,21 +219,19 @@ namespace Milimoe.FunGame.Server.Utility
                                 SmtpHost = INIHelper.ReadINI("Mailer", "Host");
                                 if (int.TryParse(INIHelper.ReadINI("Mailer", "Port"), out int Port))
                                     SmtpPort = Port;
-                                if (bool.TryParse(INIHelper.ReadINI("Mailer", "OpenSSL").ToLower(), out bool SSL))
-                                    OpenSSL = SSL;
+                                if (bool.TryParse(INIHelper.ReadINI("Mailer", "SSL").ToLower(), out bool ssl))
+                                    SSL = ssl;
                                 if (SmtpPort > 0)
                                 {
-                                    ServerHelper.WriteLine("SMTP 服务已启动！");
-                                    return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, OpenSSL);
+                                    return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, SSL);
                                 }
                             }
                         }
-                        ServerHelper.WriteLine("SMTP 服务处于关闭状态", InvokeMessageType.Warning);
                         return null;
                     }
                     throw new SmtpHelperException();
                 }
-                return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, OpenSSL);
+                return new MailSender(SenderMailAddress, SenderName, SenderPassword, SmtpHost, SmtpPort, SSL);
             }
             catch (Exception e)
             {

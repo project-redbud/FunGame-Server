@@ -33,22 +33,22 @@ try
     ServerHelper.InitOrderList();
 
     // 创建全局SQLHelper
-    Config.InitSQLHelper();
+    FunGameSystem.InitSQLHelper();
 
     // 创建全局MailSender
-    Config.InitMailSender();
+    FunGameSystem.InitMailSender();
 
     // 读取游戏模组
-    if (!Config.GetGameModuleList())
+    if (!FunGameSystem.GetGameModuleList())
     {
         ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
     }
 
     // 读取Server插件
-    Config.GetServerPlugins();
+    FunGameSystem.GetServerPlugins();
 
     // 读取Web API插件
-    Config.GetWebAPIPlugins();
+    FunGameSystem.GetWebAPIPlugins();
 
     // 检查是否存在配置文件
     if (!INIHelper.ExistINIFile())
@@ -69,6 +69,8 @@ try
     RESTfulAPIListener.Instance = apiListener;
 
     ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
+
+    ServerHelper.PrintFunGameTitle();
 
     if (Config.ServerNotice != "")
         Console.WriteLine("\r \n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");

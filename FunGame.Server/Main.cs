@@ -66,19 +66,19 @@ void StartServer()
             ServerHelper.InitOrderList();
 
             // 创建全局SQLHelper
-            Config.InitSQLHelper();
+            FunGameSystem.InitSQLHelper();
 
             // 创建全局MailSender
-            Config.InitMailSender();
+            FunGameSystem.InitMailSender();
 
             // 读取游戏模组
-            if (!Config.GetGameModuleList())
+            if (!FunGameSystem.GetGameModuleList())
             {
                 ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
             }
 
             // 读取Server插件
-            Config.GetServerPlugins();
+            FunGameSystem.GetServerPlugins();
 
             // 检查是否存在配置文件
             if (!INIHelper.ExistINIFile())
@@ -94,6 +94,8 @@ void StartServer()
                 Console.Title = Config.ServerName + " - FunGame Server Port: " + Config.ServerPort;
             }
             ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
+
+            ServerHelper.PrintFunGameTitle();
 
             // 使用Socket还是WebSocket
             bool useWebSocket = Config.UseWebSocket;

@@ -1,136 +1,170 @@
 ﻿using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
-using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
-using Milimoe.FunGame.Server.Others;
-using Milimoe.FunGame.Server.Utility.DataUtility;
 using MySql.Data.MySqlClient;
 
-namespace Milimoe.FunGame.Server.Utility
+namespace Milimoe.FunGame.Server.Utility.DataUtility
 {
     public class MySQLHelper : SQLHelper
     {
-        public override FunGameInfo.FunGame FunGameType => Config.FunGameType;
-        public override SQLMode Mode => SQLMode.MySQL;
+        public override FunGameInfo.FunGame FunGameType { get; } = FunGameInfo.FunGame.FunGame_Server;
+        public override SQLMode Mode { get; } = SQLMode.MySQL;
         public override string Script { get; set; } = "";
         public override CommandType CommandType { get; set; } = CommandType.Text;
-        public override SQLResult Result => _Result;
-        public override SQLServerInfo ServerInfo => _ServerInfo ?? SQLServerInfo.Create();
-        public override int UpdateRows => _UpdateRows;
-        public override DataSet DataSet => _DataSet;
-        public MySqlParameter[] Parameters { get; set; }
-        public MySQLConnection? Connection => _Connection;
+        public override SQLResult Result => _result;
+        public override SQLServerInfo ServerInfo => _serverInfo ?? SQLServerInfo.Create();
+        public override int UpdateRows => _updateRows;
+        public override DataSet DataSet => _dataSet;
 
-        private SQLResult _Result = SQLResult.Success;
-        private SQLServerInfo? _ServerInfo;
-        private int _UpdateRows = 0;
-        private DataSet _DataSet = new();
-        private MySQLConnection? _Connection;
-        private MySqlTransaction? _Transaction;
-        private readonly IServerModel? ServerModel;
-        private readonly bool _IsOneTime = false;
+        private readonly string _connectionString = "";
+        private MySqlConnection? _connection;
+        private MySqlTransaction? _transaction;
+        private DataSet _dataSet = new();
+        private SQLResult _result = SQLResult.NotFound;
+        private readonly SQLServerInfo? _serverInfo;
+        private int _updateRows = 0;
+
+        public MySQLHelper(string script = "", CommandType type = CommandType.Text)
+        {
+            Script = script;
+            CommandType = type;
+            _connectionString = ConnectProperties.GetConnectPropertiesForMySQL();
+            string[] strings = _connectionString.Split(";");
+            if (strings.Length > 1 && strings[0].Length > 14 && strings[1].Length > 8)
+            {
+                string ip = strings[0][14..];
+                string port = strings[1][8..];
+                _serverInfo = SQLServerInfo.Create(ip: ip, port: port);
+            }
+        }
+
+        /// <summary>
+        /// 打开数据库连接
+        /// </summary>
+        private void OpenConnection()
+        {
+            _connection ??= new MySqlConnection(_connectionString);
+            if (_connection.State != ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+        }
+
+        /// <summary>
+        /// 关闭数据库连接
+        /// </summary>
+        public override void Close()
+        {
+            _transaction?.Dispose();
+            _transaction = null;
+            if (_connection?.State != ConnectionState.Closed)
+            {
+                _connection?.Close();
+            }
+            _connection?.Dispose();
+            _connection = null;
+        }
 
         /// <summary>
         /// 执行一个命令
         /// </summary>
-        /// <param name="Result">执行结果</param>
-        /// <returns>影响的行数</returns>
+        /// <returns></returns>
         public override int Execute()
         {
-            // _IsOneTime = true需要手动创建连接和关闭
-            ServerHelper.WriteLine("SQLQuery -> " + Script, InvokeMessageType.Api);
-            _DataSet = new DataSet();
-            _UpdateRows = MySQLManager.Execute(this, out _Result);
-            if (_IsOneTime) Close();
-            return _UpdateRows;
+            return Execute(Script);
         }
 
         /// <summary>
         /// 执行一个指定的命令
         /// </summary>
-        /// <param name="Script">命令</param>
-        /// <param name="Result">执行结果</param>
-        /// <returns>影响的行数</returns>
-        public override int Execute(string Script)
+        /// <param name="script"></param>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        public override int Execute(string script)
         {
-            // _IsOneTime = true需要手动创建连接和关闭
-            ServerHelper.WriteLine("SQLQuery -> " + Script, InvokeMessageType.Api);
-            this.Script = Script;
-            _DataSet = new DataSet();
-            _UpdateRows = MySQLManager.Execute(this, out _Result);
-            if (_IsOneTime) Close();
-            return _UpdateRows;
+            bool localTransaction = _transaction == null;
+
+            try
+            {
+                if (localTransaction)
+                {
+                    NewTransaction();
+                }
+                OpenConnection();
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                using MySqlCommand command = new(script, _connection);
+                command.CommandType = CommandType;
+                if (_transaction != null) command.Transaction = _transaction;
+
+                _updateRows = command.ExecuteNonQuery();
+                _result = SQLResult.Success;
+                if (localTransaction) Commit();
+            }
+            catch (Exception e)
+            {
+                if (localTransaction) Rollback();
+                _result = SQLResult.Fail;
+                ServerHelper.Error(e);
+            }
+            finally
+            {
+                if (localTransaction) Close();
+            }
+            return UpdateRows;
         }
 
         /// <summary>
         /// 查询DataSet
         /// </summary>
-        /// <param name="Result">执行结果</param>
-        /// <returns>结果集</returns>
+        /// <returns></returns>
         public override DataSet ExecuteDataSet()
         {
-            // _IsOneTime = true需要手动创建连接和关闭
-            ServerHelper.WriteLine("SQLQuery -> " + Script, InvokeMessageType.Api);
-            _DataSet = MySQLManager.ExecuteDataSet(this, out _Result, out _UpdateRows);
-            if (_IsOneTime) Close();
-            return DataSet;
+            return ExecuteDataSet(Script);
         }
 
         /// <summary>
         /// 执行指定的命令查询DataSet
         /// </summary>
-        /// <param name="Script">命令</param>
-        /// <param name="Result">执行结果</param>
-        /// <returns>结果集</returns>
-        public override DataSet ExecuteDataSet(string Script)
+        /// <param name="script"></param>
+        /// <returns></returns>
+        public override DataSet ExecuteDataSet(string script)
         {
-            // _IsOneTime = true需要手动创建连接和关闭
-            ServerHelper.WriteLine("SQLQuery -> " + Script, InvokeMessageType.Api);
-            this.Script = Script;
-            _DataSet = MySQLManager.ExecuteDataSet(this, out _Result, out _UpdateRows);
-            if (_IsOneTime) Close();
-            return DataSet;
-        }
+            bool localTransaction = _transaction == null;
 
-        /// <summary>
-        /// 关闭连接 如有事务会自动提交事务
-        /// </summary>
-        public override void Close()
-        {
-            // _IsOneTime = false需要手动调用此方法
-            Commit();
-            _Connection?.Close();
-            ServerHelper.WriteLine($"{(GetClientName() == string.Empty ? "" : GetClientName())}已释放MySQL连接");
-        }
+            try
+            {
+                if (localTransaction)
+                {
+                    NewTransaction();
+                }
+                OpenConnection();
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
 
-        /// <summary>
-        /// 创建SQLHelper
-        /// </summary>
-        /// <param name="IsOneTime">是否是单次使用(执行完毕会自动Close连接)</param>
-        /// <param name="script">存储过程名称或者script语句</param> 
-        /// <param name="type">存储过程, 文本, 等等</param> 
-        /// <param name="parameters">执行命令所用参数的集合</param> 
-        public MySQLHelper(string script = "", bool IsOneTime = true, CommandType type = CommandType.Text, params MySqlParameter[] parameters)
-        {
-            Script = script;
-            _IsOneTime = IsOneTime;
-            CommandType = type;
-            Parameters = parameters;
-            _Connection = new MySQLConnection(out _ServerInfo);
-        }
+                using MySqlCommand command = new(script, _connection)
+                {
+                    CommandType = CommandType
+                };
 
-        /// <summary>
-        /// 创建为SocketModel服务的SQLHelper
-        /// </summary>
-        /// <param name="ServerModel">SocketModel</param>
-        public MySQLHelper(IServerModel ServerModel)
-        {
-            this.ServerModel = ServerModel;
-            Script = "";
-            CommandType = CommandType.Text;
-            Parameters = [];
-            _Connection = new MySQLConnection(out _ServerInfo);
+                MySqlDataAdapter adapter = new()
+                {
+                    SelectCommand = command
+                };
+                adapter.Fill(_dataSet);
+
+                if (localTransaction) Commit();
+            }
+            catch (Exception e)
+            {
+                if (localTransaction) Rollback();
+                _result = SQLResult.Fail;
+                ServerHelper.Error(e);
+            }
+            finally
+            {
+                if (localTransaction) Close();
+            }
+            return _dataSet;
         }
 
         /// <summary>
@@ -138,7 +172,11 @@ namespace Milimoe.FunGame.Server.Utility
         /// </summary>
         public override void NewTransaction()
         {
-            _Transaction ??= _Connection?.Connection?.BeginTransaction();
+            OpenConnection();
+            if (_connection != null)
+            {
+                _transaction = _connection.BeginTransaction();
+            }
         }
 
         /// <summary>
@@ -146,8 +184,16 @@ namespace Milimoe.FunGame.Server.Utility
         /// </summary>
         public override void Commit()
         {
-            _Transaction?.Commit();
-            _Transaction = null;
+            try
+            {
+                _transaction?.Commit();
+                _result = SQLResult.Success;
+            }
+            catch (Exception e)
+            {
+                _result = SQLResult.Fail;
+                ServerHelper.Error(e);
+            }
         }
 
         /// <summary>
@@ -155,17 +201,43 @@ namespace Milimoe.FunGame.Server.Utility
         /// </summary>
         public override void Rollback()
         {
-            _Transaction?.Rollback();
-            _Transaction = null;
+            try
+            {
+                _transaction?.Rollback();
+                _result = SQLResult.Success;
+            }
+            catch (Exception e)
+            {
+                _result = SQLResult.Fail;
+                ServerHelper.Error(e);
+            }
         }
 
+        private bool _isDisposed = false;
+
         /// <summary>
-        /// 获取客户端名称
+        /// 资源清理
         /// </summary>
-        /// <returns></returns>
-        private string GetClientName()
+        public void Dispose(bool disposing)
         {
-            return ServerModel?.GetClientName() ?? string.Empty;
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    _transaction?.Dispose();
+                    _transaction = null;
+                    _connection?.Close();
+                    _connection?.Dispose();
+                    _connection = null;
+                }
+            }
+            _isDisposed = true;
+        }
+
+        public override void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
     }
 }
