@@ -68,7 +68,7 @@ try
     RESTfulAPIListener apiListener = new();
     RESTfulAPIListener.Instance = apiListener;
 
-    ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
+    ServerHelper.WriteLine("请输入 help 来获取帮助，按下 Ctrl+C 关闭服务器。");
 
     ServerHelper.PrintFunGameTitle();
 
@@ -210,6 +210,10 @@ try
         });
     });
 
+    // 捕捉关闭程序事件
+    IHostApplicationLifetime lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+    lifetime.ApplicationStopping.Register(CloseServer);
+
     // 启用 WebSockets 中间件
     WebSocketOptions webSocketOptions = new()
     {
@@ -298,4 +302,9 @@ async Task WebSocketConnectionHandler(HttpContext context)
         ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
         ServerHelper.Error(e);
     }
+}
+
+void CloseServer()
+{
+    FunGameSystem.CloseServer();
 }

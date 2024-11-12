@@ -64,10 +64,10 @@ namespace Milimoe.FunGame.Server.Others
         /// </summary>
         public static void InitMailSender()
         {
-            MailSender? sender = null;
             try
             {
-                sender = SmtpHelper.GetMailSender();
+                Factory.OpenFactory.RegisterFactory(SmtpHelper.GetMailSender);
+                MailSender? sender = SmtpHelper.GetMailSender();
                 if (sender != null)
                 {
                     ServerHelper.WriteLine("SMTP 服务已启动！");
@@ -84,6 +84,10 @@ namespace Milimoe.FunGame.Server.Others
             }
         }
 
+        /// <summary>
+        /// 加载游戏模组
+        /// </summary>
+        /// <returns></returns>
         public static bool GetGameModuleList()
         {
             List<string> supported = [];
@@ -131,6 +135,9 @@ namespace Milimoe.FunGame.Server.Others
             return Config.GameModuleSupported.Length > 0;
         }
 
+        /// <summary>
+        /// 加载服务器插件
+        /// </summary>
         public static void GetServerPlugins()
         {
             Dictionary<string, object> delegates = [];
@@ -151,6 +158,9 @@ namespace Milimoe.FunGame.Server.Others
             }
         }
 
+        /// <summary>
+        /// 加载 Web API 插件
+        /// </summary>
         public static void GetWebAPIPlugins()
         {
             Dictionary<string, object> delegates = [];
@@ -187,12 +197,44 @@ namespace Milimoe.FunGame.Server.Others
             sqlHelper.Execute(RoomQuery.Delete_Rooms());
         }
 
+        /// <summary>
+        /// 创建 SQL 服务后需要做的事
+        /// </summary>
+        /// <param name="sqlHelper"></param>
         public static void AfterCreateSQLService(SQLHelper sqlHelper)
         {
             Config.SQLMode = sqlHelper.Mode;
             ServerLogin(sqlHelper);
             ClearRoomList(sqlHelper);
             sqlHelper.Dispose();
+        }
+
+        /// <summary>
+        /// 关闭服务器要做的事
+        /// </summary>
+        public static void CloseServer()
+        {
+            if (Config.GameModuleLoader != null)
+            {
+                foreach (GameModuleServer server in Config.GameModuleLoader.ModuleServers.Values)
+                {
+                    server.Controller.Close();
+                }
+            }
+            if (Config.ServerPluginLoader != null)
+            {
+                foreach (ServerPlugin plugin in Config.ServerPluginLoader.Plugins.Values)
+                {
+                    plugin.Controller.Close();
+                }
+            }
+            if (Config.WebAPIPluginLoader != null)
+            {
+                foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
+                {
+                    plugin.Controller.Close();
+                }
+            }
         }
     }
 }

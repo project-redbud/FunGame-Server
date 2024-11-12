@@ -16,6 +16,13 @@ HTTPListener? WebSocketListener = null;
 
 StartServer();
 
+Console.CancelKeyPress += (sender, e) =>
+{
+    e.Cancel = true; // 防止程序立即退出
+    CloseServer();
+    Environment.Exit(0); // 退出程序
+};
+
 while (Running)
 {
     string order = Console.ReadLine() ?? "";
@@ -29,6 +36,7 @@ while (Running)
             case OrderDictionary.Exit:
             case OrderDictionary.Close:
                 Running = false;
+                CloseServer();
                 break;
             case OrderDictionary.Restart:
                 if (SocketListener is null || WebSocketListener is null)
@@ -93,7 +101,7 @@ void StartServer()
                 ServerHelper.GetServerSettings();
                 Console.Title = Config.ServerName + " - FunGame Server Port: " + Config.ServerPort;
             }
-            ServerHelper.WriteLine("请输入 help 来获取帮助，输入 quit 关闭服务器。");
+            ServerHelper.WriteLine("请输入 help 来获取帮助，按下 Ctrl+C 关闭服务器。");
 
             ServerHelper.PrintFunGameTitle();
 
@@ -260,4 +268,9 @@ void StartServer()
             }
         }
     });
+}
+
+void CloseServer()
+{
+    FunGameSystem.CloseServer();
 }
