@@ -78,7 +78,6 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         /// </summary>
         /// <param name="script"></param>
         /// <returns></returns>
-        /// <exception cref="Exception"></exception>
         public override int Execute(string script)
         {
             bool localTransaction = _transaction == null;
@@ -90,6 +89,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                     NewTransaction();
                 }
                 OpenConnection();
+                Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
                 using SqliteCommand command = new(script, _connection);
                 command.CommandType = CommandType;
@@ -138,6 +138,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                     NewTransaction();
                 }
                 OpenConnection();
+                Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
                 using SqliteCommand command = new(script, _connection)
                 {
@@ -208,6 +209,39 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             {
                 _result = SQLResult.Fail;
                 ServerHelper.Error(e);
+            }
+        }
+
+        /// <summary>
+        /// 检查数据库是否存在
+        /// </summary>
+        /// <returns></returns>
+        public bool DatabaseExists()
+        {
+            return File.Exists(ServerInfo.SQLServerDataBase);
+        }
+
+        /// <summary>
+        /// 执行SQL文件中的所有SQL语句来初始化数据库
+        /// </summary>
+        /// <param name="sqlFilePath">SQL文件路径</param>
+        public void ExecuteSqlFile(string sqlFilePath)
+        {
+            if (!File.Exists(sqlFilePath))
+            {
+                throw new FileNotFoundException("SQL文件不存在", sqlFilePath);
+            }
+
+            string sqlContent = File.ReadAllText(sqlFilePath);
+            string[] sqlCommands = sqlContent.Split([";"], StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string commandText in sqlCommands)
+            {
+                string sql = commandText.Trim();
+                if (!string.IsNullOrEmpty(sql))
+                {
+                    Execute(sql);
+                }
             }
         }
 

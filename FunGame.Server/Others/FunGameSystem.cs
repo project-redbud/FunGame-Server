@@ -204,6 +204,11 @@ namespace Milimoe.FunGame.Server.Others
         public static void AfterCreateSQLService(SQLHelper sqlHelper)
         {
             Config.SQLMode = sqlHelper.Mode;
+            if (sqlHelper is SQLiteHelper sqliteHelper && !sqliteHelper.DatabaseExists())
+            {
+                ServerHelper.WriteLine("正在初始化数据库 . . .", InvokeMessageType.Core);
+                sqliteHelper.ExecuteSqlFile(AppDomain.CurrentDomain.BaseDirectory + "fungame_sqlite.sql");
+            }
             ServerLogin(sqlHelper);
             ClearRoomList(sqlHelper);
             sqlHelper.Dispose();

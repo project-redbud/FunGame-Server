@@ -103,17 +103,10 @@ try
         options.JsonSerializerOptions.WriteIndented = true;
         options.JsonSerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-        options.JsonSerializerOptions.Converters.Add(new DateTimeConverter());
-        options.JsonSerializerOptions.Converters.Add(new DataTableConverter());
-        options.JsonSerializerOptions.Converters.Add(new DataSetConverter());
-        options.JsonSerializerOptions.Converters.Add(new UserConverter());
-        options.JsonSerializerOptions.Converters.Add(new RoomConverter());
-        options.JsonSerializerOptions.Converters.Add(new CharacterConverter());
-        options.JsonSerializerOptions.Converters.Add(new MagicResistanceConverter());
-        options.JsonSerializerOptions.Converters.Add(new EquipSlotConverter());
-        options.JsonSerializerOptions.Converters.Add(new SkillConverter());
-        options.JsonSerializerOptions.Converters.Add(new EffectConverter());
-        options.JsonSerializerOptions.Converters.Add(new ItemConverter());
+        foreach (JsonConverter converter in JsonTool.JsonSerializerOptions.Converters)
+        {
+            options.JsonSerializerOptions.Converters.Add(converter);
+        }
     });
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();

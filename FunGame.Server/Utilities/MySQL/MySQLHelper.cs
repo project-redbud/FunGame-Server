@@ -80,7 +80,6 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         /// </summary>
         /// <param name="script"></param>
         /// <returns></returns>
-        /// <exception cref="Exception"></exception>
         public override int Execute(string script)
         {
             bool localTransaction = _transaction == null;
@@ -92,6 +91,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                     NewTransaction();
                 }
                 OpenConnection();
+                Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
                 using MySqlCommand command = new(script, _connection);
                 command.CommandType = CommandType;
@@ -139,6 +139,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                     NewTransaction();
                 }
                 OpenConnection();
+                Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
 
                 using MySqlCommand command = new(script, _connection)
@@ -150,6 +151,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 {
                     SelectCommand = command
                 };
+                _dataSet = new();
                 adapter.Fill(_dataSet);
 
                 if (localTransaction) Commit();

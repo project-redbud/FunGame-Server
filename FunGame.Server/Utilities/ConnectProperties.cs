@@ -46,7 +46,7 @@ namespace Milimoe.FunGame.Server.Utility
                 }
                 else ServerHelper.Error(new SQLServiceException());
             }
-            return "data source=" + DataSource;
+            return $"data source={AppDomain.CurrentDomain.BaseDirectory}" + DataSource;
         }
     }
 }
