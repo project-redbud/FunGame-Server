@@ -33,12 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="FunGame.Core">
-      <HintPath>..\..\FunGame.Core\bin\Debug\net8.0\FunGame.Core.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="Images\logo.ico">
       <PackagePath>\</PackagePath>
       <Pack>True</Pack>
@@ -47,6 +41,12 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="FunGame.Core">
+      <HintPath>..\..\FunGame.Core\bin\Release\net9.0\FunGame.Core.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
