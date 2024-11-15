@@ -45,13 +45,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\FunGame.Core\FunGame.Core.csproj" />
     <ProjectReference Include="..\FunGame.Implement\FunGame.Implement.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="FunGame.Core">
-      <HintPath>..\..\FunGame.Core\bin\Release\net9.0\FunGame.Core.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>

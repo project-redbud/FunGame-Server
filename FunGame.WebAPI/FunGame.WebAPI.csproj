@@ -29,6 +29,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\FunGame.Core\FunGame.Core.csproj" />
+    <ProjectReference Include="..\FunGame.Implement\FunGame.Implement.csproj" />
     <ProjectReference Include="..\FunGame.Server\FunGame.Server.csproj" />
   </ItemGroup>
 
@@ -41,12 +43,6 @@
 
   <ItemGroup>
     <Folder Include="wwwroot\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="FunGame.Core">
-      <HintPath>..\..\FunGame.Core\bin\Release\net9.0\FunGame.Core.dll</HintPath>
-    </Reference>
   </ItemGroup>
 
 </Project>
