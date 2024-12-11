@@ -73,10 +73,10 @@ void StartServer()
             // 初始化命令菜单
             ServerHelper.InitOrderList();
 
-            // 创建全局SQLHelper
+            // 初始化SQLHelper
             FunGameSystem.InitSQLHelper();
 
-            // 创建全局MailSender
+            // 初始化MailSender
             FunGameSystem.InitMailSender();
 
             // 读取游戏模组
