@@ -39,7 +39,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                     // 创建User对象
                     if (model.SQLHelper != null)
                     {
-                        model.SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password));
+                        model.SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(model.SQLHelper, username, password));
                         Core.Entity.User user = Factory.GetUser(model.SQLHelper?.DataSet ?? new());
                         if (user.Id != 0)
                         {

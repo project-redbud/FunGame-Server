@@ -16,6 +16,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         public override SQLServerInfo ServerInfo => _serverInfo ?? SQLServerInfo.Create();
         public override int UpdateRows => _updateRows;
         public override DataSet DataSet => _dataSet;
+        public override Dictionary<string, object> Parameters { get; } = [];
 
         private readonly string _connectionString = "";
         private MySqlConnection? _connection;
@@ -90,11 +91,16 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 {
                     NewTransaction();
                 }
+
                 OpenConnection();
                 Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
                 using MySqlCommand command = new(script, _connection);
                 command.CommandType = CommandType;
+                foreach (KeyValuePair<string, object> param in Parameters)
+                {
+                    command.Parameters.AddWithValue(param.Key, param.Value);
+                }
                 if (_transaction != null) command.Transaction = _transaction;
 
                 _updateRows = command.ExecuteNonQuery();
@@ -110,6 +116,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             finally
             {
                 if (localTransaction) Close();
+                Parameters.Clear();
             }
             return UpdateRows;
         }
@@ -138,6 +145,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 {
                     NewTransaction();
                 }
+
                 OpenConnection();
                 Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
@@ -146,6 +154,11 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 {
                     CommandType = CommandType
                 };
+                foreach (KeyValuePair<string, object> param in Parameters)
+                {
+                    command.Parameters.AddWithValue(param.Key, param.Value);
+                }
+                if (_transaction != null) command.Transaction = _transaction;
 
                 MySqlDataAdapter adapter = new()
                 {
@@ -155,6 +168,8 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 adapter.Fill(_dataSet);
 
                 if (localTransaction) Commit();
+
+                _result = _dataSet.Tables.Cast<DataTable>().Any(table => table.Rows.Count > 0) ? SQLResult.Success : SQLResult.NotFound;
             }
             catch (Exception e)
             {
@@ -165,6 +180,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             finally
             {
                 if (localTransaction) Close();
+                Parameters.Clear();
             }
             return _dataSet;
         }

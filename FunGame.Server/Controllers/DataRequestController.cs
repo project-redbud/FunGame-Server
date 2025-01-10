@@ -217,11 +217,11 @@ namespace Milimoe.FunGame.Server.Controller
                     }
                     if (roomid != "-1" && SQLHelper != null)
                     {
-                        SQLHelper.Execute(RoomQuery.Insert_CreateRoom(roomid, user.Id, type, gamemodule, gamemap, isrank, password, maxusers));
+                        SQLHelper.Execute(RoomQuery.Insert_CreateRoom(SQLHelper, roomid, user.Id, type, gamemodule, gamemap, isrank, password, maxusers));
                         if (SQLHelper.Result == SQLResult.Success)
                         {
                             ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
-                            SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(roomid));
+                            SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
                             if (SQLHelper.Result == SQLResult.Success && SQLHelper.DataSet.Tables[0].Rows.Count > 0)
                             {
                                 room = Factory.GetRoom(SQLHelper.DataSet.Tables[0].Rows[0], user);
@@ -283,7 +283,7 @@ namespace Milimoe.FunGame.Server.Controller
                 {
                     if (SQLHelper != null)
                     {
-                        SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(roomid));
+                        SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
                         if (SQLHelper.Success)
                         {
                             Config.RoomList.IntoRoom(roomid, Server.User);
@@ -535,7 +535,7 @@ namespace Milimoe.FunGame.Server.Controller
                     if (verifycode.Trim() == "")
                     {
                         // 先检查账号是否重复
-                        SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(username));
+                        SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(SQLHelper, username));
                         if (SQLHelper.Result == SQLResult.Success)
                         {
                             ServerHelper.WriteLine(Server.GetClientName() + " 账号已被注册");
@@ -545,7 +545,7 @@ namespace Milimoe.FunGame.Server.Controller
                         else
                         {
                             // 检查邮箱是否重复
-                            SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistEmail(email));
+                            SQLHelper.ExecuteDataSet(UserQuery.Select_IsExistEmail(SQLHelper, email));
                             if (SQLHelper.Result == SQLResult.Success)
                             {
                                 ServerHelper.WriteLine(Server.GetClientName() + " 邮箱已被注册");
@@ -555,7 +555,7 @@ namespace Milimoe.FunGame.Server.Controller
                             else
                             {
                                 // 检查验证码是否发送过
-                                SQLHelper.ExecuteDataSet(RegVerifyCodes.Select_HasSentRegVerifyCode(username, email));
+                                SQLHelper.ExecuteDataSet(RegVerifyCodes.Select_HasSentRegVerifyCode(SQLHelper, username, email));
                                 if (SQLHelper.Result == SQLResult.Success)
                                 {
                                     DateTime RegTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime];
@@ -570,9 +570,9 @@ namespace Milimoe.FunGame.Server.Controller
                                 {
                                     // 发送验证码，需要先删除之前过期的验证码
                                     SQLHelper.NewTransaction();
-                                    SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
+                                    SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(SQLHelper, username, email));
                                     _regVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                    SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCode(username, email, _regVerify));
+                                    SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCode(SQLHelper, username, email, _regVerify));
                                     if (SQLHelper.Result == SQLResult.Success)
                                     {
                                         SQLHelper.Commit();
@@ -607,7 +607,7 @@ namespace Milimoe.FunGame.Server.Controller
                     else
                     {
                         // 先检查验证码
-                        SQLHelper.ExecuteDataSet(RegVerifyCodes.Select_RegVerifyCode(username, email, verifycode));
+                        SQLHelper.ExecuteDataSet(RegVerifyCodes.Select_RegVerifyCode(SQLHelper, username, email, verifycode));
                         if (SQLHelper.Result == SQLResult.Success)
                         {
                             // 检查验证码是否过期
@@ -616,7 +616,7 @@ namespace Milimoe.FunGame.Server.Controller
                             {
                                 ServerHelper.WriteLine(Server.GetClientName() + " 验证码已过期");
                                 msg = "此验证码已过期，请重新注册。";
-                                SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
+                                SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(SQLHelper, username, email));
                             }
                             else
                             {
@@ -625,12 +625,12 @@ namespace Milimoe.FunGame.Server.Controller
                                 {
                                     SQLHelper.NewTransaction();
                                     ServerHelper.WriteLine("[Reg] Username: " + username + " Email: " + email);
-                                    SQLHelper.Execute(UserQuery.Insert_Register(username, password, email, Server.Socket?.ClientIP ?? ""));
+                                    SQLHelper.Execute(UserQuery.Insert_Register(SQLHelper, username, password, email, Server.Socket?.ClientIP ?? ""));
                                     if (SQLHelper.Result == SQLResult.Success)
                                     {
                                         success = true;
                                         msg = "注册成功！请牢记您的账号与密码！";
-                                        SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(username, email));
+                                        SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(SQLHelper, username, email));
                                         SQLHelper.Commit();
                                     }
                                     else
@@ -691,13 +691,13 @@ namespace Milimoe.FunGame.Server.Controller
                         ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] Username: " + username);
                         if (SQLHelper != null)
                         {
-                            SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(username, password));
+                            SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(SQLHelper, username, password));
                             if (SQLHelper.Result == SQLResult.Success)
                             {
                                 DataSet dsUser = SQLHelper.DataSet;
                                 if (autokey.Trim() != "")
                                 {
-                                    SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(username, autokey));
+                                    SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(SQLHelper, username, autokey));
                                     if (SQLHelper.Result == SQLResult.Success)
                                     {
                                         ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] AutoKey: 已确认");
@@ -783,7 +783,7 @@ namespace Milimoe.FunGame.Server.Controller
                     // 先检查验证码
                     if (SQLHelper != null)
                     {
-                        SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_ForgetVerifyCode(username, email, verifycode));
+                        SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_ForgetVerifyCode(SQLHelper, username, email, verifycode));
                         if (SQLHelper.Result == SQLResult.Success)
                         {
                             // 检查验证码是否过期
@@ -792,7 +792,7 @@ namespace Milimoe.FunGame.Server.Controller
                             {
                                 ServerHelper.WriteLine(Server.GetClientName() + " 验证码已过期");
                                 msg = "此验证码已过期，请重新找回密码。";
-                                SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email));
+                                SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(SQLHelper, username, email));
                             }
                             else
                             {
@@ -800,7 +800,7 @@ namespace Milimoe.FunGame.Server.Controller
                                 if (_forgetVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode]))
                                 {
                                     ServerHelper.WriteLine("[ForgerPassword] Username: " + username + " Email: " + email);
-                                    SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email));
+                                    SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(SQLHelper, username, email));
                                     msg = "";
                                 }
                                 else msg = "验证码不正确，请重新输入！";
@@ -814,7 +814,7 @@ namespace Milimoe.FunGame.Server.Controller
                     // 检查账号和邮箱是否匹配
                     if (SQLHelper != null)
                     {
-                        SQLHelper.ExecuteDataSet(UserQuery.Select_CheckEmailWithUsername(username, email));
+                        SQLHelper.ExecuteDataSet(UserQuery.Select_CheckEmailWithUsername(SQLHelper, username, email));
                         if (SQLHelper.Result != SQLResult.Success)
                         {
                             msg = "此邮箱未绑定此账号，请重试！";
@@ -822,13 +822,13 @@ namespace Milimoe.FunGame.Server.Controller
                         else
                         {
                             // 检查验证码是否发送过和是否过期
-                            SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_HasSentForgetVerifyCode(username, email));
+                            SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_HasSentForgetVerifyCode(SQLHelper, username, email));
                             if (SQLHelper.Result != SQLResult.Success || (DateTime.Now - ((DateTime)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime])).TotalMinutes >= 10)
                             {
                                 // 发送验证码，需要先删除之前过期的验证码
-                                SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(username, email));
+                                SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(SQLHelper, username, email));
                                 _forgetVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                SQLHelper.Execute(ForgetVerifyCodes.Insert_ForgetVerifyCode(username, email, _forgetVerify));
+                                SQLHelper.Execute(ForgetVerifyCodes.Insert_ForgetVerifyCode(SQLHelper, username, email, _forgetVerify));
                                 if (SQLHelper.Result == SQLResult.Success)
                                 {
                                     if (MailSender != null)
@@ -885,7 +885,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string password = DataRequest.GetDictionaryJsonObject<string>(requestData, UserQuery.Column_Password) ?? "";
                 if (username.Trim() != "" && password.Trim() != "")
                 {
-                    Server.SQLHelper?.Execute(UserQuery.Update_Password(username, password));
+                    SQLHelper?.Execute(UserQuery.Update_Password(SQLHelper, username, password));
                     if (SQLHelper?.Success ?? false)
                     {
                         // 更新成功返回空值

@@ -16,6 +16,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         public override SQLServerInfo ServerInfo => _serverInfo ?? SQLServerInfo.Create();
         public override int UpdateRows => _updateRows;
         public override DataSet DataSet => _dataSet;
+        public override Dictionary<string, object> Parameters { get; } = [];
 
         private readonly string _connectionString = "";
         private SqliteConnection? _connection;
@@ -88,11 +89,16 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 {
                     NewTransaction();
                 }
+
                 OpenConnection();
                 Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
                 using SqliteCommand command = new(script, _connection);
                 command.CommandType = CommandType;
+                foreach (KeyValuePair<string, object> param in Parameters)
+                {
+                    command.Parameters.AddWithValue(param.Key, param.Value);
+                }
                 if (_transaction != null) command.Transaction = _transaction;
 
                 _updateRows = command.ExecuteNonQuery();
@@ -108,6 +114,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             finally
             {
                 if (localTransaction) Close();
+                Parameters.Clear();
             }
             return UpdateRows;
         }
@@ -126,7 +133,6 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         /// </summary>
         /// <param name="script"></param>
         /// <returns></returns>
-        /// <exception cref="Exception"></exception>
         public override DataSet ExecuteDataSet(string script)
         {
             bool localTransaction = _transaction == null;
@@ -137,6 +143,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 {
                     NewTransaction();
                 }
+
                 OpenConnection();
                 Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
@@ -144,12 +151,24 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 {
                     CommandType = CommandType
                 };
+                foreach (KeyValuePair<string, object> param in Parameters)
+                {
+                    command.Parameters.AddWithValue(param.Key, param.Value);
+                }
+                if (_transaction != null) command.Transaction = _transaction;
+
                 using SqliteDataReader reader = command.ExecuteReader();
                 _dataSet = new();
-                DataTable table = new();
-                table.Load(reader);
-                _dataSet.Tables.Add(table);
+                do
+                {
+                    DataTable table = new();
+                    table.Load(reader);
+                    _dataSet.Tables.Add(table);
+                } while (reader.NextResult());
+
                 if (localTransaction) Commit();
+
+                _result = _dataSet.Tables.Cast<DataTable>().Any(table => table.Rows.Count > 0) ? SQLResult.Success : SQLResult.NotFound;
             }
             catch (Exception e)
             {
@@ -160,6 +179,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             finally
             {
                 if (localTransaction) Close();
+                Parameters.Clear();
             }
             return _dataSet;
         }
@@ -179,7 +199,6 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         /// <summary>
         /// 提交事务
         /// </summary>
-        /// <exception cref="Exception"></exception>
         public override void Commit()
         {
             try
@@ -197,7 +216,6 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
         /// <summary>
         /// 回滚事务
         /// </summary>
-        /// <exception cref="Exception"></exception>
         public override void Rollback()
         {
             try

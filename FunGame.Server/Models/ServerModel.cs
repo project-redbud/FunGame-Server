@@ -324,7 +324,7 @@ namespace Milimoe.FunGame.Server.Model
                 {
                     User NewMaster = users[0];
                     Room.RoomMaster = NewMaster;
-                    SQLHelper?.Execute(RoomQuery.Update_QuitRoom(roomid, User.Id, NewMaster.Id));
+                    SQLHelper?.Execute(RoomQuery.Update_QuitRoom(SQLHelper, roomid, User.Id, NewMaster.Id));
                     this.InRoom = General.HallInstance;
                     await UpdateRoomMaster(Room, true);
                     result = true;
@@ -332,7 +332,7 @@ namespace Milimoe.FunGame.Server.Model
                 else // 没人了就解散房间
                 {
                     Config.RoomList.RemoveRoom(roomid);
-                    SQLHelper?.Execute(RoomQuery.Delete_QuitRoom(roomid, User.Id));
+                    SQLHelper?.Execute(RoomQuery.Delete_QuitRoom(SQLHelper, roomid, User.Id));
                     this.InRoom = General.HallInstance;
                     ServerHelper.WriteLine("[ " + GetClientName() + " ] 解散了房间 " + roomid);
                     result = true;
@@ -399,7 +399,7 @@ namespace Milimoe.FunGame.Server.Model
                 ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
                 // 更新最后登录时间、IP地址
                 _loginTime = DateTime.Now.Ticks;
-                SQLHelper?.Execute(UserQuery.Update_CheckLogin(_username, Socket?.ClientIP.Split(':')[0] ?? "127.0.0.1"));
+                SQLHelper?.Execute(UserQuery.Update_CheckLogin(SQLHelper, _username, Socket?.ClientIP.Split(':')[0] ?? "127.0.0.1"));
                 return true;
             }
             return false;
@@ -411,7 +411,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 _logoutTime = DateTime.Now.Ticks;
                 int TotalMinutes = Convert.ToInt32((new DateTime(_logoutTime) - new DateTime(_loginTime)).TotalMinutes);
-                SQLHelper?.Execute(UserQuery.Update_GameTime(User.Username, TotalMinutes));
+                SQLHelper?.Execute(UserQuery.Update_GameTime(SQLHelper, User.Username, TotalMinutes));
                 if (SQLHelper != null && SQLHelper.Result == SQLResult.Success)
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 本次已游玩" + TotalMinutes + "分钟");

@@ -186,7 +186,7 @@ namespace Milimoe.FunGame.Server.Others
         /// </summary>
         public static void ServerLogin(SQLHelper sqlHelper)
         {
-            sqlHelper.Execute(ServerLoginLogs.Insert_ServerLoginLogs(Config.ServerName, Config.ServerKey));
+            sqlHelper.Execute(ServerLoginLogs.Insert_ServerLoginLogs(sqlHelper, Config.ServerName, Config.ServerKey));
         }
 
         /// <summary>
@@ -194,7 +194,7 @@ namespace Milimoe.FunGame.Server.Others
         /// </summary>
         public static void ClearRoomList(SQLHelper sqlHelper)
         {
-            sqlHelper.Execute(RoomQuery.Delete_Rooms());
+            sqlHelper.Execute(RoomQuery.Delete_Rooms(sqlHelper));
         }
 
         /// <summary>
