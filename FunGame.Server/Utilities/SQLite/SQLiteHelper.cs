@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Microsoft.Data.Sqlite;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Library.Constant;
@@ -164,7 +164,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                     DataTable table = new();
                     table.Load(reader);
                     _dataSet.Tables.Add(table);
-                } while (reader.NextResult());
+                } while (!reader.IsClosed && reader.NextResult());
 
                 if (localTransaction) Commit();
 
@@ -211,6 +211,10 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 _result = SQLResult.Fail;
                 ServerHelper.Error(e);
             }
+            finally
+            {
+                _transaction = null;
+            }
         }
 
         /// <summary>
@@ -221,12 +225,16 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             try
             {
                 _transaction?.Rollback();
-                _result = SQLResult.Success;
+                _result = SQLResult.SQLError;
             }
             catch (Exception e)
             {
                 _result = SQLResult.Fail;
                 ServerHelper.Error(e);
+            }
+            finally
+            {
+                _transaction = null;
             }
         }
 

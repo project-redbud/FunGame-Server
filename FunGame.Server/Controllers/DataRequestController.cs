@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
@@ -24,8 +24,6 @@ namespace Milimoe.FunGame.Server.Controller
         public Authenticator? Authenticator { get; }
         public DataRequestType LastRequest => _lastRequest;
 
-        private string _forgetVerify = "";
-        private string _regVerify = "";
         private DataRequestType _lastRequest = DataRequestType.UnKnown;
         private readonly bool[] _isReadyCheckCD = [false, false];
         protected DataSet _dsUser = new();
@@ -556,14 +554,10 @@ namespace Milimoe.FunGame.Server.Controller
                             {
                                 // 检查验证码是否发送过
                                 SQLHelper.ExecuteDataSet(RegVerifyCodes.Select_HasSentRegVerifyCode(SQLHelper, username, email));
-                                if (SQLHelper.Result == SQLResult.Success)
+                                if (SQLHelper.Result == SQLResult.Success && DateTime.TryParse(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime].ToString(), out DateTime RegTime) && (DateTime.Now - RegTime).TotalMinutes < 10)
                                 {
-                                    DateTime RegTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime];
-                                    string RegVerifyCode = (string)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode];
-                                    if ((DateTime.Now - RegTime).TotalMinutes < 10)
-                                    {
-                                        ServerHelper.WriteLine(Server.GetClientName() + $" 十分钟内已向{email}发送过验证码：{RegVerifyCode}");
-                                    }
+                                    string RegVerifyCode = SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode].ToString() ?? "";
+                                    ServerHelper.WriteLine(Server.GetClientName() + $" 十分钟内已向{email}发送过验证码：{RegVerifyCode}");
                                     returnType = RegInvokeType.InputVerifyCode;
                                 }
                                 else
@@ -571,8 +565,8 @@ namespace Milimoe.FunGame.Server.Controller
                                     // 发送验证码，需要先删除之前过期的验证码
                                     SQLHelper.NewTransaction();
                                     SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(SQLHelper, username, email));
-                                    _regVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                    SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCode(SQLHelper, username, email, _regVerify));
+                                    string regVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
+                                    SQLHelper.Execute(RegVerifyCodes.Insert_RegVerifyCode(SQLHelper, username, email, regVerify));
                                     if (SQLHelper.Result == SQLResult.Success)
                                     {
                                         SQLHelper.Commit();
@@ -581,11 +575,11 @@ namespace Milimoe.FunGame.Server.Controller
                                             // 发送验证码
                                             string ServerName = Config.ServerName;
                                             string Subject = $"[{ServerName}] FunGame 注册验证码";
-                                            string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {_regVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
+                                            string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {regVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
                                             string[] To = [email];
                                             if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
                                             {
-                                                ServerHelper.WriteLine(Server.GetClientName() + $" 已向{email}发送验证码：{_regVerify}");
+                                                ServerHelper.WriteLine(Server.GetClientName() + $" 已向{email}发送验证码：{regVerify}");
                                             }
                                             else
                                             {
@@ -595,7 +589,7 @@ namespace Milimoe.FunGame.Server.Controller
                                         }
                                         else // 不使用MailSender的情况
                                         {
-                                            ServerHelper.WriteLine(Server.GetClientName() + $" 验证码为：{_regVerify}，请服务器管理员告知此用户");
+                                            ServerHelper.WriteLine(Server.GetClientName() + $" 验证码为：{regVerify}，请服务器管理员告知此用户");
                                         }
                                         returnType = RegInvokeType.InputVerifyCode;
                                     }
@@ -610,18 +604,22 @@ namespace Milimoe.FunGame.Server.Controller
                         SQLHelper.ExecuteDataSet(RegVerifyCodes.Select_RegVerifyCode(SQLHelper, username, email, verifycode));
                         if (SQLHelper.Result == SQLResult.Success)
                         {
+                            if (!DateTime.TryParse(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime].ToString(), out DateTime RegTime))
+                            {
+                                RegTime = General.DefaultTime;
+                            }
                             // 检查验证码是否过期
-                            DateTime RegTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegTime];
                             if ((DateTime.Now - RegTime).TotalMinutes >= 10)
                             {
                                 ServerHelper.WriteLine(Server.GetClientName() + " 验证码已过期");
                                 msg = "此验证码已过期，请重新注册。";
                                 SQLHelper.Execute(RegVerifyCodes.Delete_RegVerifyCode(SQLHelper, username, email));
+                                returnType = RegInvokeType.None;
                             }
                             else
                             {
                                 // 注册
-                                if (_regVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
+                                if (verifycode.Equals(SQLHelper.DataSet.Tables[0].Rows[0][RegVerifyCodes.Column_RegVerifyCode]))
                                 {
                                     SQLHelper.NewTransaction();
                                     ServerHelper.WriteLine("[Reg] Username: " + username + " Email: " + email);
@@ -787,7 +785,10 @@ namespace Milimoe.FunGame.Server.Controller
                         if (SQLHelper.Result == SQLResult.Success)
                         {
                             // 检查验证码是否过期
-                            DateTime SendTime = (DateTime)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime];
+                            if (!DateTime.TryParse(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime].ToString(), out DateTime SendTime))
+                            {
+                                SendTime = General.DefaultTime;
+                            }
                             if ((DateTime.Now - SendTime).TotalMinutes >= 10)
                             {
                                 ServerHelper.WriteLine(Server.GetClientName() + " 验证码已过期");
@@ -797,7 +798,7 @@ namespace Milimoe.FunGame.Server.Controller
                             else
                             {
                                 // 检查验证码是否正确
-                                if (_forgetVerify.Equals(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode]))
+                                if (verifycode.Equals(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode]))
                                 {
                                     ServerHelper.WriteLine("[ForgerPassword] Username: " + username + " Email: " + email);
                                     SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(SQLHelper, username, email));
@@ -823,12 +824,12 @@ namespace Milimoe.FunGame.Server.Controller
                         {
                             // 检查验证码是否发送过和是否过期
                             SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_HasSentForgetVerifyCode(SQLHelper, username, email));
-                            if (SQLHelper.Result != SQLResult.Success || (DateTime.Now - ((DateTime)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime])).TotalMinutes >= 10)
+                            if (SQLHelper.Result != SQLResult.Success || (DateTime.TryParse(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime].ToString(), out DateTime SendTime) && (DateTime.Now - SendTime).TotalMinutes >= 10))
                             {
                                 // 发送验证码，需要先删除之前过期的验证码
                                 SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(SQLHelper, username, email));
-                                _forgetVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
-                                SQLHelper.Execute(ForgetVerifyCodes.Insert_ForgetVerifyCode(SQLHelper, username, email, _forgetVerify));
+                                string forgetVerify = Verification.CreateVerifyCode(VerifyCodeType.NumberVerifyCode, 6);
+                                SQLHelper.Execute(ForgetVerifyCodes.Insert_ForgetVerifyCode(SQLHelper, username, email, forgetVerify));
                                 if (SQLHelper.Result == SQLResult.Success)
                                 {
                                     if (MailSender != null)
@@ -836,11 +837,11 @@ namespace Milimoe.FunGame.Server.Controller
                                         // 发送验证码
                                         string ServerName = Config.ServerName;
                                         string Subject = $"[{ServerName}] FunGame 找回密码验证码";
-                                        string Body = $"亲爱的 {username}， <br/>    您正在找回[{ServerName}]账号的密码，您的验证码是 {_forgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
+                                        string Body = $"亲爱的 {username}， <br/>    您正在找回[{ServerName}]账号的密码，您的验证码是 {forgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
                                         string[] To = [email];
                                         if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
                                         {
-                                            ServerHelper.WriteLine(Server.GetClientName() + $" 已向{email}发送验证码：{_forgetVerify}");
+                                            ServerHelper.WriteLine(Server.GetClientName() + $" 已向{email}发送验证码：{forgetVerify}");
                                             msg = "";
                                         }
                                         else
@@ -851,7 +852,7 @@ namespace Milimoe.FunGame.Server.Controller
                                     }
                                     else // 不使用MailSender的情况
                                     {
-                                        ServerHelper.WriteLine(Server.GetClientName() + $" 验证码为：{_forgetVerify}，请服务器管理员告知此用户");
+                                        ServerHelper.WriteLine(Server.GetClientName() + $" 验证码为：{forgetVerify}，请服务器管理员告知此用户");
                                         msg = "";
                                     }
                                 }
