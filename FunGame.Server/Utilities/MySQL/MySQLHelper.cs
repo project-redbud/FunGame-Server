@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
@@ -212,6 +212,10 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
                 _result = SQLResult.Fail;
                 ServerHelper.Error(e);
             }
+            finally
+            {
+                _transaction = null;
+            }
         }
 
         /// <summary>
@@ -222,12 +226,16 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             try
             {
                 _transaction?.Rollback();
-                _result = SQLResult.Success;
+                _result = SQLResult.SQLError;
             }
             catch (Exception e)
             {
                 _result = SQLResult.Fail;
                 ServerHelper.Error(e);
+            }
+            finally
+            {
+                _transaction = null;
             }
         }
 
