@@ -70,6 +70,21 @@ void StartServer()
         try
         {
             ServerHelper.WriteLine("正在读取配置文件并初始化服务 . . .");
+
+            // 检查是否存在配置文件
+            if (!INIHelper.ExistINIFile())
+            {
+                ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
+                INIHelper.Init(Config.FunGameType);
+                ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
+                return;
+            }
+            else
+            {
+                ServerHelper.GetServerSettings();
+                Console.Title = Config.ServerName + " - FunGame Server Port: " + Config.ServerPort;
+            }
+
             // 初始化命令菜单
             ServerHelper.InitOrderList();
 
@@ -88,19 +103,6 @@ void StartServer()
             // 读取Server插件
             FunGameSystem.GetServerPlugins();
 
-            // 检查是否存在配置文件
-            if (!INIHelper.ExistINIFile())
-            {
-                ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
-                INIHelper.Init(Config.FunGameType);
-                ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
-                return;
-            }
-            else
-            {
-                ServerHelper.GetServerSettings();
-                Console.Title = Config.ServerName + " - FunGame Server Port: " + Config.ServerPort;
-            }
             ServerHelper.WriteLine("请输入 help 来获取帮助，按下 Ctrl+C 关闭服务器。");
 
             ServerHelper.PrintFunGameTitle();
@@ -120,9 +122,11 @@ void StartServer()
                 ServerHelper.WriteLine("服务器启动成功，开始监听 . . .");
 
                 if (Config.ServerNotice != "")
-                    ServerHelper.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
+                    Console.WriteLine("\n\n********** 服务器公告 **********\n\n" + Config.ServerNotice + "\n");
                 else
-                    ServerHelper.WriteLine("无法读取服务器公告");
+                    Console.WriteLine("无法读取服务器公告");
+
+                ServerHelper.Type();
 
                 while (Running)
                 {

@@ -9,6 +9,36 @@ namespace Milimoe.FunGame.Server.Others
     public static class Config
     {
         /// <summary>
+        /// 使用 ASP.NET Core Web API
+        /// </summary>
+        public static bool AspNetCore { get; set; } = false;
+
+        /// <summary>
+        /// 日志级别
+        /// </summary>
+        public static string LogLevel { get; set; } = "INFO";
+        
+        /// <summary>
+        /// 日志级别（枚举值）
+        /// </summary>
+        public static LogLevel LogLevelValue
+        {
+            get
+            {
+                return LogLevel.ToUpper() switch
+                {
+                    "TRACE" => Core.Library.Constant.LogLevel.Trace,
+                    "DEBUG" => Core.Library.Constant.LogLevel.Debug,
+                    "INFO" => Core.Library.Constant.LogLevel.Info,
+                    "WARN" => Core.Library.Constant.LogLevel.Warning,
+                    "ERROR" => Core.Library.Constant.LogLevel.Error,
+                    "CRIT" => Core.Library.Constant.LogLevel.Critical,
+                    _ => Core.Library.Constant.LogLevel.Info
+                };
+            }
+        }
+        
+        /// <summary>
         /// 服务器名称
         /// </summary>
         public static string ServerName { get; set; } = "FunGame Server";

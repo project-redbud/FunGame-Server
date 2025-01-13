@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 using Milimoe.FunGame.Core.Api.Utility;
 
-namespace Milimoe.FunGame.WebAPI.Architecture
+namespace Milimoe.FunGame.WebAPI.Services
 {
     public class CustomBearerAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {

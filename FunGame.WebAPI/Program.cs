@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Milimoe.FunGame.Core.Api.Utility;
@@ -27,8 +28,24 @@ try
 {
     Console.Title = Config.ServerName;
     Console.WriteLine(FunGameInfo.GetInfo(Config.FunGameType));
+    Config.AspNetCore = true;
 
     ServerHelper.WriteLine("正在读取配置文件并初始化服务 . . .");
+
+    // 检查是否存在配置文件
+    if (!INIHelper.ExistINIFile())
+    {
+        ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
+        INIHelper.Init(Config.FunGameType);
+        ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
+        Console.ReadKey();
+        return;
+    }
+    else
+    {
+        ServerHelper.GetServerSettings();
+    }
+
     // 初始化命令菜单
     ServerHelper.InitOrderList();
 
@@ -49,20 +66,6 @@ try
 
     // 读取Web API插件
     FunGameSystem.GetWebAPIPlugins();
-
-    // 检查是否存在配置文件
-    if (!INIHelper.ExistINIFile())
-    {
-        ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
-        INIHelper.Init(Config.FunGameType);
-        ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
-        Console.ReadKey();
-        return;
-    }
-    else
-    {
-        ServerHelper.GetServerSettings();
-    }
 
     // 创建单例
     RESTfulAPIListener apiListener = new();
@@ -165,6 +168,11 @@ try
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "undefined"))
         };
     }).AddScheme<AuthenticationSchemeOptions, CustomBearerAuthenticationHandler>("CustomBearer", options => { });
+    builder.Logging.AddConsole(options =>
+    {
+        options.FormatterName = "CustomFormatter";
+    });
+    builder.Services.AddSingleton<ConsoleFormatter, CustomConsoleFormatter>();
 
     WebApplication app = builder.Build();
 
