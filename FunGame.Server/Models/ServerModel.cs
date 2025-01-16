@@ -178,7 +178,7 @@ namespace Milimoe.FunGame.Server.Model
                         requestID = obj.GetParam<Guid>(1);
                         Dictionary<string, object> data = obj.GetParam<Dictionary<string, object>>(2) ?? [];
 
-                        result = await NowGamingServer.GamingMessageHandler(_username, type, data);
+                        result = await NowGamingServer.GamingMessageHandler(this, type, data);
                     }
                     catch (Exception e)
                     {
@@ -213,7 +213,7 @@ namespace Milimoe.FunGame.Server.Model
                         type = obj.GetParam<GamingType>(0);
                         Dictionary<string, object> data = obj.GetParam<Dictionary<string, object>>(1) ?? [];
 
-                        result = await NowGamingServer.GamingMessageHandler(_username, type, data);
+                        result = await NowGamingServer.GamingMessageHandler(this, type, data);
                     }
                     catch (Exception e)
                     {
@@ -247,7 +247,7 @@ namespace Milimoe.FunGame.Server.Model
             {
                 try
                 {
-                    result = await NowGamingServer.AnonymousGameServerHandler(data);
+                    result = await NowGamingServer.AnonymousGameServerHandler(this, data);
                     willSend = true;
                 }
                 catch (Exception e)
@@ -262,11 +262,11 @@ namespace Milimoe.FunGame.Server.Model
                 if (Config.GameModuleLoader != null && Config.GameModuleLoader.ModuleServers.ContainsKey(serverName))
                 {
                     NowGamingServer = Config.GameModuleLoader.GetServerMode(serverName);
-                    if (NowGamingServer.StartAnonymousServer(this))
+                    if (NowGamingServer.StartAnonymousServer(this, data))
                     {
                         try
                         {
-                            result = await NowGamingServer.AnonymousGameServerHandler(data);
+                            result = await NowGamingServer.AnonymousGameServerHandler(this, data);
                             willSend = true;
                         }
                         catch (Exception e)
