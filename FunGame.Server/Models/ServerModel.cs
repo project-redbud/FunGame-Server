@@ -261,9 +261,10 @@ namespace Milimoe.FunGame.Server.Model
                 // 建立连接
                 if (Config.GameModuleLoader != null && Config.GameModuleLoader.ModuleServers.ContainsKey(serverName))
                 {
-                    NowGamingServer = Config.GameModuleLoader.GetServerMode(serverName);
-                    if (NowGamingServer.StartAnonymousServer(this, data))
+                    GameModuleServer mod = Config.GameModuleLoader.GetServerMode(serverName);
+                    if (mod.StartAnonymousServer(this, data))
                     {
+                        NowGamingServer = mod;
                         try
                         {
                             result = await NowGamingServer.AnonymousGameServerHandler(this, data);
