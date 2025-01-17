@@ -93,7 +93,7 @@ namespace Milimoe.FunGame.Server.Others
             List<string> supported = [];
             // 构建AddonController
             Dictionary<string, object> delegates = [];
-            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.GameModule)));
+            delegates.Add("WriteLine", new Action<string, string, LogLevel, bool>((name, msg, level, useLevel) => ServerHelper.WriteLine_Addons(name, msg, InvokeMessageType.GameModule, level, useLevel)));
             delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
             // 读取modules目录下的模组
             try
@@ -107,12 +107,13 @@ namespace Milimoe.FunGame.Server.Others
                         // 检查模组是否有相对应的地图
                         if (!Config.GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
                         {
-                            ServerHelper.WriteLine("GameModule Load Failed: " + module + " 没有找到相对应的地图，加载失败", InvokeMessageType.Error);
+                            ServerHelper.WriteLine("GameModule Load Failed: " + module.Name + " 没有找到相对应的地图，加载失败", InvokeMessageType.Error);
                             check = false;
                         }
                         if (check)
                         {
-                            supported.Add(module.Name);
+                            if (!module.IsAnonymous) supported.Add(module.Name);
+                            ServerHelper.WriteLine("Loaded: " + module.Name, InvokeMessageType.GameModule);
                         }
                     }
                     catch (Exception e)
@@ -127,10 +128,6 @@ namespace Milimoe.FunGame.Server.Others
             }
             // 设置全局
             Config.GameModuleSupported = supported.Distinct().ToArray();
-            foreach (string modename in Config.GameModuleSupported)
-            {
-                ServerHelper.WriteLine("Loaded: " + modename, InvokeMessageType.GameModule);
-            }
 
             return Config.GameModuleSupported.Length > 0;
         }
@@ -141,7 +138,7 @@ namespace Milimoe.FunGame.Server.Others
         public static void GetServerPlugins()
         {
             Dictionary<string, object> delegates = [];
-            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.Plugin)));
+            delegates.Add("WriteLine", new Action<string, string, LogLevel, bool>((name, msg, level, useLevel) => ServerHelper.WriteLine_Addons(name, msg, InvokeMessageType.Plugin, level, useLevel)));
             delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
             try
             {
@@ -164,7 +161,7 @@ namespace Milimoe.FunGame.Server.Others
         public static void GetWebAPIPlugins()
         {
             Dictionary<string, object> delegates = [];
-            delegates.Add("WriteLine", new Action<string>(msg => ServerHelper.WriteLine(msg, InvokeMessageType.Plugin)));
+            delegates.Add("WriteLine", new Action<string, string, LogLevel, bool>((name, msg, level, useLevel) => ServerHelper.WriteLine_Addons(name, msg, InvokeMessageType.Plugin, level, useLevel)));
             delegates.Add("Error", new Action<Exception>(ServerHelper.Error));
             try
             {

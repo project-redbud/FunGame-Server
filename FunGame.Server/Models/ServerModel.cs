@@ -75,8 +75,17 @@ namespace Milimoe.FunGame.Server.Model
 
             if (type == SocketMessageType.EndGame)
             {
+                if (NowGamingServer != null && NowGamingServer.IsAnonymous)
+                {
+                    NowGamingServer.CloseAnonymousServer(this);
+                }
                 NowGamingServer = null;
                 return true;
+            }
+            
+            if (type == SocketMessageType.AnonymousGameServer)
+            {
+                return await AnonymousGameServerHandler(obj);
             }
 
             if (type == SocketMessageType.DataRequest)
@@ -110,7 +119,7 @@ namespace Milimoe.FunGame.Server.Model
             bool result = await Send(SocketMessageType.HeartBeat);
             if (!result)
             {
-                ServerHelper.WriteLine("[ " + _username + " ] " + nameof(HeartBeat) + ": " + result, InvokeMessageType.Error);
+                ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(HeartBeat) + ": " + result, InvokeMessageType.Error);
             }
             return result;
         }
@@ -144,12 +153,12 @@ namespace Milimoe.FunGame.Server.Model
                 bool sendResult = await Send(SocketMessageType.DataRequest, type, requestID, result);
                 if (!sendResult)
                 {
-                    ServerHelper.WriteLine("[ " + _username + " ] " + nameof(DataRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
+                    ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(DataRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
                 }
                 return sendResult;
             }
 
-            ServerHelper.WriteLine("[ " + _username + " ] " + nameof(DataRequestHandler) + ": " + false, InvokeMessageType.Error);
+            ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(DataRequestHandler) + ": " + false, InvokeMessageType.Error);
             return false;
         }
 
@@ -169,7 +178,7 @@ namespace Milimoe.FunGame.Server.Model
                         requestID = obj.GetParam<Guid>(1);
                         Dictionary<string, object> data = obj.GetParam<Dictionary<string, object>>(2) ?? [];
 
-                        result = await NowGamingServer.GamingMessageHandler(_username, type, data);
+                        result = await NowGamingServer.GamingMessageHandler(this, type, data);
                     }
                     catch (Exception e)
                     {
@@ -181,12 +190,12 @@ namespace Milimoe.FunGame.Server.Model
                 bool sendResult = await Send(SocketMessageType.GamingRequest, type, requestID, result);
                 if (!sendResult)
                 {
-                    ServerHelper.WriteLine("[ " + _username + " ] " + nameof(GamingRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
+                    ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(GamingRequestHandler) + ": " + sendResult, InvokeMessageType.Error);
                 }
                 return sendResult;
             }
 
-            ServerHelper.WriteLine("[ " + _username + " ] " + nameof(GamingRequestHandler) + ": " + false, InvokeMessageType.Error);
+            ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(GamingRequestHandler) + ": " + false, InvokeMessageType.Error);
             return false;
         }
 
@@ -204,7 +213,7 @@ namespace Milimoe.FunGame.Server.Model
                         type = obj.GetParam<GamingType>(0);
                         Dictionary<string, object> data = obj.GetParam<Dictionary<string, object>>(1) ?? [];
 
-                        result = await NowGamingServer.GamingMessageHandler(_username, type, data);
+                        result = await NowGamingServer.GamingMessageHandler(this, type, data);
                     }
                     catch (Exception e)
                     {
@@ -216,12 +225,71 @@ namespace Milimoe.FunGame.Server.Model
                 bool sendResult = await Send(SocketMessageType.Gaming, type, result);
                 if (!sendResult)
                 {
-                    ServerHelper.WriteLine("[ " + _username + " ] " + nameof(GamingMessageHandler) + ": " + sendResult, InvokeMessageType.Error);
+                    ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(GamingMessageHandler) + ": " + sendResult, InvokeMessageType.Error);
                 }
                 return sendResult;
             }
 
-            ServerHelper.WriteLine("[ " + _username + " ] " + nameof(GamingMessageHandler) + ": " + false, InvokeMessageType.Error);
+            ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(GamingMessageHandler) + ": " + false, InvokeMessageType.Error);
+            return false;
+        }
+
+        protected async Task<bool> AnonymousGameServerHandler(SocketObject obj)
+        {
+            string serverName = "";
+            Dictionary<string, object> data = [];
+            Dictionary<string, object> result = [];
+            if (obj.Parameters.Length > 0) serverName = obj.GetParam<string>(0) ?? "";
+            if (obj.Parameters.Length > 1) data = obj.GetParam<Dictionary<string, object>>(1) ?? [];
+
+            bool willSend = false;
+            if (NowGamingServer != null)
+            {
+                try
+                {
+                    result = await NowGamingServer.AnonymousGameServerHandler(this, data);
+                    willSend = true;
+                }
+                catch (Exception e)
+                {
+                    ServerHelper.Error(e);
+                    return await Send(SocketMessageType.AnonymousGameServer, result);
+                }
+            }
+            else
+            {
+                // 建立连接
+                if (Config.GameModuleLoader != null && Config.GameModuleLoader.ModuleServers.ContainsKey(serverName))
+                {
+                    GameModuleServer mod = Config.GameModuleLoader.GetServerMode(serverName);
+                    if (mod.StartAnonymousServer(this, data))
+                    {
+                        NowGamingServer = mod;
+                        try
+                        {
+                            result = await NowGamingServer.AnonymousGameServerHandler(this, data);
+                            willSend = true;
+                        }
+                        catch (Exception e)
+                        {
+                            ServerHelper.Error(e);
+                            return await Send(SocketMessageType.AnonymousGameServer, result);
+                        }
+                    }
+                }
+            }
+
+            if (willSend)
+            {
+                bool sendResult = await Send(SocketMessageType.AnonymousGameServer, result);
+                if (!sendResult)
+                {
+                    ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(AnonymousGameServerHandler) + ": " + sendResult, InvokeMessageType.Error);
+                }
+                return sendResult;
+            }
+
+            ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(AnonymousGameServerHandler) + ": " + false, InvokeMessageType.Error);
             return false;
         }
 

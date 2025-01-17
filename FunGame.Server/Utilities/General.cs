@@ -17,7 +17,7 @@ namespace Milimoe.FunGame.Server.Utility
             Console.ResetColor();
         }
 
-        public static string GetPrefix(InvokeMessageType type)
+        public static string GetPrefix(InvokeMessageType type, LogLevel level, string addon = "")
         {
             string prefix;
             switch (type)
@@ -61,28 +61,69 @@ namespace Milimoe.FunGame.Server.Utility
                     prefix = "[System] ";
                     break;
             }
+
+            string levelPrefix = CommonSet.GetLogLevelPrefix(level);
+
             DateTime now = DateTime.Now;
-            return now.AddMilliseconds(-now.Millisecond).ToString() + " " + prefix + Config.ServerName + "：";
+            return now.AddMilliseconds(-now.Millisecond).ToString() + " " + levelPrefix + prefix + (addon.Trim() != "" ? addon : Config.ServerName) + "：";
         }
 
         public static void Error(Exception e)
         {
-            Console.WriteLine("\r" + GetPrefix(InvokeMessageType.Error) + e.Message + "\n" + e.StackTrace);
-            Console.ResetColor();
-            Console.Write("\r> ");
+            Console.WriteLine("\r" + GetPrefix(InvokeMessageType.Error, LogLevel.Error) + e.Message + "\n" + e.StackTrace);
+            Type();
         }
 
-        public static void Write(string msg, InvokeMessageType type = InvokeMessageType.System)
+        public static void Write(string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)
         {
-            if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type) + msg + "> ");
-            Console.ResetColor();
+            if (type == InvokeMessageType.Warning)
+            {
+                level = LogLevel.Warning;
+            }
+            if (type == InvokeMessageType.Error)
+            {
+                level = LogLevel.Error;
+            }
+            if (!useLevel || (useLevel && (int)level >= (int)Config.LogLevelValue))
+            {
+                if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type, level) + msg + "> ");
+                Console.ResetColor();
+            }
+            else Type();
         }
 
-        public static void WriteLine(string msg, InvokeMessageType type = InvokeMessageType.System)
+        public static void WriteLine(string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)
         {
-            if (msg.Trim() != "") Console.WriteLine("\r" + GetPrefix(type) + msg);
-            Console.ResetColor();
-            Console.Write("\r> ");
+            if (type == InvokeMessageType.Warning)
+            {
+                level = LogLevel.Warning;
+            }
+            if (type == InvokeMessageType.Error)
+            {
+                level = LogLevel.Error;
+            }
+            if (!useLevel || ((int)level >= (int)Config.LogLevelValue))
+            {
+                if (msg.Trim() != "") Console.WriteLine("\r" + GetPrefix(type, level) + msg);
+            }
+            Type();
+        }
+        
+        public static void WriteLine_Addons(string addon, string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)
+        {
+            if (type == InvokeMessageType.Warning)
+            {
+                level = LogLevel.Warning;
+            }
+            if (type == InvokeMessageType.Error)
+            {
+                level = LogLevel.Error;
+            }
+            if (!useLevel || ((int)level >= (int)Config.LogLevelValue))
+            {
+                if (msg.Trim() != "") Console.WriteLine("\r" + GetPrefix(type, level, addon) + msg);
+            }
+            Type();
         }
 
         public static void Type()
@@ -106,9 +147,10 @@ namespace Milimoe.FunGame.Server.Utility
             Hashtable settings = [];
             if (INIHelper.ExistINIFile())
             {
+                settings.Add("LogLevel", INIHelper.ReadINI("Console", "LogLevel"));
                 settings.Add("Name", INIHelper.ReadINI("Server", "Name"));
                 settings.Add("Password", INIHelper.ReadINI("Server", "Password"));
-                settings.Add("Describe", INIHelper.ReadINI("Server", "Describe"));
+                settings.Add("Description", INIHelper.ReadINI("Server", "Description"));
                 settings.Add("Notice", INIHelper.ReadINI("Server", "Notice"));
                 settings.Add("Key", INIHelper.ReadINI("Server", "Key"));
                 settings.Add("Status", Convert.ToInt32(INIHelper.ReadINI("Server", "Status")));
@@ -134,16 +176,20 @@ namespace Milimoe.FunGame.Server.Utility
                 Hashtable settings = GetServerSettingHashtable();
                 if (settings != null)
                 {
+                    string? LogLevel = (string?)settings["LogLevel"];
+
+                    if (LogLevel != null) Config.LogLevel = LogLevel;
+
                     string? Name = (string?)settings["Name"];
                     string? Password = (string?)settings["Password"];
-                    string? Describe = (string?)settings["Describe"];
+                    string? Description = (string?)settings["Description"];
                     string? Notice = (string?)settings["Notice"];
                     string? Key = (string?)settings["Key"];
                     string? BannedList = (string?)settings["BannedList"];
 
                     if (Name != null) Config.ServerName = Name;
                     if (Password != null) Config.ServerPassword = Password;
-                    if (Describe != null) Config.ServerDescription = Describe;
+                    if (Description != null) Config.ServerDescription = Description;
                     if (Notice != null) Config.ServerNotice = Notice;
                     if (Key != null) Config.ServerKey = Key;
                     if (BannedList != null) Config.ServerBannedList = BannedList.Split(',').Select(s => s.Trim()).ToList();
@@ -174,6 +220,7 @@ namespace Milimoe.FunGame.Server.Utility
                     if (MaxPlayer != null) Config.MaxPlayers = (int)MaxPlayer;
                     if (MaxConnectFailed != null) Config.MaxConnectionFaileds = (int)MaxConnectFailed;
                 }
+                WriteLine($"当前输出的日志级别为：{Config.LogLevelValue}", useLevel: false);
             }
             catch (Exception e)
             {

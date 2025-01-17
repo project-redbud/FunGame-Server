@@ -51,6 +51,21 @@ namespace Milimoe.FunGame.WebAPI.Models
                 return false;
             }
 
+            if (type == SocketMessageType.EndGame)
+            {
+                if (NowGamingServer != null && NowGamingServer.IsAnonymous)
+                {
+                    NowGamingServer.CloseAnonymousServer(this);
+                }
+                NowGamingServer = null;
+                return true;
+            }
+
+            if (type == SocketMessageType.AnonymousGameServer)
+            {
+                return await AnonymousGameServerHandler(obj);
+            }
+            
             if (type == SocketMessageType.DataRequest)
             {
                 return await DataRequestHandler(obj);
