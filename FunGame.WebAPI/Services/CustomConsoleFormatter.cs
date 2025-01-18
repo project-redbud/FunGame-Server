@@ -27,8 +27,7 @@ namespace Milimoe.FunGame.WebAPI.Services
             return logLevel switch
             {
                 LogLevel.Trace => "\x1b[37m", // 灰色 ConsoleColor.Gray
-                LogLevel.Debug => "\x1b[34m", // 蓝色 ConsoleColor.Blue
-                LogLevel.Information => "\x1b[32m", // 绿色 ConsoleColor.Green
+                LogLevel.Debug => "\x1b[32m", // 绿色 ConsoleColor.Green
                 LogLevel.Warning => "\x1b[33m", // 黄色 ConsoleColor.Yellow
                 LogLevel.Error => "\x1b[31m", // 红色 ConsoleColor.Red
                 LogLevel.Critical => "\x1b[31m", // 红色 ConsoleColor.Red

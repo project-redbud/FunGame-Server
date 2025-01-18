@@ -94,14 +94,14 @@ void StartServer()
             // 初始化MailSender
             FunGameSystem.InitMailSender();
 
+            // 读取Server插件
+            FunGameSystem.GetServerPlugins();
+
             // 读取游戏模组
             if (!FunGameSystem.GetGameModuleList())
             {
                 ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
             }
-
-            // 读取Server插件
-            FunGameSystem.GetServerPlugins();
 
             ServerHelper.WriteLine("请输入 help 来获取帮助，按下 Ctrl+C 关闭服务器。");
 

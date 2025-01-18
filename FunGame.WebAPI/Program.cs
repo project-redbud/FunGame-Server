@@ -55,17 +55,21 @@ try
     // 初始化MailSender
     FunGameSystem.InitMailSender();
 
+    // 读取Server插件
+    FunGameSystem.GetServerPlugins();
+
+    // Add services to the container.
+    WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+    // 读取Web API插件
+    object[] otherobjs = [builder];
+    FunGameSystem.GetWebAPIPlugins(otherobjs);
+
     // 读取游戏模组
     if (!FunGameSystem.GetGameModuleList())
     {
         ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
     }
-
-    // 读取Server插件
-    FunGameSystem.GetServerPlugins();
-
-    // 读取Web API插件
-    FunGameSystem.GetWebAPIPlugins();
 
     // 创建单例
     RESTfulAPIListener apiListener = new();
@@ -83,9 +87,6 @@ try
     ServerHelper.WriteLine("正在启动 Web API 监听 . . .");
     Console.WriteLine("\r ");
 
-    WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-
-    // Add services to the container.
     // 读取扩展控制器
     if (Config.WebAPIPluginLoader != null)
     {
@@ -100,6 +101,7 @@ try
             }
         }
     }
+
     // 添加 JSON 转换器
     builder.Services.AddControllers().AddJsonOptions(options =>
     {
@@ -173,6 +175,7 @@ try
         options.FormatterName = "CustomFormatter";
     });
     builder.Services.AddSingleton<ConsoleFormatter, CustomConsoleFormatter>();
+    builder.Services.AddHttpClient();
 
     WebApplication app = builder.Build();
 

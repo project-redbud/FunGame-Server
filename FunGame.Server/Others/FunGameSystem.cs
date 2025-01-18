@@ -113,7 +113,7 @@ namespace Milimoe.FunGame.Server.Others
                         if (check)
                         {
                             if (!module.IsAnonymous) supported.Add(module.Name);
-                            ServerHelper.WriteLine("Loaded: " + module.Name, InvokeMessageType.GameModule);
+                            ServerHelper.WriteLine("GameModule Loaded -> " + module.Name, InvokeMessageType.Core);
                         }
                     }
                     catch (Exception e)
@@ -146,7 +146,7 @@ namespace Milimoe.FunGame.Server.Others
                 Config.ServerPluginLoader = ServerPluginLoader.LoadPlugins(delegates);
                 foreach (ServerPlugin plugin in Config.ServerPluginLoader.Plugins.Values)
                 {
-                    ServerHelper.WriteLine("Loaded: " + plugin.Name, InvokeMessageType.Plugin);
+                    ServerHelper.WriteLine("Plugin Loaded -> " + plugin.Name, InvokeMessageType.Core);
                 }
             }
             catch (Exception e)
@@ -158,7 +158,7 @@ namespace Milimoe.FunGame.Server.Others
         /// <summary>
         /// 加载 Web API 插件
         /// </summary>
-        public static void GetWebAPIPlugins()
+        public static void GetWebAPIPlugins(params object[] otherobjs)
         {
             Dictionary<string, object> delegates = [];
             delegates.Add("WriteLine", new Action<string, string, LogLevel, bool>((name, msg, level, useLevel) => ServerHelper.WriteLine_Addons(name, msg, InvokeMessageType.Plugin, level, useLevel)));
@@ -166,10 +166,10 @@ namespace Milimoe.FunGame.Server.Others
             try
             {
                 // 读取plugins目录下的插件
-                Config.WebAPIPluginLoader = WebAPIPluginLoader.LoadPlugins(delegates);
+                Config.WebAPIPluginLoader = WebAPIPluginLoader.LoadPlugins(delegates, otherobjs);
                 foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
                 {
-                    ServerHelper.WriteLine("Loaded: " + plugin.Name, InvokeMessageType.Plugin);
+                    ServerHelper.WriteLine("Plugin Loaded -> " + plugin.Name, InvokeMessageType.Core);
                 }
             }
             catch (Exception e)
