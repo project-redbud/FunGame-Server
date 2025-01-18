@@ -10,7 +10,6 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
@@ -21,6 +20,7 @@ using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Utility;
 using Milimoe.FunGame.WebAPI.Architecture;
 using Milimoe.FunGame.WebAPI.Services;
+using Scalar.AspNetCore;
 
 WebAPIListener listener = new();
 
@@ -115,40 +115,13 @@ try
     });
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen(options =>
-    {
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Name = "Authorization",
-            Type = SecuritySchemeType.Http,
-            Scheme = "Bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description = "输入 Auth 返回的 BearerToken",
-        });
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
-        });
-    });
+    builder.Services.AddOpenApi();
     // 添加 CORS 服务
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowSpecificOrigin", policy =>
         {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
+            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
         });
     });
     // 添加 JWT 认证
@@ -185,8 +158,8 @@ try
     // Configure the HTTP request pipeline.
     if (app.Environment.IsDevelopment())
     {
-        app.UseSwagger();
-        app.UseSwaggerUI();
+        app.MapOpenApi();
+        app.MapScalarApiReference();
     }
 
     app.UseDefaultFiles();
