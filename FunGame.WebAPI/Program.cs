@@ -30,14 +30,14 @@ try
     Console.WriteLine(FunGameInfo.GetInfo(Config.FunGameType));
     Config.AspNetCore = true;
 
-    ServerHelper.WriteLine("ÕıÔÚ¶ÁÈ¡ÅäÖÃÎÄ¼ş²¢³õÊ¼»¯·şÎñ . . .");
+    ServerHelper.WriteLine("æ­£åœ¨è¯»å–é…ç½®æ–‡ä»¶å¹¶åˆå§‹åŒ–æœåŠ¡ . . .");
 
-    // ¼ì²éÊÇ·ñ´æÔÚÅäÖÃÎÄ¼ş
+    // æ£€æŸ¥æ˜¯å¦å­˜åœ¨é…ç½®æ–‡ä»¶
     if (!INIHelper.ExistINIFile())
     {
-        ServerHelper.WriteLine("Î´¼ì²âµ½ÅäÖÃÎÄ¼ş£¬½«×Ô¶¯´´½¨ÅäÖÃÎÄ¼ş . . .");
+        ServerHelper.WriteLine("æœªæ£€æµ‹åˆ°é…ç½®æ–‡ä»¶ï¼Œå°†è‡ªåŠ¨åˆ›å»ºé…ç½®æ–‡ä»¶ . . .");
         INIHelper.Init(Config.FunGameType);
-        ServerHelper.WriteLine("ÅäÖÃÎÄ¼şFunGame.ini´´½¨³É¹¦£¬ÇëĞŞ¸Ä¸ÃÅäÖÃÎÄ¼ş£¬È»ºóÖØÆô·şÎñÆ÷¡£");
+        ServerHelper.WriteLine("é…ç½®æ–‡ä»¶FunGame.iniåˆ›å»ºæˆåŠŸï¼Œè¯·ä¿®æ”¹è¯¥é…ç½®æ–‡ä»¶ï¼Œç„¶åé‡å¯æœåŠ¡å™¨ã€‚");
         Console.ReadKey();
         return;
     }
@@ -46,48 +46,48 @@ try
         ServerHelper.GetServerSettings();
     }
 
-    // ³õÊ¼»¯ÃüÁî²Ëµ¥
+    // åˆå§‹åŒ–å‘½ä»¤èœå•
     ServerHelper.InitOrderList();
 
-    // ³õÊ¼»¯SQLHelper
+    // åˆå§‹åŒ–SQLHelper
     FunGameSystem.InitSQLHelper();
 
-    // ³õÊ¼»¯MailSender
+    // åˆå§‹åŒ–MailSender
     FunGameSystem.InitMailSender();
 
-    // ¶ÁÈ¡Server²å¼ş
+    // è¯»å–Serveræ’ä»¶
     FunGameSystem.GetServerPlugins();
 
     // Add services to the container.
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-    // ¶ÁÈ¡Web API²å¼ş
+    // è¯»å–Web APIæ’ä»¶
     object[] otherobjs = [builder];
     FunGameSystem.GetWebAPIPlugins(otherobjs);
 
-    // ¶ÁÈ¡ÓÎÏ·Ä£×é
+    // è¯»å–æ¸¸æˆæ¨¡ç»„
     if (!FunGameSystem.GetGameModuleList())
     {
-        ServerHelper.WriteLine("·şÎñÆ÷ËÆºõÎ´°²×°ÈÎºÎÓÎÏ·Ä£×é£¬Çë¼ì²éÊÇ·ñÕıÈ·°²×°ËüÃÇ¡£");
+        ServerHelper.WriteLine("æœåŠ¡å™¨ä¼¼ä¹æœªå®‰è£…ä»»ä½•æ¸¸æˆæ¨¡ç»„ï¼Œè¯·æ£€æŸ¥æ˜¯å¦æ­£ç¡®å®‰è£…å®ƒä»¬ã€‚");
     }
 
-    // ´´½¨µ¥Àı
+    // åˆ›å»ºå•ä¾‹
     RESTfulAPIListener apiListener = new();
     RESTfulAPIListener.Instance = apiListener;
 
-    ServerHelper.WriteLine("ÇëÊäÈë help À´»ñÈ¡°ïÖú£¬°´ÏÂ Ctrl+C ¹Ø±Õ·şÎñÆ÷¡£");
+    ServerHelper.WriteLine("è¯·è¾“å…¥ help æ¥è·å–å¸®åŠ©ï¼ŒæŒ‰ä¸‹ Ctrl+C å…³é—­æœåŠ¡å™¨ã€‚");
 
     ServerHelper.PrintFunGameTitle();
 
     if (Config.ServerNotice != "")
-        Console.WriteLine("\r \n********** ·şÎñÆ÷¹«¸æ **********\n\n" + Config.ServerNotice + "\n");
+        Console.WriteLine("\r \n********** æœåŠ¡å™¨å…¬å‘Š **********\n\n" + Config.ServerNotice + "\n");
     else
-        Console.WriteLine("ÎŞ·¨¶ÁÈ¡·şÎñÆ÷¹«¸æ");
+        Console.WriteLine("æ— æ³•è¯»å–æœåŠ¡å™¨å…¬å‘Š");
 
-    ServerHelper.WriteLine("ÕıÔÚÆô¶¯ Web API ¼àÌı . . .");
+    ServerHelper.WriteLine("æ­£åœ¨å¯åŠ¨ Web API ç›‘å¬ . . .");
     Console.WriteLine("\r ");
 
-    // ¶ÁÈ¡À©Õ¹¿ØÖÆÆ÷
+    // è¯»å–æ‰©å±•æ§åˆ¶å™¨
     if (Config.WebAPIPluginLoader != null)
     {
         foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
@@ -96,13 +96,13 @@ try
 
             if (pluginAssembly != null)
             {
-                // ×¢²áËùÓĞ¿ØÖÆÆ÷
+                // æ³¨å†Œæ‰€æœ‰æ§åˆ¶å™¨
                 builder.Services.AddControllers().PartManager.ApplicationParts.Add(new AssemblyPart(pluginAssembly));
             }
         }
     }
 
-    // Ìí¼Ó JSON ×ª»»Æ÷
+    // æ·»åŠ  JSON è½¬æ¢å™¨
     builder.Services.AddControllers().AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.WriteIndented = true;
@@ -115,8 +115,11 @@ try
     });
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddOpenApi();
-    // Ìí¼Ó CORS ·şÎñ
+    builder.Services.AddOpenApi(options =>
+    {
+        options.AddDocumentTransformer(new SecurityDocumentTransformer());
+    });
+    // æ·»åŠ  CORS æœåŠ¡
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowSpecificOrigin", policy =>
@@ -124,7 +127,7 @@ try
             policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
         });
     });
-    // Ìí¼Ó JWT ÈÏÖ¤
+    // æ·»åŠ  JWT è®¤è¯
     builder.Services.AddScoped<JWTService>();
     builder.Services.AddAuthentication(options =>
     {
@@ -152,7 +155,7 @@ try
 
     WebApplication app = builder.Build();
 
-    // ÆôÓÃ CORS
+    // å¯ç”¨ CORS
     app.UseCors("AllowSpecificOrigin");
 
     // Configure the HTTP request pipeline.
@@ -191,21 +194,21 @@ try
         });
     });
 
-    // ²¶×½¹Ø±Õ³ÌĞòÊÂ¼ş
+    // æ•æ‰å…³é—­ç¨‹åºäº‹ä»¶
     IHostApplicationLifetime lifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
     lifetime.ApplicationStopping.Register(CloseServer);
 
-    // ÆôÓÃ WebSockets ÖĞ¼ä¼ş
+    // å¯ç”¨ WebSockets ä¸­é—´ä»¶
     WebSocketOptions webSocketOptions = new()
     {
-        KeepAliveInterval = TimeSpan.FromMinutes(2) // ÉèÖÃ WebSocket µÄ±£»î¼ä¸ô
+        KeepAliveInterval = TimeSpan.FromMinutes(2) // è®¾ç½® WebSocket çš„ä¿æ´»é—´éš”
     };
     app.UseWebSockets(webSocketOptions);
 
-    // Â·ÓÉµ½ WebSocket ´¦ÀíÆ÷
+    // è·¯ç”±åˆ° WebSocket å¤„ç†å™¨
     app.Map("/ws", WebSocketConnectionHandler);
 
-    // ¿ªÊ¼¼àÌıÁ¬½Ó
+    // å¼€å§‹ç›‘å¬è¿æ¥
     listener.BannedList.AddRange(Config.ServerBannedList);
 
     Task order = Task.Factory.StartNew(GetConsoleOrder);
@@ -252,7 +255,7 @@ async Task WebSocketConnectionHandler(HttpContext context)
             bool isConnected = false;
             bool isDebugMode = false;
 
-            // ¿ªÊ¼´¦Àí¿Í»§¶ËÁ¬½ÓÇëÇó
+            // å¼€å§‹å¤„ç†å®¢æˆ·ç«¯è¿æ¥è¯·æ±‚
             IEnumerable<SocketObject> objs = [];
             while (!objs.Any(o => o.SocketType == SocketMessageType.Connect))
             {
@@ -267,7 +270,7 @@ async Task WebSocketConnectionHandler(HttpContext context)
             }
             else
             {
-                ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " Á¬½ÓÊ§°Ü¡£", InvokeMessageType.Core);
+                ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " è¿æ¥å¤±è´¥ã€‚", InvokeMessageType.Core);
                 await socket.CloseAsync();
             }
             Config.ConnectingPlayerCount--;
@@ -280,7 +283,7 @@ async Task WebSocketConnectionHandler(HttpContext context)
     catch (Exception e)
     {
         if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
-        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " ÖĞ¶ÏÁ¬½Ó£¡", InvokeMessageType.Core);
+        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " ä¸­æ–­è¿æ¥ï¼", InvokeMessageType.Core);
         ServerHelper.Error(e);
     }
 }
