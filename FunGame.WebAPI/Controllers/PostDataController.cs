@@ -37,7 +37,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                         }
                         else
                         {
-                            return NotFound();
+                            return BadRequest("没有任何数据返回");
                         }
                     }
                     else
@@ -45,11 +45,11 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                         Ok(new SocketObject(SocketMessageType.System, model.Token, "请求未执行完毕，请等待！"));
                     }
                 }
-                return NotFound();
+                return BadRequest("没有任何数据返回");
             }
             catch (Exception e)
             {
-                _logger.LogError(e, "Error during post data");
+                _logger.LogError(e, "服务器内部错误");
                 return StatusCode(500, "服务器内部错误");
             }
         }
