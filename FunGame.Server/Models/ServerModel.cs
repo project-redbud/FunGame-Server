@@ -545,7 +545,7 @@ namespace Milimoe.FunGame.Server.Model
                     // 每两小时触发一次SQL服务器的心跳查询，防止SQL服务器掉线
                     try
                     {
-                        await Task.Delay(2 * 1000 * 3600);
+                        await Task.Delay(2 * 1000 * 3600, cts.Token);
                         SQLHelper?.ExecuteDataSet(ServerLoginLogs.Select_GetLastLoginTime());
                     }
                     catch (OperationCanceledException)
