@@ -116,7 +116,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             finally
             {
                 if (localTransaction) Close();
-                Parameters.Clear();
+                if (ClearParametersAfterExecute) Parameters.Clear();
             }
             return UpdateRows;
         }
@@ -180,7 +180,7 @@ namespace Milimoe.FunGame.Server.Utility.DataUtility
             finally
             {
                 if (localTransaction) Close();
-                Parameters.Clear();
+                if (ClearParametersAfterExecute) Parameters.Clear();
             }
             return _dataSet;
         }
