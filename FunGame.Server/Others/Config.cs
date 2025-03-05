@@ -37,7 +37,7 @@ namespace Milimoe.FunGame.Server.Others
                 };
             }
         }
-        
+
         /// <summary>
         /// 服务器名称
         /// </summary>
@@ -102,6 +102,11 @@ namespace Milimoe.FunGame.Server.Others
         /// 禁止连接的黑名单
         /// </summary>
         public static List<string> ServerBannedList { get; set; } = [];
+
+        /// <summary>
+        /// 是否使用 FunGame.Desktop 的参数检查
+        /// </summary>
+        public static bool UseDesktopParameters { get; set; } = true;
 
         /// <summary>
         /// 最多接受连接的玩家数量

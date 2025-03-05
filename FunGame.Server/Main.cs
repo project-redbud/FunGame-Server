@@ -212,7 +212,7 @@ void StartServer()
                             IEnumerable<SocketObject> objs = [];
                             while (!objs.Any(o => o.SocketType == SocketMessageType.Connect))
                             {
-                                objs = objs.Union(await socket.ReceiveAsync());
+                                objs = await socket.ReceiveAsync();
                             }
                             (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs.Where(o => o.SocketType == SocketMessageType.Connect));
                             if (isConnected)

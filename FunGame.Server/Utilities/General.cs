@@ -155,6 +155,7 @@ namespace Milimoe.FunGame.Server.Utility
                 settings.Add("Key", INIHelper.ReadINI("Server", "Key"));
                 settings.Add("Status", Convert.ToInt32(INIHelper.ReadINI("Server", "Status")));
                 settings.Add("BannedList", INIHelper.ReadINI("Server", "BannedList"));
+                settings.Add("UseDesktopParameters", Convert.ToBoolean(INIHelper.ReadINI("Server", "UseDesktopParameters")));
                 settings.Add("OfficialMail", INIHelper.ReadINI("ServerMail", "OfficialMail"));
                 settings.Add("SupportMail", INIHelper.ReadINI("ServerMail", "SupportMail"));
                 settings.Add("Port", Convert.ToInt32(INIHelper.ReadINI("Socket", "Port")));
@@ -186,13 +187,15 @@ namespace Milimoe.FunGame.Server.Utility
                     string? Notice = (string?)settings["Notice"];
                     string? Key = (string?)settings["Key"];
                     string? BannedList = (string?)settings["BannedList"];
+                    bool? UseDesktopParameters = (bool?)settings["UseDesktopParameters"];
 
                     if (Name != null) Config.ServerName = Name;
                     if (Password != null) Config.ServerPassword = Password;
                     if (Description != null) Config.ServerDescription = Description;
                     if (Notice != null) Config.ServerNotice = Notice;
                     if (Key != null) Config.ServerKey = Key;
-                    if (BannedList != null) Config.ServerBannedList = BannedList.Split(',').Select(s => s.Trim()).ToList();
+                    if (BannedList != null) Config.ServerBannedList = [.. BannedList.Split(',').Select(s => s.Trim())];
+                    if (UseDesktopParameters != null) Config.UseDesktopParameters = (bool)UseDesktopParameters;
 
                     string? OfficialMail = (string?)settings["OfficialMail"];
                     string? SupportMail = (string?)settings["SupportMail"];
