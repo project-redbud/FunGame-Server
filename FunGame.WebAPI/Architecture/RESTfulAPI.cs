@@ -31,7 +31,7 @@ namespace Milimoe.FunGame.WebAPI.Architecture
 
         public async Task<SocketObject[]> ReceiveAsync()
         {
-            await Task.Delay(100);
+            await Task.CompletedTask;
             return [];
         }
 
@@ -42,7 +42,7 @@ namespace Milimoe.FunGame.WebAPI.Architecture
 
         public async Task<SocketResult> SendAsync(SocketMessageType type, params object[] objs)
         {
-            await Task.Delay(100);
+            await Task.CompletedTask;
             return SocketResult.Success;
         }
     }

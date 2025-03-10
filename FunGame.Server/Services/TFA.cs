@@ -1,6 +1,6 @@
 ﻿using Milimoe.FunGame.Core.Api.Utility;
 
-namespace Milimoe.FunGame.Server.Utility
+namespace Milimoe.FunGame.Server.Services
 {
     public class TFA : TwoFactorAuthenticator
     {

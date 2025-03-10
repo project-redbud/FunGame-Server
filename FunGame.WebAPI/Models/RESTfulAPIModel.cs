@@ -2,7 +2,7 @@
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Model;
-using Milimoe.FunGame.Server.Utility;
+using Milimoe.FunGame.Server.Services;
 using Milimoe.FunGame.WebAPI.Architecture;
 using Milimoe.FunGame.WebAPI.Controllers;
 
@@ -10,7 +10,7 @@ namespace Milimoe.FunGame.WebAPI.Models
 {
     public class RESTfulAPIModel(ISocketListener<RESTfulAPI> server, string clientip) : ServerModel<RESTfulAPI>(server, new RESTfulAPI(Guid.NewGuid(), clientip, clientip), false)
     {
-        public Guid LastRequestID { get; set; } = Guid.Empty;
+        public Guid RequestID { get; set; } = Guid.Empty;
         public List<SocketObject> ToBeSent { get; set; } = [];
 
         public override async Task<bool> Send(SocketMessageType type, params object[] objs)
@@ -24,9 +24,9 @@ namespace Milimoe.FunGame.WebAPI.Models
             if (type != SocketMessageType.HeartBeat)
             {
                 SocketObject obj = new(type, Token, objs);
-                if (LastRequestID != Guid.Empty)
+                if (RequestID != Guid.Empty)
                 {
-                    return PostDataController.ResultDatas.TryAdd(LastRequestID, obj);
+                    return AdapterController.ResultDatas.TryAdd(RequestID, obj);
                 }
                 else
                 {

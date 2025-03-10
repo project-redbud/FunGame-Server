@@ -1,6 +1,7 @@
 ﻿using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Server.Services;
 
-namespace Milimoe.FunGame.Server.Utility
+namespace Milimoe.FunGame.Server.Models
 {
     public class ConnectProperties
     {

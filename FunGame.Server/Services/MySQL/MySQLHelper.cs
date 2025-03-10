@@ -2,9 +2,11 @@ using System.Data;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
+using Milimoe.FunGame.Server.Models;
+using Milimoe.FunGame.Server.Services;
 using MySql.Data.MySqlClient;
 
-namespace Milimoe.FunGame.Server.Utility.DataUtility
+namespace Milimoe.FunGame.Server.DataUtility
 {
     public class MySQLHelper : SQLHelper
     {

@@ -4,10 +4,10 @@ using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
-using Milimoe.FunGame.Server.Utility;
-using Milimoe.FunGame.Server.Utility.DataUtility;
+using Milimoe.FunGame.Server.DataUtility;
+using Milimoe.FunGame.Server.Others;
 
-namespace Milimoe.FunGame.Server.Others
+namespace Milimoe.FunGame.Server.Services
 {
     public class FunGameSystem
     {
@@ -30,7 +30,7 @@ namespace Milimoe.FunGame.Server.Others
                     string useSQLite = INIHelper.ReadINI("SQLite", "UseSQLite").Trim();
 
                     // 根据配置文件选择适当的 SQLHelper 实例
-                    SQLHelper? sqlHelper = useMySQL == "true" ? new MySQLHelper() : (useSQLite == "true" ? new SQLiteHelper() : null);
+                    SQLHelper? sqlHelper = useMySQL == "true" ? new MySQLHelper() : useSQLite == "true" ? new SQLiteHelper() : null;
                     if (sqlHelper != null)
                     {
                         Config.SQLMode = sqlHelper.Mode;

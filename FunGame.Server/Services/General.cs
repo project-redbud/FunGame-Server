@@ -5,7 +5,7 @@ using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Others;
 
-namespace Milimoe.FunGame.Server.Utility
+namespace Milimoe.FunGame.Server.Services
 {
     public class ServerHelper
     {

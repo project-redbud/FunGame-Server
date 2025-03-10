@@ -5,7 +5,7 @@ using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Controller;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
-using Milimoe.FunGame.Server.Utility;
+using Milimoe.FunGame.Server.Services;
 
 Console.Title = Config.ServerName;
 Console.WriteLine(FunGameInfo.GetInfo(Config.FunGameType));

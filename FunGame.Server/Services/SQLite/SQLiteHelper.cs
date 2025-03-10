@@ -3,8 +3,10 @@ using Microsoft.Data.Sqlite;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
+using Milimoe.FunGame.Server.Models;
+using Milimoe.FunGame.Server.Services;
 
-namespace Milimoe.FunGame.Server.Utility.DataUtility
+namespace Milimoe.FunGame.Server.DataUtility
 {
     public class SQLiteHelper : SQLHelper
     {

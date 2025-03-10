@@ -1,7 +1,7 @@
 ﻿using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Server.Others;
-using Milimoe.FunGame.Server.Utility;
+using Milimoe.FunGame.Server.Services;
 
 namespace Milimoe.FunGame.Server.Model
 {
