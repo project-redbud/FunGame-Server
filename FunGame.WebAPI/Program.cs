@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.IdentityModel.Tokens;
+using Milimoe.FunGame;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
@@ -19,6 +20,8 @@ using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Services;
 using Milimoe.FunGame.WebAPI.Architecture;
+using Milimoe.FunGame.WebAPI.Interfaces;
+using Milimoe.FunGame.WebAPI.Models;
 using Milimoe.FunGame.WebAPI.Services;
 using Scalar.AspNetCore;
 
@@ -49,19 +52,19 @@ try
     // 初始化命令菜单
     ServerHelper.InitOrderList();
 
-    // 初始化SQLHelper
+    // 初始化 SQLHelper
     FunGameSystem.InitSQLHelper();
 
-    // 初始化MailSender
+    // 初始化 MailSender
     FunGameSystem.InitMailSender();
 
-    // 读取Server插件
+    // 读取 Server 插件
     FunGameSystem.GetServerPlugins();
 
     // Add services to the container.
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-    // 读取Web API插件
+    // 读取 Web API 插件
     object[] otherobjs = [builder];
     FunGameSystem.GetWebAPIPlugins(otherobjs);
 
@@ -151,6 +154,26 @@ try
         options.FormatterName = "CustomFormatter";
     });
     builder.Services.AddSingleton<ConsoleFormatter, CustomConsoleFormatter>();
+    // 其他依赖注入
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<IUserContext, HttpUserContext>();
+    builder.Services.AddSingleton(listener);
+    builder.Services.AddSingleton(apiListener);
+    builder.Services.AddScoped(provider =>
+    {
+        // 从上下文中获取用户名
+        IUserContext userContext = provider.GetRequiredService<IUserContext>();
+        string username = userContext.Username;
+
+        if (apiListener.UserList.ContainsKey(username))
+        {
+            RESTfulAPIModel apiModel = (RESTfulAPIModel)apiListener.UserList[username];
+            return apiModel;
+        }
+
+        throw new NoUserLogonException();
+    });
+
     builder.Services.AddHttpClient();
 
     WebApplication app = builder.Build();

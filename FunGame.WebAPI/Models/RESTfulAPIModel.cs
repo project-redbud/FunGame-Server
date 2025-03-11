@@ -83,5 +83,20 @@ namespace Milimoe.FunGame.WebAPI.Models
 
             return await Send(type, msg);
         }
+
+        public CancellationTokenSource SetRequestTimeout(Guid uid, int timeout = 60000)
+        {
+            CancellationTokenSource cts = new(timeout);
+            cts.Token.Register(() =>
+            {
+                if (RequestID == uid)
+                {
+                    RequestID = Guid.Empty;
+                    ServerHelper.WriteLine($"请求 {uid} 超时，已释放 RequestID。", InvokeMessageType.DataRequest);
+                }
+                cts.Dispose();
+            });
+            return cts;
+        }
     }
 }

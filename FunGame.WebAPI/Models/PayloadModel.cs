@@ -10,7 +10,7 @@
         /// <summary>
         /// 状态码
         /// </summary>
-        public int StatusCode { get; set; } = 0;
+        public int StatusCode { get; set; } = 200;
 
         /// <summary>
         /// 处理结果

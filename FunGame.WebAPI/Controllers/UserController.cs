@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
-using Milimoe.FunGame.Server.Controller;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Services;
 using Milimoe.FunGame.WebAPI.Architecture;
@@ -31,7 +30,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                 string email = dto.Email;
                 string verifycode = dto.VerifyCode;
 
-                (string msg, RegInvokeType type, bool success) = DataRequestController<RESTfulAPI>.Reg(username, password, email, verifycode, clientIP);
+                (string msg, RegInvokeType type, bool success) = DataRequestService.Reg(username, password, email, verifycode, clientIP);
 
                 return Ok(new PayloadModel<DataRequestType>()
                 {
