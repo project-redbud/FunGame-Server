@@ -1,5 +1,6 @@
 using System.Net.WebSockets;
 using System.Reflection;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json.Serialization;
@@ -146,7 +147,8 @@ try
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "undefined"))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "undefined")),
+            NameClaimType = ClaimTypes.NameIdentifier
         };
     }).AddScheme<AuthenticationSchemeOptions, CustomBearerAuthenticationHandler>("CustomBearer", options => { });
     builder.Logging.AddConsole(options =>
@@ -155,6 +157,8 @@ try
     });
     builder.Services.AddSingleton<ConsoleFormatter, CustomConsoleFormatter>();
     // 其他依赖注入
+    builder.Services.AddHttpClient();
+    builder.Services.AddMemoryCache();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<IUserContext, HttpUserContext>();
     builder.Services.AddSingleton(listener);
@@ -174,8 +178,6 @@ try
         throw new NoUserLogonException();
     });
 
-    builder.Services.AddHttpClient();
-
     WebApplication app = builder.Build();
 
     // 启用 CORS
@@ -193,6 +195,8 @@ try
     app.UseStaticFiles();
 
     app.UseHttpsRedirection();
+
+    app.UseMiddleware<JwtAuthenticationMiddleware>();
 
     app.UseAuthorization();
 

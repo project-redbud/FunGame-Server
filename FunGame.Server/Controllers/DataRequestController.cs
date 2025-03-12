@@ -569,6 +569,7 @@ namespace Milimoe.FunGame.Server.Controller
                     // 验证登录
                     if (username != null && password != null)
                     {
+                        password = password.Encrypt(username);
                         ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] Username: " + username);
                         if (SQLHelper != null)
                         {
@@ -769,6 +770,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string password = DataRequest.GetDictionaryJsonObject<string>(requestData, UserQuery.Column_Password) ?? "";
                 if (username.Trim() != "" && password.Trim() != "")
                 {
+                    password = password.Encrypt(username);
                     SQLHelper?.Execute(UserQuery.Update_Password(SQLHelper, username, password));
                     if (SQLHelper?.Success ?? false)
                     {

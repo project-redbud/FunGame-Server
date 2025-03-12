@@ -54,6 +54,11 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                 }
                 return BadRequest(new SocketObject(SocketMessageType.System, model.Token, "请求未执行完毕，请等待！"));
             }
+            catch (TimeoutException)
+            {
+                _logger.LogWarning("请求超时。");
+                return StatusCode(408);
+            }
             catch (Exception e)
             {
                 _logger.LogError("Error: {e}", e);

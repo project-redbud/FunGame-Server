@@ -21,6 +21,15 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                 {
                     RequestType = payload.RequestType
                 };
+
+                if (payload.RequestType == DataRequestType.RunTime_Logout || payload.RequestType == DataRequestType.Reg_Reg ||
+                    payload.RequestType == DataRequestType.Login_Login || payload.RequestType == DataRequestType.Login_GetFindPasswordVerifyCode)
+                {
+                    response.StatusCode = 400;
+                    response.Message = $"请求类型 {DataRequestSet.GetTypeString(payload.RequestType)} 不允许通过此接口处理！";
+                    return StatusCode(400, response);
+                }
+
                 if (model.RequestID == Guid.Empty)
                 {
                     Guid uid = Guid.NewGuid();
@@ -57,6 +66,11 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                     response.Message = "请求未执行完毕，请等待！";
                     return BadRequest(response);
                 }
+            }
+            catch (TimeoutException)
+            {
+                _logger.LogWarning("请求超时。");
+                return StatusCode(408);
             }
             catch (Exception e)
             {

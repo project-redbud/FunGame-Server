@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Constant;
@@ -13,10 +14,8 @@ namespace Milimoe.FunGame.WebAPI.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class UserController(JWTService jwtTokenService, ILogger<AdapterController> logger) : ControllerBase
+    public class UserController(RESTfulAPIListener apiListener, JWTService jwtTokenService, ILogger<AdapterController> logger) : ControllerBase
     {
-        private readonly ILogger<AdapterController> _logger = logger;
-
         [HttpPost("reg")]
         public IActionResult Reg([FromBody] RegDTO dto)
         {
@@ -46,7 +45,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
             }
             catch (Exception e)
             {
-                _logger.LogError("Error: {e}", e);
+                logger.LogError("Error: {e}", e);
             }
             return BadRequest("服务器暂时无法处理注册请求。");
         }
@@ -56,12 +55,17 @@ namespace Milimoe.FunGame.WebAPI.Controllers
         {
             try
             {
+                PayloadModel<DataRequestType> response = new()
+                {
+                    RequestType = DataRequestType.Login_Login
+                };
                 string msg = "用户名或密码不正确。";
+
                 string clientIP = HttpContext.Connection.RemoteIpAddress?.ToString() + ":" + HttpContext.Connection.RemotePort;
                 ServerHelper.WriteLine(ServerHelper.MakeClientName(clientIP) + " 通过 RESTful API 连接至服务器，正在登录 . . .", InvokeMessageType.Core);
                 string username = dto.Username;
                 string password = dto.Password;
-                RESTfulAPIListener? apiListener = RESTfulAPIListener.Instance;
+
                 if (apiListener != null)
                 {
                     // 移除旧模型
@@ -90,7 +94,14 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                                 model.GetUsersCount();
                                 string token = jwtTokenService.GenerateToken(username);
                                 Config.ConnectingPlayerCount--;
-                                return Ok(new { BearerToken = token, OpenToken = model.Token });
+                                response.StatusCode = 200;
+                                response.Message = "登录成功！";
+                                response.Data = new()
+                                {
+                                    { "bearerToken", token },
+                                    { "openToken", model.Token }
+                                };
+                                return Ok(response);
                             }
                         }
                         else msg = "服务器暂时无法处理登录请求。";
@@ -100,26 +111,37 @@ namespace Milimoe.FunGame.WebAPI.Controllers
 
                 Config.ConnectingPlayerCount--;
                 ServerHelper.WriteLine(msg, InvokeMessageType.Core);
-                return Unauthorized(msg);
+                response.Message = msg;
+                response.StatusCode = 401;
+                return Unauthorized(response);
             }
             catch (Exception e)
             {
-                _logger.LogError("Error: {e}", e);
+                logger.LogError("Error: {e}", e);
             }
-            return BadRequest("服务器暂时无法处理登录请求。");
+            return BadRequest();
         }
 
         [HttpPost("refresh")]
         [Authorize]
-        public IActionResult Refresh([FromBody] LoginDTO dto)
+        public IActionResult Refresh()
         {
             try
             {
-                return Ok(jwtTokenService.GenerateToken(dto.Username));
+                string oldToken = HttpContext.Request.Headers.Authorization.ToString().Replace("Bearer ", "");
+
+                // 吊销
+                jwtTokenService.RevokeToken(oldToken);
+
+                // 生成
+                string username = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
+                string newToken = jwtTokenService.GenerateToken(username);
+
+                return Ok(newToken);
             }
             catch (Exception e)
             {
-                _logger.LogError("Error: {e}", e);
+                logger.LogError("Error: {e}", e);
             }
             return BadRequest();
         }

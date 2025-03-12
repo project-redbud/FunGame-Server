@@ -67,6 +67,11 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                     return BadRequest(response);
                 }
             }
+            catch (TimeoutException)
+            {
+                _logger.LogWarning("«Î«Û≥¨ ±°£");
+                return StatusCode(408);
+            }
             catch (Exception e)
             {
                 _logger.LogError("Error: {e}", e);
