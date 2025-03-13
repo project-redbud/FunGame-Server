@@ -3,6 +3,7 @@ using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Interface.Base;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
@@ -490,8 +491,10 @@ namespace Milimoe.FunGame.Server.Controller
                     {
                         model.NowGamingServer = Server.NowGamingServer;
                     }
-                    if (Server.NowGamingServer.StartServer(room.GameModule, room, users, Server, all))
+                    GamingObject obj = new(room, users, Server, all);
+                    if (Server.NowGamingServer.StartServer(obj))
                     {
+                        Server.NowGamingServer.GamingObjects.TryAdd(room.Roomid, obj);
                         foreach (IServerModel serverTask in Server.Listener.UserList.Where(model => usernames.Contains(model.User.Username)))
                         {
                             if (serverTask != null && serverTask.Socket != null)
