@@ -139,34 +139,9 @@ namespace Milimoe.FunGame.Server.Others
         public static FunGameInfo.FunGame FunGameType => FunGameInfo.FunGame.FunGame_Server;
 
         /// <summary>
-        /// 服务器指令列表
-        /// </summary>
-        public static Hashtable OrderList { get; } = [];
-
-        /// <summary>
-        /// 在线房间列表
-        /// </summary>
-        public static RoomList RoomList { get; } = new();
-
-        /// <summary>
-        /// 是否运行数据库模式
+        /// 运行的数据库模式
         /// </summary>
         public static SQLMode SQLMode { get; set; } = SQLMode.None;
-
-        /// <summary>
-        /// Server实际安装的模组
-        /// </summary>
-        public static GameModuleLoader? GameModuleLoader { get; set; }
-
-        /// <summary>
-        /// Server插件
-        /// </summary>
-        public static ServerPluginLoader? ServerPluginLoader { get; set; }
-
-        /// <summary>
-        /// Web API插件
-        /// </summary>
-        public static WebAPIPluginLoader? WebAPIPluginLoader { get; set; }
 
         /// <summary>
         /// 未Loadmodules时，此属性表示至少需要安装的模组

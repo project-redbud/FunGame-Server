@@ -1,17 +1,16 @@
 using System.Data;
+using Microsoft.Data.Sqlite;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
 using Milimoe.FunGame.Server.Models;
-using Milimoe.FunGame.Server.Services;
-using MySql.Data.MySqlClient;
 
-namespace Milimoe.FunGame.Server.DataUtility
+namespace Milimoe.FunGame.Server.Services.DataUtility
 {
-    public class MySQLHelper : SQLHelper
+    public class SQLiteHelper : SQLHelper
     {
         public override FunGameInfo.FunGame FunGameType { get; } = FunGameInfo.FunGame.FunGame_Server;
-        public override SQLMode Mode { get; } = SQLMode.MySQL;
+        public override SQLMode Mode { get; } = SQLMode.SQLite;
         public override string Script { get; set; } = "";
         public override CommandType CommandType { get; set; } = CommandType.Text;
         public override SQLResult Result => _result;
@@ -21,24 +20,22 @@ namespace Milimoe.FunGame.Server.DataUtility
         public override Dictionary<string, object> Parameters { get; } = [];
 
         private readonly string _connectionString = "";
-        private MySqlConnection? _connection;
-        private MySqlTransaction? _transaction;
+        private SqliteConnection? _connection;
+        private SqliteTransaction? _transaction;
         private DataSet _dataSet = new();
         private SQLResult _result = SQLResult.NotFound;
         private readonly SQLServerInfo? _serverInfo;
         private int _updateRows = 0;
 
-        public MySQLHelper(string script = "", CommandType type = CommandType.Text)
+        public SQLiteHelper(string script = "", CommandType type = CommandType.Text)
         {
             Script = script;
             CommandType = type;
-            _connectionString = ConnectProperties.GetConnectPropertiesForMySQL();
-            string[] strings = _connectionString.Split(";");
-            if (strings.Length > 1 && strings[0].Length > 14 && strings[1].Length > 8)
+            _connectionString = ConnectProperties.GetConnectPropertiesForSQLite();
+            string[] strings = _connectionString.Split("=");
+            if (strings.Length > 1)
             {
-                string ip = strings[0][14..];
-                string port = strings[1][8..];
-                _serverInfo = SQLServerInfo.Create(ip: ip, port: port);
+                _serverInfo = SQLServerInfo.Create(database: strings[1]);
             }
         }
 
@@ -47,7 +44,7 @@ namespace Milimoe.FunGame.Server.DataUtility
         /// </summary>
         private void OpenConnection()
         {
-            _connection ??= new MySqlConnection(_connectionString);
+            _connection ??= new SqliteConnection(_connectionString);
             if (_connection.State != ConnectionState.Open)
             {
                 _connection.Open();
@@ -97,7 +94,7 @@ namespace Milimoe.FunGame.Server.DataUtility
                 OpenConnection();
                 Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
-                using MySqlCommand command = new(script, _connection);
+                using SqliteCommand command = new(script, _connection);
                 command.CommandType = CommandType;
                 foreach (KeyValuePair<string, object> param in Parameters)
                 {
@@ -151,8 +148,7 @@ namespace Milimoe.FunGame.Server.DataUtility
                 OpenConnection();
                 Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
-
-                using MySqlCommand command = new(script, _connection)
+                using SqliteCommand command = new(script, _connection)
                 {
                     CommandType = CommandType
                 };
@@ -162,12 +158,14 @@ namespace Milimoe.FunGame.Server.DataUtility
                 }
                 if (_transaction != null) command.Transaction = _transaction;
 
-                MySqlDataAdapter adapter = new()
-                {
-                    SelectCommand = command
-                };
+                using SqliteDataReader reader = command.ExecuteReader();
                 _dataSet = new();
-                adapter.Fill(_dataSet);
+                do
+                {
+                    DataTable table = new();
+                    table.Load(reader);
+                    _dataSet.Tables.Add(table);
+                } while (!reader.IsClosed && reader.NextResult());
 
                 if (localTransaction) Commit();
 
@@ -239,6 +237,15 @@ namespace Milimoe.FunGame.Server.DataUtility
             {
                 _transaction = null;
             }
+        }
+
+        /// <summary>
+        /// 检查数据库是否存在
+        /// </summary>
+        /// <returns></returns>
+        public override bool DatabaseExists()
+        {
+            return File.Exists(ServerInfo.SQLServerDataBase);
         }
 
         private bool _isDisposed = false;

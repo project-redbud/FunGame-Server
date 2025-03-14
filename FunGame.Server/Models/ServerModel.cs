@@ -43,6 +43,8 @@ namespace Milimoe.FunGame.Server.Model
         protected string _username = "";
         protected long _loginTime = 0;
         protected long _logoutTime = 0;
+        protected DataSet _dsUser = new();
+        protected Guid _checkLoginKey = Guid.Empty;
 
         public ServerModel(ISocketListener<T> server, ISocketMessageProcessor socket, bool isDebugMode)
         {
@@ -259,9 +261,9 @@ namespace Milimoe.FunGame.Server.Model
             else
             {
                 // 建立连接
-                if (Config.GameModuleLoader != null && Config.GameModuleLoader.ModuleServers.ContainsKey(serverName))
+                if (FunGameSystem.GameModuleLoader != null && FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(serverName))
                 {
-                    GameModuleServer mod = Config.GameModuleLoader.GetServerMode(serverName);
+                    GameModuleServer mod = FunGameSystem.GameModuleLoader.GetServerMode(serverName);
                     if (mod.StartAnonymousServer(this, data))
                     {
                         NowGamingServer = mod;
@@ -381,13 +383,13 @@ namespace Milimoe.FunGame.Server.Model
         {
             bool result;
 
-            Config.RoomList.CancelReady(roomid, User);
-            Config.RoomList.QuitRoom(roomid, User);
-            Room Room = Config.RoomList[roomid] ?? General.HallInstance;
+            FunGameSystem.RoomList.CancelReady(roomid, User);
+            FunGameSystem.RoomList.QuitRoom(roomid, User);
+            Room Room = FunGameSystem.RoomList[roomid] ?? General.HallInstance;
             // 是否是房主
             if (isMaster)
             {
-                List<User> users = [.. Config.RoomList[roomid].UserAndIsReady.Keys];
+                List<User> users = [.. FunGameSystem.RoomList[roomid].UserAndIsReady.Keys];
                 if (users.Count > 0) // 如果此时房间还有人，更新房主
                 {
                     User NewMaster = users[0];
@@ -399,7 +401,7 @@ namespace Milimoe.FunGame.Server.Model
                 }
                 else // 没人了就解散房间
                 {
-                    Config.RoomList.RemoveRoom(roomid);
+                    FunGameSystem.RoomList.RemoveRoom(roomid);
                     SQLHelper?.Execute(RoomQuery.Delete_QuitRoom(SQLHelper, roomid, User.Id));
                     this.InRoom = General.HallInstance;
                     ServerHelper.WriteLine("[ " + GetClientName() + " ] 解散了房间 " + roomid);
@@ -458,6 +460,23 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
+        public void PreLogin(DataSet dsuser, Guid checkloginkey)
+        {
+            _dsUser = dsuser;
+            _checkLoginKey = checkloginkey;
+        }
+
+        public async Task CheckLogin()
+        {
+            // 创建User对象
+            User = Factory.GetUser(_dsUser);
+            // 检查有没有重复登录的情况
+            await ForceLogOutDuplicateLogonUser();
+            // 添加至玩家列表
+            AddUser();
+            GetUsersCount();
+        }
+
         public bool AddUser()
         {
             if (User.Id != 0 && this != null)
@@ -477,6 +496,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (User.Id != 0 && this != null)
             {
+                _checkLoginKey = Guid.Empty;
                 _logoutTime = DateTime.Now.Ticks;
                 int TotalMinutes = Convert.ToInt32((new DateTime(_logoutTime) - new DateTime(_loginTime)).TotalMinutes);
                 SQLHelper?.Execute(UserQuery.Update_GameTime(SQLHelper, User.Username, TotalMinutes));
@@ -499,6 +519,11 @@ namespace Milimoe.FunGame.Server.Model
         public void GetUsersCount()
         {
             ServerHelper.WriteLine($"{Listener.Name} 的目前在线客户端数量: {Listener.ClientList.Count}（已登录的玩家数量：{Listener.UserList.Count}）");
+        }
+
+        public bool IsLoginKey(Guid key)
+        {
+            return key == _checkLoginKey;
         }
 
         protected virtual async Task<bool> Read(ISocketMessageProcessor socket)
