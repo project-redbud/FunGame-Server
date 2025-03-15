@@ -247,7 +247,7 @@ namespace Milimoe.FunGame.Server.Services
         /// <returns></returns>
         public static string GetUserKey(string username)
         {
-            if (UserKeys.TryGetValue(username, out object? value) && value is string key)
+            if (UserKeys.TryGetValue(username.ToLower(), out object? value) && value is string key)
             {
                 return key;
             }
@@ -261,7 +261,7 @@ namespace Milimoe.FunGame.Server.Services
         /// <returns></returns>
         public static void UpdateUserKey(string username)
         {
-            UserKeys.Add(username, Encryption.GenerateRandomString());
+            UserKeys.Add(username.ToLower(), Encryption.GenerateRandomString());
             UserKeys.SaveConfig();
         }
 
