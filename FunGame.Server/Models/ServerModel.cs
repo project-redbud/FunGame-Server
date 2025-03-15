@@ -423,10 +423,13 @@ namespace Milimoe.FunGame.Server.Model
         {
             foreach (IServerModel Client in Listener.ClientList.Where(c => c != null && c.User.Id != 0 && room.Roomid == c.InRoom?.Roomid))
             {
-                await Client.Send(SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
-                if (isUpdateRoomMaster && room.RoomMaster?.Id != 0 && room.Roomid != "-1")
+                if (room.Roomid != "-1")
                 {
-                    await Client.Send(SocketMessageType.UpdateRoomMaster, room);
+                    await Client.Send(SocketMessageType.Chat, User.Username, DateTimeUtility.GetNowShortTime() + " [ " + User.Username + " ] 离开了房间。");
+                    if (isUpdateRoomMaster && room.RoomMaster?.Id != 0)
+                    {
+                        await Client.Send(SocketMessageType.UpdateRoomMaster, room);
+                    }
                 }
             }
         }
@@ -455,7 +458,7 @@ namespace Milimoe.FunGame.Server.Model
                 if (Listener.UserList.ContainsKey(user))
                 {
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + user + " 重复登录！");
-                    await ForceLogOut("您的账号在别处登录，已强制下线。");
+                    await ((ServerModel<T>)Listener.UserList[user]).ForceLogOut("您的账号在别处登录，已强制下线。");
                 }
             }
         }
