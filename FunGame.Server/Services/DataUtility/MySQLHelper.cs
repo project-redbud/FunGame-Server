@@ -1,17 +1,16 @@
 using System.Data;
-using Microsoft.Data.Sqlite;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Model;
 using Milimoe.FunGame.Server.Models;
-using Milimoe.FunGame.Server.Services;
+using MySql.Data.MySqlClient;
 
-namespace Milimoe.FunGame.Server.DataUtility
+namespace Milimoe.FunGame.Server.Services.DataUtility
 {
-    public class SQLiteHelper : SQLHelper
+    public class MySQLHelper : SQLHelper
     {
         public override FunGameInfo.FunGame FunGameType { get; } = FunGameInfo.FunGame.FunGame_Server;
-        public override SQLMode Mode { get; } = SQLMode.SQLite;
+        public override SQLMode Mode { get; } = SQLMode.MySQL;
         public override string Script { get; set; } = "";
         public override CommandType CommandType { get; set; } = CommandType.Text;
         public override SQLResult Result => _result;
@@ -21,22 +20,24 @@ namespace Milimoe.FunGame.Server.DataUtility
         public override Dictionary<string, object> Parameters { get; } = [];
 
         private readonly string _connectionString = "";
-        private SqliteConnection? _connection;
-        private SqliteTransaction? _transaction;
+        private MySqlConnection? _connection;
+        private MySqlTransaction? _transaction;
         private DataSet _dataSet = new();
         private SQLResult _result = SQLResult.NotFound;
         private readonly SQLServerInfo? _serverInfo;
         private int _updateRows = 0;
 
-        public SQLiteHelper(string script = "", CommandType type = CommandType.Text)
+        public MySQLHelper(string script = "", CommandType type = CommandType.Text)
         {
             Script = script;
             CommandType = type;
-            _connectionString = ConnectProperties.GetConnectPropertiesForSQLite();
-            string[] strings = _connectionString.Split("=");
-            if (strings.Length > 1)
+            _connectionString = ConnectProperties.GetConnectPropertiesForMySQL();
+            string[] strings = _connectionString.Split(";");
+            if (strings.Length > 1 && strings[0].Length > 14 && strings[1].Length > 8)
             {
-                _serverInfo = SQLServerInfo.Create(database: strings[1]);
+                string ip = strings[0][14..];
+                string port = strings[1][8..];
+                _serverInfo = SQLServerInfo.Create(ip: ip, port: port);
             }
         }
 
@@ -45,7 +46,7 @@ namespace Milimoe.FunGame.Server.DataUtility
         /// </summary>
         private void OpenConnection()
         {
-            _connection ??= new SqliteConnection(_connectionString);
+            _connection ??= new MySqlConnection(_connectionString);
             if (_connection.State != ConnectionState.Open)
             {
                 _connection.Open();
@@ -95,7 +96,7 @@ namespace Milimoe.FunGame.Server.DataUtility
                 OpenConnection();
                 Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
-                using SqliteCommand command = new(script, _connection);
+                using MySqlCommand command = new(script, _connection);
                 command.CommandType = CommandType;
                 foreach (KeyValuePair<string, object> param in Parameters)
                 {
@@ -149,7 +150,8 @@ namespace Milimoe.FunGame.Server.DataUtility
                 OpenConnection();
                 Script = script;
                 ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
-                using SqliteCommand command = new(script, _connection)
+
+                using MySqlCommand command = new(script, _connection)
                 {
                     CommandType = CommandType
                 };
@@ -159,14 +161,12 @@ namespace Milimoe.FunGame.Server.DataUtility
                 }
                 if (_transaction != null) command.Transaction = _transaction;
 
-                using SqliteDataReader reader = command.ExecuteReader();
-                _dataSet = new();
-                do
+                MySqlDataAdapter adapter = new()
                 {
-                    DataTable table = new();
-                    table.Load(reader);
-                    _dataSet.Tables.Add(table);
-                } while (!reader.IsClosed && reader.NextResult());
+                    SelectCommand = command
+                };
+                _dataSet = new();
+                adapter.Fill(_dataSet);
 
                 if (localTransaction) Commit();
 
@@ -184,6 +184,29 @@ namespace Milimoe.FunGame.Server.DataUtility
                 if (ClearParametersAfterExecute) Parameters.Clear();
             }
             return _dataSet;
+        }
+
+        /// <summary>
+        /// 检查数据库是否存在
+        /// </summary>
+        /// <returns></returns>
+        public override bool DatabaseExists()
+        {
+            try
+            {
+                OpenConnection();
+                return true;
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+                _result = SQLResult.Fail;
+                return false;
+            }
+            finally
+            {
+                Close();
+            }
         }
 
         /// <summary>
@@ -237,39 +260,6 @@ namespace Milimoe.FunGame.Server.DataUtility
             finally
             {
                 _transaction = null;
-            }
-        }
-
-        /// <summary>
-        /// 检查数据库是否存在
-        /// </summary>
-        /// <returns></returns>
-        public bool DatabaseExists()
-        {
-            return File.Exists(ServerInfo.SQLServerDataBase);
-        }
-
-        /// <summary>
-        /// 执行SQL文件中的所有SQL语句来初始化数据库
-        /// </summary>
-        /// <param name="sqlFilePath">SQL文件路径</param>
-        public void ExecuteSqlFile(string sqlFilePath)
-        {
-            if (!File.Exists(sqlFilePath))
-            {
-                throw new FileNotFoundException("SQL文件不存在", sqlFilePath);
-            }
-
-            string sqlContent = File.ReadAllText(sqlFilePath);
-            string[] sqlCommands = sqlContent.Split([";"], StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (string commandText in sqlCommands)
-            {
-                string sql = commandText.Trim();
-                if (!string.IsNullOrEmpty(sql))
-                {
-                    Execute(sql);
-                }
             }
         }
 

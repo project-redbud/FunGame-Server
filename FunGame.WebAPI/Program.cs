@@ -62,6 +62,9 @@ try
     // 读取 Server 插件
     FunGameSystem.GetServerPlugins();
 
+    // 初始化用户密钥列表
+    FunGameSystem.InitUserKeys();
+
     // Add services to the container.
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -92,9 +95,9 @@ try
     Console.WriteLine("\r ");
 
     // 读取扩展控制器
-    if (Config.WebAPIPluginLoader != null)
+    if (FunGameSystem.WebAPIPluginLoader != null)
     {
-        foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
+        foreach (WebAPIPlugin plugin in FunGameSystem.WebAPIPluginLoader.Plugins.Values)
         {
             Assembly? pluginAssembly = Assembly.GetAssembly(plugin.GetType());
 
@@ -150,7 +153,8 @@ try
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "undefined")),
             NameClaimType = ClaimTypes.NameIdentifier
         };
-    }).AddScheme<AuthenticationSchemeOptions, CustomBearerAuthenticationHandler>("CustomBearer", options => { });
+    }).AddScheme<AuthenticationSchemeOptions, APIBearerAuthenticationHandler>("APIBearer", options => { }).
+    AddScheme<AuthenticationSchemeOptions, CustomBearerAuthenticationHandler>("CustomBearer", options => { });
     builder.Logging.AddConsole(options =>
     {
         options.FormatterName = "CustomFormatter";

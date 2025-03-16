@@ -4,6 +4,7 @@ using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Addon;
+using Milimoe.FunGame.Core.Library.Common.Event;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
@@ -27,9 +28,7 @@ namespace Milimoe.FunGame.Server.Controller
 
         private DataRequestType _lastRequest = DataRequestType.UnKnown;
         private readonly bool[] _isReadyCheckCD = [false, false];
-        protected DataSet _dsUser = new();
         protected string _username = "";
-        protected Guid _checkLoginKey = Guid.Empty;
         protected bool _isMatching;
 
         /// <summary>
@@ -150,12 +149,11 @@ namespace Milimoe.FunGame.Server.Controller
             {
                 ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 key = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "key");
-                if (IsLoginKey(key))
+                if (Server.IsLoginKey(key))
                 {
                     // 从玩家列表移除
                     Server.RemoveUser();
                     Server.GetUsersCount();
-                    _checkLoginKey = Guid.Empty;
                     msg = "你已成功退出登录！ ";
                 }
             }
@@ -192,7 +190,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string gamemap = DataRequest.GetDictionaryJsonObject<string>(requestData, "gamemap") ?? "";
                 bool isrank = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isrank");
                 ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest) + " : " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gamemodule, gamemap]) + ")", InvokeMessageType.DataRequest);
-                if (gamemodule == "" || gamemap == "" || Config.GameModuleLoader is null || !Config.GameModuleLoader.ModuleServers.ContainsKey(gamemodule) || !Config.GameModuleLoader.Maps.ContainsKey(gamemap))
+                if (gamemodule == "" || gamemap == "" || FunGameSystem.GameModuleLoader is null || !FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(gamemodule) || !FunGameSystem.GameModuleLoader.Maps.ContainsKey(gamemap))
                 {
                     ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
                     resultData.Add("room", room);
@@ -209,7 +207,7 @@ namespace Milimoe.FunGame.Server.Controller
                     {
                         // 防止重复
                         roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
-                        if (Config.RoomList.GetRoom(roomid).Roomid == "-1")
+                        if (FunGameSystem.RoomList.GetRoom(roomid).Roomid == "-1")
                         {
                             break;
                         }
@@ -224,7 +222,7 @@ namespace Milimoe.FunGame.Server.Controller
                             if (SQLHelper.Result == SQLResult.Success && SQLHelper.DataSet.Tables[0].Rows.Count > 0)
                             {
                                 room = Factory.GetRoom(SQLHelper.DataSet.Tables[0].Rows[0], user);
-                                Config.RoomList.AddRoom(room);
+                                FunGameSystem.RoomList.AddRoom(room);
                             }
                         }
                     }
@@ -240,7 +238,7 @@ namespace Milimoe.FunGame.Server.Controller
         private void UpdateRoom(Dictionary<string, object> resultData)
         {
             ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
-            resultData.Add("rooms", Config.RoomList.ListRoom); // 传RoomList
+            resultData.Add("rooms", FunGameSystem.RoomList.ListRoom); // 传RoomList
         }
 
         /// <summary>
@@ -257,7 +255,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
                 bool isMaster = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isMaster");
 
-                if (roomid != "-1" && Config.RoomList.IsExist(roomid))
+                if (roomid != "-1" && FunGameSystem.RoomList.IsExist(roomid))
                 {
                     result = await Server.QuitRoom(roomid, isMaster);
                 }
@@ -285,15 +283,15 @@ namespace Milimoe.FunGame.Server.Controller
                         SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
                         if (SQLHelper.Success)
                         {
-                            Config.RoomList.IntoRoom(roomid, Server.User);
-                            Server.InRoom = Config.RoomList[roomid];
+                            FunGameSystem.RoomList.IntoRoom(roomid, Server.User);
+                            Server.InRoom = FunGameSystem.RoomList[roomid];
                             await Server.SendClients(Server.Listener.ClientList.Where(c => c != null && roomid == c.InRoom.Roomid && c.User.Id != 0),
                                 SocketMessageType.Chat, Server.User.Username, DateTimeUtility.GetNowShortTime() + " [ " + Server.User.Username + " ] 进入了房间。");
                             result = true;
                         }
                         else
                         {
-                            Config.RoomList.RemoveRoom(roomid);
+                            FunGameSystem.RoomList.RemoveRoom(roomid);
                         }
                     }
                 }
@@ -344,15 +342,15 @@ namespace Milimoe.FunGame.Server.Controller
                 roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
                 User user = Server.User;
 
-                if (roomid != "-1" && user.Id != 0 && user.Id != Config.RoomList.GetRoomMaster(roomid).Id && !Config.RoomList.GetReadyUserList(roomid).Contains(user))
+                if (roomid != "-1" && user.Id != 0 && user.Id != FunGameSystem.RoomList.GetRoomMaster(roomid).Id && !FunGameSystem.RoomList.GetReadyUserList(roomid).Contains(user))
                 {
-                    Config.RoomList.SetReady(roomid, user);
+                    FunGameSystem.RoomList.SetReady(roomid, user);
                     result = true;
                 }
             }
             resultData.Add("result", result);
-            resultData.Add("ready", Config.RoomList.GetReadyUserList(roomid));
-            resultData.Add("notready", Config.RoomList.GetNotReadyUserList(roomid));
+            resultData.Add("ready", FunGameSystem.RoomList.GetReadyUserList(roomid));
+            resultData.Add("notready", FunGameSystem.RoomList.GetNotReadyUserList(roomid));
         }
 
         /// <summary>
@@ -370,15 +368,15 @@ namespace Milimoe.FunGame.Server.Controller
                 roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
                 User user = Server.User;
 
-                if (roomid != "-1" && user.Id != 0 && user.Id != Config.RoomList.GetRoomMaster(roomid).Id && Config.RoomList.GetReadyUserList(roomid).Contains(user))
+                if (roomid != "-1" && user.Id != 0 && user.Id != FunGameSystem.RoomList.GetRoomMaster(roomid).Id && FunGameSystem.RoomList.GetReadyUserList(roomid).Contains(user))
                 {
-                    Config.RoomList.CancelReady(roomid, user);
+                    FunGameSystem.RoomList.CancelReady(roomid, user);
                     result = true;
                 }
             }
             resultData.Add("result", result);
-            resultData.Add("ready", Config.RoomList.GetReadyUserList(roomid));
-            resultData.Add("notready", Config.RoomList.GetNotReadyUserList(roomid));
+            resultData.Add("ready", FunGameSystem.RoomList.GetReadyUserList(roomid));
+            resultData.Add("notready", FunGameSystem.RoomList.GetNotReadyUserList(roomid));
         }
 
         /// <summary>
@@ -416,7 +414,7 @@ namespace Milimoe.FunGame.Server.Controller
                 {
                     if (isMaster)
                     {
-                        string[] usernames = [.. Config.RoomList.GetNotReadyUserList(roomid).Select(user => user.Username)];
+                        string[] usernames = [.. FunGameSystem.RoomList.GetNotReadyUserList(roomid).Select(user => user.Username)];
                         if (usernames.Length > 0)
                         {
                             if (_isReadyCheckCD[0] == false)
@@ -437,7 +435,7 @@ namespace Milimoe.FunGame.Server.Controller
                         }
                         else
                         {
-                            List<User> users = Config.RoomList.GetUsers(roomid);
+                            List<User> users = FunGameSystem.RoomList.GetUsers(roomid);
                             if (users.Count < 2)
                             {
                                 Server.SendSystemMessage(ShowMessageType.None, "玩家数量不足，无法开始游戏。", "", 0, Server.User.Username);
@@ -455,7 +453,7 @@ namespace Milimoe.FunGame.Server.Controller
                     {
                         // 提醒房主开始游戏
                         Server.SendSystemMessage(ShowMessageType.None, "已提醒房主立即开始游戏。", "", 0, Server.User.Username);
-                        Server.SendSystemMessage(ShowMessageType.Tip, "房间中的玩家已请求你立即开始游戏。", "请求开始", 10, Config.RoomList[roomid].RoomMaster.Username);
+                        Server.SendSystemMessage(ShowMessageType.Tip, "房间中的玩家已请求你立即开始游戏。", "请求开始", 10, FunGameSystem.RoomList[roomid].RoomMaster.Username);
                         _isReadyCheckCD[1] = true;
                         TaskUtility.RunTimer(() =>
                         {
@@ -476,15 +474,15 @@ namespace Milimoe.FunGame.Server.Controller
             Room room = General.HallInstance;
             if (roomid != "-1")
             {
-                room = Config.RoomList[roomid];
+                room = FunGameSystem.RoomList[roomid];
             }
             if (room.Roomid == "-1") return;
             // 启动服务器
             TaskUtility.NewTask(() =>
             {
-                if (Config.GameModuleLoader != null && Config.GameModuleLoader.ModuleServers.ContainsKey(room.GameModule))
+                if (FunGameSystem.GameModuleLoader != null && FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(room.GameModule))
                 {
-                    Server.NowGamingServer = Config.GameModuleLoader.GetServerMode(room.GameModule);
+                    Server.NowGamingServer = FunGameSystem.GameModuleLoader.GetServerMode(room.GameModule);
                     Dictionary<string, IServerModel> all = Server.Listener.UserList.Cast<IServerModel>().ToDictionary(k => k.User.Username, v => v);
                     // 给其他玩家赋值模组服务器
                     foreach (IServerModel model in all.Values.Where(s => s.User.Username != Server.User.Username))
@@ -499,7 +497,7 @@ namespace Milimoe.FunGame.Server.Controller
                         {
                             if (serverTask != null && serverTask.Socket != null)
                             {
-                                Config.RoomList.CancelReady(roomid, serverTask.User);
+                                FunGameSystem.RoomList.CancelReady(roomid, serverTask.User);
                                 serverTask.Send(SocketMessageType.StartGame, room, users);
                             }
                         }
@@ -529,7 +527,11 @@ namespace Milimoe.FunGame.Server.Controller
                 string password = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
                 string email = DataRequest.GetDictionaryJsonObject<string>(requestData, "email") ?? "";
                 string verifycode = DataRequest.GetDictionaryJsonObject<string>(requestData, "verifycode") ?? "";
-                (msg, returnType, success) = DataRequestService.Reg(username, password, email, verifycode, Server.Socket?.ClientIP ?? "", SQLHelper, MailSender);
+                (msg, returnType, success) = DataRequestService.Reg(Server, username, password, email, verifycode, Server.Socket?.ClientIP ?? "");
+            }
+            else
+            {
+                ServerHelper.WriteLine("客户端提供的参数不足。", InvokeMessageType.DataRequest, LogLevel.Warning);
             }
             resultData.Add("msg", msg);
             resultData.Add("type", returnType);
@@ -547,104 +549,67 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private async Task Login(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
+            ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
             string msg = "";
             User user = Factory.GetUser();
+
+            string username = "";
+            string password = "";
+            string autokey = "";
+            Guid key = Guid.Empty;
             if (requestData.Count >= 4)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
-                string username = DataRequest.GetDictionaryJsonObject<string>(requestData, "username") ?? "";
-                string password = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
-                string autokey = DataRequest.GetDictionaryJsonObject<string>(requestData, "autokey") ?? "";
-                Guid key = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "key");
+                username = DataRequest.GetDictionaryJsonObject<string>(requestData, "username") ?? "";
+                password = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
+                autokey = DataRequest.GetDictionaryJsonObject<string>(requestData, "autokey") ?? "";
+                key = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "key");
+            }
+            else
+            {
+                ServerHelper.WriteLine("客户端提供的参数不足。", InvokeMessageType.DataRequest, LogLevel.Warning);
+            }
 
-                // CheckLogin的情况
-                if (key != Guid.Empty)
+            LoginEventArgs eventArgs = new(username, password, autokey);
+            FunGameSystem.ServerPluginLoader?.OnBeforeLoginEvent(this, eventArgs);
+            FunGameSystem.WebAPIPluginLoader?.OnBeforeLoginEvent(this, eventArgs);
+            if (eventArgs.Cancel)
+            {
+                msg = $"{DataRequestSet.GetTypeString(_lastRequest)} 请求已取消。{(eventArgs.EventMsg != "" ? $"原因：{eventArgs.EventMsg}" : "")}";
+                ServerHelper.WriteLine(msg);
+                resultData.Add("msg", msg);
+                resultData.Add("user", user);
+                return;
+            }
+
+            // CheckLogin的情况
+            if (key != Guid.Empty)
+            {
+                if (Server.IsLoginKey(key))
                 {
-                    if (IsLoginKey(key))
-                    {
-                        await CheckLogin();
-                        user = Server.User;
-                    }
-                    else ServerHelper.WriteLine("客户端发送了错误的秘钥，不允许本次登录。");
+                    await Server.CheckLogin();
+                    user = Server.User;
                 }
                 else
                 {
-                    // 验证登录
-                    if (username != null && password != null)
-                    {
-                        password = password.Encrypt(username);
-                        ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] Username: " + username);
-                        if (SQLHelper != null)
-                        {
-                            SQLHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(SQLHelper, username, password));
-                            if (SQLHelper.Result == SQLResult.Success)
-                            {
-                                DataSet dsUser = SQLHelper.DataSet;
-                                if (autokey.Trim() != "")
-                                {
-                                    SQLHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(SQLHelper, username, autokey));
-                                    if (SQLHelper.Result == SQLResult.Success)
-                                    {
-                                        ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] AutoKey: 已确认");
-                                    }
-                                    else
-                                    {
-                                        msg = "AutoKey不正确，拒绝自动登录！";
-                                        ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] " + msg);
-                                    }
-                                }
-                                key = Guid.NewGuid();
-                                PreLogin(dsUser, username, key);
-                                resultData.Add("key", key);
-                            }
-                            else
-                            {
-                                msg = "用户名或密码不正确。";
-                                ServerHelper.WriteLine(msg);
-                            }
-                        }
-                    }
+                    msg = "客户端发送了错误的秘钥，不允许本次登录。";
+                    ServerHelper.WriteLine(msg, InvokeMessageType.DataRequest, LogLevel.Warning);
                 }
             }
+            else
+            {
+                // 进行预登录
+                (bool success, DataSet dsUser, msg, key) = DataRequestService.PreLogin(this, username, password, autokey);
+                if (success)
+                {
+                    Server.PreLogin(dsUser, key);
+                    resultData.Add("key", key);
+                }
+            }
+
+            FunGameSystem.ServerPluginLoader?.OnAfterLoginEvent(this, eventArgs);
+            FunGameSystem.WebAPIPluginLoader?.OnAfterLoginEvent(this, eventArgs);
             resultData.Add("msg", msg);
             resultData.Add("user", user);
-        }
-
-        /// <summary>
-        /// 预登录
-        /// </summary>
-        /// <param name="dsuser"></param>
-        /// <param name="username"></param>
-        /// <param name="checkloginkey"></param>
-        private void PreLogin(DataSet dsuser, string username, Guid checkloginkey)
-        {
-            _dsUser = dsuser;
-            _username = username;
-            _checkLoginKey = checkloginkey;
-        }
-
-        /// <summary>
-        /// 确认登录
-        /// </summary>
-        private async Task CheckLogin()
-        {
-            // 创建User对象
-            Server.User = Factory.GetUser(_dsUser);
-            // 检查有没有重复登录的情况
-            await Server.ForceLogOutDuplicateLogonUser();
-            // 添加至玩家列表
-            Server.AddUser();
-            Server.GetUsersCount();
-        }
-
-        /// <summary>
-        /// 检查LoginKey
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        private bool IsLoginKey(Guid key)
-        {
-            return key == _checkLoginKey;
         }
 
         /// <summary>
@@ -773,7 +738,8 @@ namespace Milimoe.FunGame.Server.Controller
                 string password = DataRequest.GetDictionaryJsonObject<string>(requestData, UserQuery.Column_Password) ?? "";
                 if (username.Trim() != "" && password.Trim() != "")
                 {
-                    password = password.Encrypt(username);
+                    FunGameSystem.UpdateUserKey(username);
+                    password = password.Encrypt(FunGameSystem.GetUserKey(username));
                     SQLHelper?.Execute(UserQuery.Update_Password(SQLHelper, username, password));
                     if (SQLHelper?.Success ?? false)
                     {
@@ -802,7 +768,7 @@ namespace Milimoe.FunGame.Server.Controller
                 ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
             }
-            resultData.Add("count", Config.RoomList.GetUserCount(roomid));
+            resultData.Add("count", FunGameSystem.RoomList.GetUserCount(roomid));
         }
 
         /// <summary>
@@ -863,11 +829,11 @@ namespace Milimoe.FunGame.Server.Controller
                 List<Room> targets;
                 if (roomtype == RoomType.All)
                 {
-                    targets = [.. Config.RoomList.ListRoom.Where(r => r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching)];
+                    targets = [.. FunGameSystem.RoomList.ListRoom.Where(r => r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching)];
                 }
                 else
                 {
-                    targets = [.. Config.RoomList.ListRoom.Where(r => (r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching) && r.RoomType == roomtype)];
+                    targets = [.. FunGameSystem.RoomList.ListRoom.Where(r => (r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching) && r.RoomType == roomtype)];
                 }
 
                 // 如果匹配停止，则退出
@@ -876,7 +842,7 @@ namespace Milimoe.FunGame.Server.Controller
                 foreach (Room room in targets)
                 {
                     // 获取当前房间的玩家列表
-                    List<User> players = Config.RoomList.GetUsers(room.Roomid);
+                    List<User> players = FunGameSystem.RoomList.GetUsers(room.Roomid);
                     if (players.Count > 0)
                     {
                         // 计算房间平均Elo

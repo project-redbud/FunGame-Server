@@ -1,16 +1,53 @@
-﻿using Milimoe.FunGame.Core.Api.Transmittal;
+﻿using System.Collections;
+using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
-using Milimoe.FunGame.Server.DataUtility;
+using Milimoe.FunGame.Core.Model;
 using Milimoe.FunGame.Server.Others;
+using Milimoe.FunGame.Server.Services.DataUtility;
 
 namespace Milimoe.FunGame.Server.Services
 {
     public class FunGameSystem
     {
+        /// <summary>
+        /// 服务器指令列表
+        /// </summary>
+        public static Hashtable OrderList { get; } = [];
+
+        /// <summary>
+        /// 在线房间列表
+        /// </summary>
+        public static RoomList RoomList { get; } = new();
+
+        /// <summary>
+        /// Server实际安装的模组
+        /// </summary>
+        public static GameModuleLoader? GameModuleLoader { get; set; }
+
+        /// <summary>
+        /// Server插件
+        /// </summary>
+        public static ServerPluginLoader? ServerPluginLoader { get; set; }
+
+        /// <summary>
+        /// Web API插件
+        /// </summary>
+        public static WebAPIPluginLoader? WebAPIPluginLoader { get; set; }
+
+        /// <summary>
+        /// 服务器配置
+        /// </summary>
+        public static PluginConfig UserKeys { get; set; } = new("system", "user_keys");
+
+        /// <summary>
+        /// FunGame Web API Token ID
+        /// </summary>
+        public const string FunGameWebAPITokenID = "fungame_web_api";
+
         /// <summary>
         /// 初始化数据库连接器
         /// </summary>
@@ -98,14 +135,14 @@ namespace Milimoe.FunGame.Server.Services
             // 读取modules目录下的模组
             try
             {
-                Config.GameModuleLoader = GameModuleLoader.LoadGameModules(Config.FunGameType, delegates);
-                foreach (GameModuleServer module in Config.GameModuleLoader.ModuleServers.Values)
+                GameModuleLoader = GameModuleLoader.LoadGameModules(Config.FunGameType, delegates);
+                foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
                 {
                     try
                     {
                         bool check = true;
                         // 检查模组是否有相对应的地图
-                        if (!Config.GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
+                        if (!GameModuleLoader.Maps.ContainsKey(module.DefaultMap))
                         {
                             ServerHelper.WriteLine("GameModule Load Failed: " + module.Name + " 没有找到相对应的地图，加载失败", InvokeMessageType.Error);
                             check = false;
@@ -127,7 +164,7 @@ namespace Milimoe.FunGame.Server.Services
                 ServerHelper.Error(e2);
             }
             // 设置全局
-            Config.GameModuleSupported = supported.Distinct().ToArray();
+            Config.GameModuleSupported = [.. supported.Distinct()];
 
             return Config.GameModuleSupported.Length > 0;
         }
@@ -143,8 +180,8 @@ namespace Milimoe.FunGame.Server.Services
             try
             {
                 // 读取plugins目录下的插件
-                Config.ServerPluginLoader = ServerPluginLoader.LoadPlugins(delegates);
-                foreach (ServerPlugin plugin in Config.ServerPluginLoader.Plugins.Values)
+                ServerPluginLoader = ServerPluginLoader.LoadPlugins(delegates);
+                foreach (ServerPlugin plugin in ServerPluginLoader.Plugins.Values)
                 {
                     ServerHelper.WriteLine("Plugin Loaded -> " + plugin.Name, InvokeMessageType.Core);
                 }
@@ -166,8 +203,8 @@ namespace Milimoe.FunGame.Server.Services
             try
             {
                 // 读取plugins目录下的插件
-                Config.WebAPIPluginLoader = WebAPIPluginLoader.LoadPlugins(delegates, otherobjs);
-                foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
+                WebAPIPluginLoader = WebAPIPluginLoader.LoadPlugins(delegates, otherobjs);
+                foreach (WebAPIPlugin plugin in WebAPIPluginLoader.Plugins.Values)
                 {
                     ServerHelper.WriteLine("Plugin Loaded -> " + plugin.Name, InvokeMessageType.Core);
                 }
@@ -195,16 +232,105 @@ namespace Milimoe.FunGame.Server.Services
         }
 
         /// <summary>
+        /// 初始化用户密钥列表
+        /// </summary>
+        public static void InitUserKeys()
+        {
+            UserKeys.LoadConfig();
+            UserKeys.SaveConfig();
+        }
+
+        /// <summary>
+        /// 获取指定用户的密钥
+        /// </summary>
+        /// <param name="username"></param>
+        /// <returns></returns>
+        public static string GetUserKey(string username)
+        {
+            if (UserKeys.TryGetValue(username.ToLower(), out object? value) && value is string key)
+            {
+                return key;
+            }
+            return username;
+        }
+        
+        /// <summary>
+        /// 更新指定用户的密钥
+        /// </summary>
+        /// <param name="username"></param>
+        /// <returns></returns>
+        public static void UpdateUserKey(string username)
+        {
+            UserKeys.Add(username.ToLower(), Encryption.GenerateRandomString());
+            UserKeys.SaveConfig();
+        }
+
+        /// <summary>
+        /// 获取 API Secret Key
+        /// </summary>
+        /// <param name="token"></param>
+        public static string GetAPISecretKey(string token)
+        {
+            using SQLHelper? sql = Factory.OpenFactory.GetSQLHelper();
+            if (sql != null)
+            {
+                sql.ExecuteDataSet(ApiTokens.Select_GetAPIToken(sql, token));
+                if (sql.Result == SQLResult.Success)
+                {
+                    return sql.DataSet.Tables[0].Rows[0][ApiTokens.Column_SecretKey].ToString() ?? "";
+                }
+            }
+            return "";
+        }
+
+        /// <summary>
+        /// 设置 API Secret Key
+        /// </summary>
+        /// <param name="token"></param>
+        /// <param name="reference1"></param>
+        /// <param name="reference2"></param>
+        public static void SetAPISecretKey(string token, string reference1 = "", string reference2 = "", SQLHelper? sqlHelper = null)
+        {
+            bool useSQLHelper = sqlHelper != null;
+            sqlHelper ??= Factory.OpenFactory.GetSQLHelper();
+            string key = Encryption.GenerateRandomString();
+            if (sqlHelper != null)
+            {
+                sqlHelper.ExecuteDataSet(ApiTokens.Select_GetAPIToken(sqlHelper, token));
+                if (sqlHelper.Success)
+                {
+                    sqlHelper.Execute(ApiTokens.Update_GetAPIToken(sqlHelper, token, key, reference1, reference2));
+                }
+                else
+                {
+                    sqlHelper.Execute(ApiTokens.Insert_APITokens(sqlHelper, token, key, reference1, reference2));
+                }
+            }
+            if (!useSQLHelper)
+            {
+                sqlHelper?.Dispose();
+            }
+        }
+
+        /// <summary>
         /// 创建 SQL 服务后需要做的事
         /// </summary>
         /// <param name="sqlHelper"></param>
         public static void AfterCreateSQLService(SQLHelper sqlHelper)
         {
             Config.SQLMode = sqlHelper.Mode;
-            if (sqlHelper is SQLiteHelper sqliteHelper && !sqliteHelper.DatabaseExists())
+            if (!sqlHelper.DatabaseExists())
             {
                 ServerHelper.WriteLine("正在初始化数据库 . . .", InvokeMessageType.Core);
-                sqliteHelper.ExecuteSqlFile(AppDomain.CurrentDomain.BaseDirectory + "fungame_sqlite.sql");
+                if (sqlHelper is SQLiteHelper sqliteHelper)
+                {
+                    sqliteHelper.ExecuteSqlFile(AppDomain.CurrentDomain.BaseDirectory + "fungame_sqlite.sql");
+                }
+                else if (sqlHelper is MySQLHelper mysqlHelper)
+                {
+                    mysqlHelper.ExecuteSqlFile(AppDomain.CurrentDomain.BaseDirectory + "fungame.sql");
+                }
+                SetAPISecretKey(FunGameWebAPITokenID, sqlHelper: sqlHelper);
             }
             ServerLogin(sqlHelper);
             ClearRoomList(sqlHelper);
@@ -216,23 +342,23 @@ namespace Milimoe.FunGame.Server.Services
         /// </summary>
         public static void CloseServer()
         {
-            if (Config.GameModuleLoader != null)
+            if (GameModuleLoader != null)
             {
-                foreach (GameModuleServer server in Config.GameModuleLoader.ModuleServers.Values)
+                foreach (GameModuleServer server in GameModuleLoader.ModuleServers.Values)
                 {
                     server.Controller.Close();
                 }
             }
-            if (Config.ServerPluginLoader != null)
+            if (ServerPluginLoader != null)
             {
-                foreach (ServerPlugin plugin in Config.ServerPluginLoader.Plugins.Values)
+                foreach (ServerPlugin plugin in ServerPluginLoader.Plugins.Values)
                 {
                     plugin.Controller.Close();
                 }
             }
-            if (Config.WebAPIPluginLoader != null)
+            if (WebAPIPluginLoader != null)
             {
-                foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
+                foreach (WebAPIPlugin plugin in WebAPIPluginLoader.Plugins.Values)
                 {
                     plugin.Controller.Close();
                 }

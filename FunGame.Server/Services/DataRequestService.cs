@@ -1,5 +1,7 @@
-﻿using Milimoe.FunGame.Core.Api.Transmittal;
+﻿using System.Data;
+using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.Event;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
@@ -9,15 +11,25 @@ namespace Milimoe.FunGame.Server.Services
 {
     public class DataRequestService
     {
-        public static (string Msg, RegInvokeType RegInvokeType, bool Success) Reg(string username, string password, string email, string verifyCode, string clientIP = "", SQLHelper? sqlHelper = null, MailSender? mailSender = null)
+        public static (string Msg, RegInvokeType RegInvokeType, bool Success) Reg(object sender, string username, string password, string email, string verifyCode, string clientIP = "")
         {
             string msg = "";
             RegInvokeType type = RegInvokeType.None;
             bool success = false;
             string clientName = ServerHelper.MakeClientName(clientIP);
 
-            sqlHelper ??= Factory.OpenFactory.GetSQLHelper();
-            mailSender ??= Factory.OpenFactory.GetMailSender();
+            RegisterEventArgs eventArgs = new(username, password, email);
+            FunGameSystem.ServerPluginLoader?.OnBeforeRegEvent(sender, eventArgs);
+            FunGameSystem.WebAPIPluginLoader?.OnBeforeRegEvent(sender, eventArgs);
+            if (eventArgs.Cancel)
+            {
+                msg = $"{DataRequestSet.GetTypeString(DataRequestType.Reg_Reg)} 请求已取消。{(eventArgs.EventMsg != "" ? $"原因：{eventArgs.EventMsg}" : "")}";
+                ServerHelper.WriteLine(msg, InvokeMessageType.DataRequest, LogLevel.Warning);
+                return (eventArgs.EventMsg, RegInvokeType.None, false);
+            }
+
+            using SQLHelper? sqlHelper = Factory.OpenFactory.GetSQLHelper();
+            using MailSender? mailSender = Factory.OpenFactory.GetMailSender();
             if (sqlHelper != null)
             {
                 // 如果没发验证码，就生成验证码
@@ -114,6 +126,8 @@ namespace Milimoe.FunGame.Server.Services
                             {
                                 sqlHelper.NewTransaction();
                                 ServerHelper.WriteLine("[Reg] Username: " + username + " Email: " + email);
+                                FunGameSystem.UpdateUserKey(username);
+                                password = password.Encrypt(FunGameSystem.GetUserKey(username));
                                 sqlHelper.Execute(UserQuery.Insert_Register(sqlHelper, username, password, email, clientIP));
                                 if (sqlHelper.Result == SQLResult.Success)
                                 {
@@ -136,7 +150,69 @@ namespace Milimoe.FunGame.Server.Services
                 }
             }
 
+            eventArgs.Success = success;
+            FunGameSystem.ServerPluginLoader?.OnAfterRegEvent(sender, eventArgs);
+            FunGameSystem.WebAPIPluginLoader?.OnAfterRegEvent(sender, eventArgs);
+
             return (msg, type, success);
+        }
+    
+        public static (bool Success, DataSet DataSet, string Msg, Guid Key) PreLogin(object sender, string username, string password, string autokey = "")
+        {
+            bool success = false;
+            DataSet dsUser = new();
+            string msg = "用户名或密码不正确。";
+            Guid key = Guid.Empty;
+
+            LoginEventArgs eventArgs = new(username, password, autokey);
+            FunGameSystem.ServerPluginLoader?.OnBeforeLoginEvent(sender, eventArgs);
+            FunGameSystem.WebAPIPluginLoader?.OnBeforeLoginEvent(sender, eventArgs);
+            if (eventArgs.Cancel)
+            {
+                msg = $"{DataRequestSet.GetTypeString(DataRequestType.Login_Login)} 请求已取消。{(eventArgs.EventMsg != "" ? $"原因：{eventArgs.EventMsg}" : "")}";
+                ServerHelper.WriteLine(msg, InvokeMessageType.DataRequest, LogLevel.Warning);
+                return (success, dsUser, eventArgs.EventMsg, key);
+            }
+
+            // 验证登录
+            if (username != "" && password != "")
+            {
+                password = password.Encrypt(FunGameSystem.GetUserKey(username));
+                ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] Username: " + username);
+                using SQLHelper? sqlHelper = Factory.OpenFactory.GetSQLHelper();
+                if (sqlHelper != null)
+                {
+                    sqlHelper.ExecuteDataSet(UserQuery.Select_Users_LoginQuery(sqlHelper, username, password));
+                    if (sqlHelper.Result == SQLResult.Success)
+                    {
+                        dsUser = sqlHelper.DataSet;
+                        key = Guid.NewGuid();
+                        success = true;
+                        msg = "";
+                        if (autokey.Trim() != "")
+                        {
+                            sqlHelper.ExecuteDataSet(UserQuery.Select_CheckAutoKey(sqlHelper, username, autokey));
+                            if (sqlHelper.Result == SQLResult.Success)
+                            {
+                                ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] AutoKey: 已确认");
+                            }
+                            else
+                            {
+                                success = false;
+                                msg = "AutoKey 不正确，拒绝自动登录！";
+                                ServerHelper.WriteLine("[" + DataRequestSet.GetTypeString(DataRequestType.Login_Login) + "] " + msg);
+                            }
+                        }
+                    }
+                }
+            }
+
+            eventArgs.Success = success;
+            FunGameSystem.ServerPluginLoader?.OnAfterLoginEvent(sender, eventArgs);
+            FunGameSystem.WebAPIPluginLoader?.OnAfterLoginEvent(sender, eventArgs);
+
+            ServerHelper.WriteLine(msg, InvokeMessageType.Core);
+            return (success, dsUser, msg, key);
         }
     }
 }

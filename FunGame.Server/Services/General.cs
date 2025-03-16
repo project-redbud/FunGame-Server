@@ -233,12 +233,12 @@ namespace Milimoe.FunGame.Server.Services
 
         public static void InitOrderList()
         {
-            Config.OrderList.Clear();
-            Config.OrderList.Add(OrderDictionary.Help, "Milimoe -> 帮助");
-            Config.OrderList.Add(OrderDictionary.Quit, "关闭服务器");
-            Config.OrderList.Add(OrderDictionary.Exit, "关闭服务器");
-            Config.OrderList.Add(OrderDictionary.Close, "关闭服务器");
-            Config.OrderList.Add(OrderDictionary.Restart, "重启服务器");
+            FunGameSystem.OrderList.Clear();
+            FunGameSystem.OrderList.Add(OrderDictionary.Help, "Milimoe -> 帮助");
+            FunGameSystem.OrderList.Add(OrderDictionary.Quit, "关闭服务器");
+            FunGameSystem.OrderList.Add(OrderDictionary.Exit, "关闭服务器");
+            FunGameSystem.OrderList.Add(OrderDictionary.Close, "关闭服务器");
+            FunGameSystem.OrderList.Add(OrderDictionary.Restart, "重启服务器");
         }
     }
 

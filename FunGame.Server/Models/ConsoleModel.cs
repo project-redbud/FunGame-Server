@@ -52,16 +52,16 @@ namespace Milimoe.FunGame.Server.Model
                         break;
                 }
                 // 广播到插件
-                if (Config.ServerPluginLoader != null)
+                if (FunGameSystem.ServerPluginLoader != null)
                 {
-                    foreach (ServerPlugin plugin in Config.ServerPluginLoader.Plugins.Values)
+                    foreach (ServerPlugin plugin in FunGameSystem.ServerPluginLoader.Plugins.Values)
                     {
                         plugin.ProcessInput(order);
                     }
                 }
-                if (Config.WebAPIPluginLoader != null)
+                if (FunGameSystem.WebAPIPluginLoader != null)
                 {
-                    foreach (WebAPIPlugin plugin in Config.WebAPIPluginLoader.Plugins.Values)
+                    foreach (WebAPIPlugin plugin in FunGameSystem.WebAPIPluginLoader.Plugins.Values)
                     {
                         plugin.ProcessInput(order);
                     }
