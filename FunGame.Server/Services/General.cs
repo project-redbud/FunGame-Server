@@ -108,7 +108,7 @@ namespace Milimoe.FunGame.Server.Services
             }
             Type();
         }
-        
+
         public static void WriteLine_Addons(string addon, string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)
         {
             if (type == InvokeMessageType.Warning)

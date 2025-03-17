@@ -156,7 +156,7 @@ namespace Milimoe.FunGame.Server.Services
 
             return (msg, type, success);
         }
-    
+
         public static (bool Success, DataSet DataSet, string Msg, Guid Key) PreLogin(object sender, string username, string password, string autokey = "")
         {
             bool success = false;

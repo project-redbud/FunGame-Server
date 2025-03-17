@@ -65,7 +65,7 @@ namespace Milimoe.FunGame.WebAPI.Models
             {
                 return await AnonymousGameServerHandler(obj);
             }
-            
+
             if (type == SocketMessageType.DataRequest)
             {
                 return await DataRequestHandler(obj);

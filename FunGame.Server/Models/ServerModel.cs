@@ -84,7 +84,7 @@ namespace Milimoe.FunGame.Server.Model
                 NowGamingServer = null;
                 return true;
             }
-            
+
             if (type == SocketMessageType.AnonymousGameServer)
             {
                 return await AnonymousGameServerHandler(obj);

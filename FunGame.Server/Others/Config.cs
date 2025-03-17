@@ -1,8 +1,5 @@
-﻿using System.Collections;
-using System.Text;
-using Milimoe.FunGame.Core.Api.Utility;
+﻿using System.Text;
 using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Core.Model;
 
 namespace Milimoe.FunGame.Server.Others
 {
@@ -17,7 +14,7 @@ namespace Milimoe.FunGame.Server.Others
         /// 日志级别
         /// </summary>
         public static string LogLevel { get; set; } = "INFO";
-        
+
         /// <summary>
         /// 日志级别（枚举值）
         /// </summary>
