@@ -15,12 +15,19 @@ namespace Milimoe.FunGame.WebAPI.Controllers
     [Route("[controller]")]
     public class UserController(RESTfulAPIListener apiListener, JWTService jwtTokenService, ILogger<AdapterController> logger) : ControllerBase
     {
-        [HttpPost("reg")]
+        /// <summary>
+        /// 因为注册 API 不需要先登录，所以需要进行 API Bearer Token 验证，防止 API 滥用。<para/>
+        /// API Bearer Token 保存在数据库 apitokens 表中，服务器在首次运行、初始化数据库时会自动生成一个 API Bearer Token。<para/>
+        /// 默认的 TokenID 为 <see cref="FunGameSystem.FunGameWebAPITokenID"/>，如需使用此 ID 对应的秘钥可以联系服务器管理员。<para/>
+        /// 因此，注册账号通常需要使用服务器运营者提供的客户端。<para/>
+        /// 除此之外，已注册过并登录的用户可以为自己生成一个 API Bearer Token，用于创建客户端并访问使用 APIBearer 验证方案的 API 端口。
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [HttpPost("register")]
         [Authorize(AuthenticationSchemes = "APIBearer")]
-        public IActionResult Reg([FromBody] RegDTO dto)
+        public IActionResult Register([FromBody] RegDTO dto)
         {
-            // 因为注册 API 不需要先登录，所以需要进行 API Bearer Token 验证，防止 API 滥用
-            // API Bearer Token 保存在数据库 apitokens 表中，由服务器管理员配置
             try
             {
                 string clientIP = HttpContext.Connection.RemoteIpAddress?.ToString() + ":" + HttpContext.Connection.RemotePort;
