@@ -44,7 +44,7 @@ namespace Milimoe.FunGame.Server.Services
         public static PluginConfig UserKeys { get; set; } = new("system", "user_keys");
 
         /// <summary>
-        /// FunGame Web API Token ID
+        /// 默认的 Web API Token ID，在首次初始化数据库时生成一个 Secret Key
         /// </summary>
         public const string FunGameWebAPITokenID = "fungame_web_api";
 
@@ -266,6 +266,24 @@ namespace Milimoe.FunGame.Server.Services
         }
 
         /// <summary>
+        /// 检查是否存在 API Secret Key
+        /// </summary>
+        /// <param name="key"></param>
+        public static bool IsAPISecretKeyExist(string key)
+        {
+            using SQLHelper? sql = Factory.OpenFactory.GetSQLHelper();
+            if (sql != null)
+            {
+                sql.ExecuteDataSet(ApiTokens.Select_GetAPISecretKey(sql, key));
+                if (sql.Result == SQLResult.Success)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        /// <summary>
         /// 获取 API Secret Key
         /// </summary>
         /// <param name="token"></param>
@@ -303,7 +321,7 @@ namespace Milimoe.FunGame.Server.Services
                 }
                 else
                 {
-                    sqlHelper.Execute(ApiTokens.Insert_APITokens(sqlHelper, token, key, reference1, reference2));
+                    sqlHelper.Execute(ApiTokens.Insert_APIToken(sqlHelper, token, key, reference1, reference2));
                 }
             }
             if (!useSQLHelper)
