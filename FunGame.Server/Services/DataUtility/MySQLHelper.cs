@@ -194,8 +194,8 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         {
             try
             {
-                OpenConnection();
-                return true;
+                ExecuteDataSet(Core.Library.SQLScript.Common.Configs.Select_GetConfig(this, "Initialization"));
+                return Success;
             }
             catch (Exception e)
             {

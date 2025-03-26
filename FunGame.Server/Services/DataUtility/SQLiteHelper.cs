@@ -245,7 +245,21 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         /// <returns></returns>
         public override bool DatabaseExists()
         {
-            return File.Exists(ServerInfo.SQLServerDataBase);
+            try
+            {
+                ExecuteDataSet(Core.Library.SQLScript.Common.Configs.Select_GetConfig(this, "Initialization"));
+                return Success;
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+                _result = SQLResult.Fail;
+                return false;
+            }
+            finally
+            {
+                Close();
+            }
         }
 
         private bool _isDisposed = false;

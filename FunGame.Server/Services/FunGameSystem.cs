@@ -42,6 +42,11 @@ namespace Milimoe.FunGame.Server.Services
         /// 服务器配置
         /// </summary>
         public static PluginConfig UserKeys { get; set; } = new("system", "user_keys");
+        
+        /// <summary>
+        /// 服务器配置
+        /// </summary>
+        public static PluginConfig SQLConfig { get; set; } = new("system", "sqlconfig");
 
         /// <summary>
         /// 默认的 Web API Token ID，在首次初始化数据库时生成一个 Secret Key
@@ -317,7 +322,7 @@ namespace Milimoe.FunGame.Server.Services
                 sqlHelper.ExecuteDataSet(ApiTokens.Select_GetAPIToken(sqlHelper, token));
                 if (sqlHelper.Success)
                 {
-                    sqlHelper.Execute(ApiTokens.Update_GetAPIToken(sqlHelper, token, key, reference1, reference2));
+                    sqlHelper.Execute(ApiTokens.Update_APIToken(sqlHelper, token, key, reference1, reference2));
                 }
                 else
                 {
@@ -337,9 +342,10 @@ namespace Milimoe.FunGame.Server.Services
         public static void AfterCreateSQLService(SQLHelper sqlHelper)
         {
             Config.SQLMode = sqlHelper.Mode;
-            if (!sqlHelper.DatabaseExists())
+            ServerHelper.WriteLine("正在检查数据库 . . .", InvokeMessageType.Core);
+            if (!DatabaseExists() && !sqlHelper.DatabaseExists())
             {
-                ServerHelper.WriteLine("正在初始化数据库 . . .", InvokeMessageType.Core);
+                ServerHelper.WriteLine("数据库检查失败，正在初始化数据库 . . .", InvokeMessageType.Core);
                 if (sqlHelper is SQLiteHelper sqliteHelper)
                 {
                     sqliteHelper.ExecuteSqlFile(AppDomain.CurrentDomain.BaseDirectory + "fungame_sqlite.sql");
@@ -349,10 +355,26 @@ namespace Milimoe.FunGame.Server.Services
                     mysqlHelper.ExecuteSqlFile(AppDomain.CurrentDomain.BaseDirectory + "fungame.sql");
                 }
                 SetAPISecretKey(FunGameWebAPITokenID, sqlHelper: sqlHelper);
+                sqlHelper.Execute(Configs.Insert_Config(sqlHelper, "Initialization", FunGameInfo.FunGame_Version, "SQL Service Installed."));
+                SQLConfig.Clear();
+                SQLConfig.Add("Initialized", true);
+                SQLConfig.SaveConfig();
+                ServerHelper.WriteLine("数据库初始化完毕！", InvokeMessageType.Core);
             }
+            else ServerHelper.WriteLine("数据库检查通过！", InvokeMessageType.Core);
             ServerLogin(sqlHelper);
             ClearRoomList(sqlHelper);
             sqlHelper.Dispose();
+        }
+
+        public static bool DatabaseExists()
+        {
+            SQLConfig.LoadConfig();
+            if (SQLConfig.TryGetValue("Initialized", out object? value) && value is bool initialized)
+            {
+                return initialized;
+            }
+            return false;
         }
 
         /// <summary>
