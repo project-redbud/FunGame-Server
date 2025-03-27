@@ -3,6 +3,11 @@
     public class PayloadModel<T> where T : struct, Enum
     {
         /// <summary>
+        /// 业务事件
+        /// </summary>
+        public string Event { get; set; } = "";
+
+        /// <summary>
         /// 请求类型
         /// </summary>
         public T RequestType { get; set; } = default;
