@@ -23,7 +23,7 @@ namespace Milimoe.FunGame.Server.Services
             FunGameSystem.WebAPIPluginLoader?.OnBeforeRegEvent(sender, eventArgs);
             if (eventArgs.Cancel)
             {
-                msg = $"{DataRequestSet.GetTypeString(DataRequestType.Reg_Reg)} 请求已取消。{(eventArgs.EventMsg != "" ? $"原因：{eventArgs.EventMsg}" : "")}";
+                msg = GetPluginCancelString(DataRequestType.Reg_Reg, eventArgs);
                 ServerHelper.WriteLine(msg, InvokeMessageType.DataRequest, LogLevel.Warning);
                 return (eventArgs.EventMsg, RegInvokeType.None, false);
             }
@@ -77,8 +77,8 @@ namespace Milimoe.FunGame.Server.Services
                                     {
                                         // 发送验证码
                                         string ServerName = Config.ServerName;
-                                        string Subject = $"[{ServerName}] FunGame 注册验证码";
-                                        string Body = $"亲爱的 {username}， <br/>    感谢您注册[{ServerName}]，您的验证码是 {regVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
+                                        string Subject = $"[{ServerName}] 注册验证码";
+                                        string Body = $"亲爱的 {username}， <br/>    感谢您注册 [{ServerName}]，您的验证码是 {regVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
                                         string[] To = [email];
                                         if (mailSender.Send(mailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
                                         {
@@ -169,7 +169,7 @@ namespace Milimoe.FunGame.Server.Services
             FunGameSystem.WebAPIPluginLoader?.OnBeforeLoginEvent(sender, eventArgs);
             if (eventArgs.Cancel)
             {
-                msg = $"{DataRequestSet.GetTypeString(DataRequestType.Login_Login)} 请求已取消。{(eventArgs.EventMsg != "" ? $"原因：{eventArgs.EventMsg}" : "")}";
+                msg = GetPluginCancelString(DataRequestType.Login_Login, eventArgs);
                 ServerHelper.WriteLine(msg, InvokeMessageType.DataRequest, LogLevel.Warning);
                 return (success, dsUser, eventArgs.EventMsg, key);
             }
@@ -214,5 +214,7 @@ namespace Milimoe.FunGame.Server.Services
             ServerHelper.WriteLine(msg, InvokeMessageType.Core);
             return (success, dsUser, msg, key);
         }
+
+        private static string GetPluginCancelString(DataRequestType type, GeneralEventArgs e) => $"{DataRequestSet.GetTypeString(type)} 请求已取消。{(e.EventMsg != "" ? $"原因：{e.EventMsg}" : "")}";
     }
 }

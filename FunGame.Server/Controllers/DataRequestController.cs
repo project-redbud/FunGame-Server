@@ -125,6 +125,7 @@ namespace Milimoe.FunGame.Server.Controller
                     break;
 
                 case DataRequestType.Room_UpdateRoomMaster:
+                    await UpdateRoomMaster(data, result);
                     break;
 
                 default:
@@ -569,18 +570,6 @@ namespace Milimoe.FunGame.Server.Controller
                 ServerHelper.WriteLine("客户端提供的参数不足。", InvokeMessageType.DataRequest, LogLevel.Warning);
             }
 
-            LoginEventArgs eventArgs = new(username, password, autokey);
-            FunGameSystem.ServerPluginLoader?.OnBeforeLoginEvent(this, eventArgs);
-            FunGameSystem.WebAPIPluginLoader?.OnBeforeLoginEvent(this, eventArgs);
-            if (eventArgs.Cancel)
-            {
-                msg = $"{DataRequestSet.GetTypeString(_lastRequest)} 请求已取消。{(eventArgs.EventMsg != "" ? $"原因：{eventArgs.EventMsg}" : "")}";
-                ServerHelper.WriteLine(msg);
-                resultData.Add("msg", msg);
-                resultData.Add("user", user);
-                return;
-            }
-
             // CheckLogin的情况
             if (key != Guid.Empty)
             {
@@ -606,8 +595,6 @@ namespace Milimoe.FunGame.Server.Controller
                 }
             }
 
-            FunGameSystem.ServerPluginLoader?.OnAfterLoginEvent(this, eventArgs);
-            FunGameSystem.WebAPIPluginLoader?.OnAfterLoginEvent(this, eventArgs);
             resultData.Add("msg", msg);
             resultData.Add("user", user);
         }
@@ -688,8 +675,8 @@ namespace Milimoe.FunGame.Server.Controller
                                     {
                                         // 发送验证码
                                         string ServerName = Config.ServerName;
-                                        string Subject = $"[{ServerName}] FunGame 找回密码验证码";
-                                        string Body = $"亲爱的 {username}， <br/>    您正在找回[{ServerName}]账号的密码，您的验证码是 {forgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
+                                        string Subject = $"[{ServerName}] 找回密码验证码";
+                                        string Body = $"亲爱的 {username}， <br/>    您正在找回 [{ServerName}] 账号的密码，您的验证码是 {forgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
                                         string[] To = [email];
                                         if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
                                         {
@@ -769,6 +756,49 @@ namespace Milimoe.FunGame.Server.Controller
                 roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
             }
             resultData.Add("count", FunGameSystem.RoomList.GetUserCount(roomid));
+        }
+
+        /// <summary>
+        /// 更新房主
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        /// <returns></returns>
+        private async Task UpdateRoomMaster(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            bool result = false;
+
+            if (requestData.Count >= 2)
+            {
+                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
+                string roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
+                User newMaster = DataRequest.GetDictionaryJsonObject<User>(requestData, "newMaster") ?? Factory.GetUser();
+
+                if (roomid != "-1" && FunGameSystem.RoomList.IsExist(roomid) && newMaster.Id != 0)
+                {
+                    Room room = FunGameSystem.RoomList[roomid];
+                    User oldMaster = room.RoomMaster;
+                    room.RoomMaster = newMaster;
+                    result = true;
+
+                    if (SQLHelper != null)
+                    {
+                        SQLHelper.Execute(RoomQuery.Update_UpdateRoomMaster(SQLHelper, roomid, newMaster.Id));
+                        if (SQLHelper.Result == SQLResult.Success)
+                        {
+                            await Server.UpdateRoomMaster(room, true);
+                            ServerHelper.WriteLine($"[UpdateRoomMaster] RoomID: {roomid} 房主变更: {oldMaster.Username} -> {newMaster.Username}");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                ServerHelper.WriteLine("客户端提供的参数不足。", InvokeMessageType.DataRequest, LogLevel.Warning);
+            }
+
+            // 返回结果
+            resultData.Add("result", result);
         }
 
         /// <summary>
