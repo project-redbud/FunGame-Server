@@ -215,11 +215,16 @@ try
             IExceptionHandlerFeature? contextFeature = context.Features.Get<IExceptionHandlerFeature>();
             if (contextFeature != null)
             {
-                await context.Response.WriteAsync(new
+                await context.Response.WriteAsync(new PayloadModel<DataRequestType>()
                 {
-                    context.Response.StatusCode,
+                    Event = "system_error",
+                    RequestType = DataRequestType.UnKnown,
+                    StatusCode = context.Response.StatusCode,
                     Message = "Internal Server Error.",
-                    Detailed = contextFeature.Error.Message
+                    Data = new()
+                    {
+                        { "detail", contextFeature.Error.Message }
+                    }
                 }.ToString() ?? "");
             }
         });

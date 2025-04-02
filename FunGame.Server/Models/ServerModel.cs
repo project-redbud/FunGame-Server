@@ -11,6 +11,7 @@ using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Controller;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Services;
+using ProjectRedbud.FunGame.SQLQueryExtension;
 
 namespace Milimoe.FunGame.Server.Model
 {
@@ -382,6 +383,7 @@ namespace Milimoe.FunGame.Server.Model
         public async Task<bool> QuitRoom(string roomid, bool isMaster)
         {
             bool result;
+            SQLHelper?.NewTransaction();
 
             FunGameSystem.RoomList.CancelReady(roomid, User);
             FunGameSystem.RoomList.QuitRoom(roomid, User);
@@ -390,36 +392,37 @@ namespace Milimoe.FunGame.Server.Model
             if (isMaster)
             {
                 List<User> users = [.. FunGameSystem.RoomList[roomid].UserAndIsReady.Keys];
-                if (users.Count > 0) // 如果此时房间还有人，更新房主
+                User? newRoomMaster = null;
+                if (users.Count > 0) newRoomMaster = users[0];
+                SQLHelper?.QuitRoomByRoomMaster(roomid, User.Id, newRoomMaster?.Id);
+                if (newRoomMaster != null)
                 {
-                    User NewMaster = users[0];
-                    Room.RoomMaster = NewMaster;
-                    SQLHelper?.Execute(RoomQuery.Update_QuitRoom(SQLHelper, roomid, User.Id, NewMaster.Id));
-                    this.InRoom = General.HallInstance;
-                    await UpdateRoomMaster(Room, true);
-                    result = true;
+                    Room.RoomMaster = users[0];
+                    ServerHelper.WriteLine("[ " + GetClientName() + " ] 退出了房间 " + roomid + "，并更新房主为：" + newRoomMaster);
+                    await NotifyQuitRoom(Room, true);
                 }
-                else // 没人了就解散房间
+                else
                 {
                     FunGameSystem.RoomList.RemoveRoom(roomid);
-                    SQLHelper?.Execute(RoomQuery.Delete_QuitRoom(SQLHelper, roomid, User.Id));
-                    this.InRoom = General.HallInstance;
                     ServerHelper.WriteLine("[ " + GetClientName() + " ] 解散了房间 " + roomid);
-                    result = true;
                 }
+                InRoom = General.HallInstance;
+                result = true;
             }
             // 不是房主直接退出房间
             else
             {
                 this.InRoom = General.HallInstance;
-                await UpdateRoomMaster(Room);
+                await NotifyQuitRoom(Room);
                 result = true;
             }
+
+            SQLHelper?.Commit();
 
             return result;
         }
 
-        public async Task UpdateRoomMaster(Room room, bool isUpdateRoomMaster = false)
+        public async Task NotifyQuitRoom(Room room, bool isUpdateRoomMaster = false)
         {
             foreach (IServerModel Client in Listener.ClientList.Where(c => c != null && c.User.Id != 0 && room.Roomid == c.InRoom?.Roomid))
             {
