@@ -1170,7 +1170,32 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void GetOffer(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            string msg = "无法获取报价，请稍后再试。";
+            if (SQLHelper != null && requestData.Count >= 1)
+            {
+                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
+                bool apiQuery = DataRequest.GetDictionaryJsonObject<bool>(requestData, "apiQuery");
+                Offer? offer = SQLHelper.GetOffer(offerId);
+                if (offer != null)
+                {
+                    // 检查当前用户是否有权限查看（报价创建者或接收者）允许管理员使用 API 查询报价
+                    long userId = Server.User.Id;
+                    if ((apiQuery && Server.User.IsAdmin) || offer.Offeror == userId || offer.Offeree == userId)
+                    {
+                        resultData.Add("offer", offer);
+                        msg = "";
+                    }
+                    else
+                    {
+                        msg = "您无权查看此报价。";
+                    }
+                }
+                else
+                {
+                    msg = "报价不存在。";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1180,7 +1205,31 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void MakeOffer(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            string msg = "无法创建报价，请稍后再试。";
+            if (SQLHelper != null && requestData.Count >= 1)
+            {
+                long offeree = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Offeree);
+                long offeror = Server.User.Id;
+                if (offeror != 0 && offeree != 0 && offeror != offeree)
+                {
+                    SQLHelper.AddOffer(offeror, offeree);
+                    if (SQLHelper.Success)
+                    {
+                        long offerId = SQLHelper.LastInsertId;
+                        Offer? offer = SQLHelper.GetOffer(offerId);
+                        if (offer != null)
+                        {
+                            resultData.Add("offer", offer);
+                            msg = "";
+                        }
+                    }
+                }
+                else
+                {
+                    msg = "无效的用户ID。";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1190,7 +1239,154 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void ReviseOffer(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            string msg = "无法修改报价，请稍后再试。";
+            if (SQLHelper != null && requestData.Count >= 3)
+            {
+                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
+                OfferActionType action = DataRequest.GetDictionaryJsonObject<OfferActionType>(requestData, "action");
+                List<long> offerorItems = DataRequest.GetDictionaryJsonObject<List<long>>(requestData, "offerorItems") ?? [];
+                List<long> offereeItems = DataRequest.GetDictionaryJsonObject<List<long>>(requestData, "offereeItems") ?? [];
+                long userId = Server.User.Id;
+
+                Offer? offer = SQLHelper.GetOffer(offerId);
+                if (offer != null && (offer.Offeror == userId || offer.Offeree == userId))
+                {
+                    try
+                    {
+                        SQLHelper.NewTransaction();
+
+                        bool isOfferor = offer.Offeror == userId;
+                        bool canProceed = false;
+
+                        // 根据 action 处理状态
+                        switch (action)
+                        {
+                            case OfferActionType.OfferorRevise:
+                                if (isOfferor && (offer.Status == OfferState.Created || offer.Status == OfferState.Negotiating))
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.PendingOfferorConfirmation);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方修改。";
+                                break;
+
+                            case OfferActionType.OfferorConfirm:
+                                if (isOfferor && offer.Status == OfferState.PendingOfferorConfirmation)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.OfferorConfirmed);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方确认。";
+                                break;
+
+                            case OfferActionType.OfferorSend:
+                                if (isOfferor && offer.Status == OfferState.OfferorConfirmed)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.Sent);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方发送。";
+                                break;
+
+                            case OfferActionType.OfferorCancel:
+                                if (isOfferor && offer.Status != OfferState.Completed && offer.Status != OfferState.Rejected && offer.Status != OfferState.Cancelled && offer.Status != OfferState.Expired)
+                                {
+                                    SQLHelper.DeleteOfferItemsBackupByOfferId(offerId);
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.Cancelled);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方取消。";
+                                break;
+                                
+                            case OfferActionType.OfferorAccept:
+                                if (isOfferor && offer.Status == OfferState.Negotiating)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.NegotiationAccepted);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方同意。";
+                                break;
+
+                            case OfferActionType.OffereeRevise:
+                                // 接收方修改报价
+                                if (!isOfferor && (offer.Status == OfferState.Sent || offer.Status == OfferState.NegotiationAccepted))
+                                {
+                                    // 备份
+                                    SQLHelper.BackupOfferItem(offer);
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.PendingOffereeConfirmation);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许接收方修改。";
+                                break;
+
+                            case OfferActionType.OffereeConfirm:
+                                if (!isOfferor && offer.Status == OfferState.PendingOffereeConfirmation)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.OffereeConfirmed);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许接收方确认。";
+                                break;
+                                
+                            case OfferActionType.OffereeSend:
+                                if (!isOfferor && (offer.Status == OfferState.Sent || offer.Status == OfferState.Negotiating))
+                                {
+                                    if (offer.NegotiatedTimes < 3)
+                                    {
+                                        SQLHelper.UpdateOfferStatus(offerId, OfferState.Negotiating);
+                                        SQLHelper.UpdateOfferNegotiatedTimes(offerId, offer.NegotiatedTimes + 1);
+                                        canProceed = true;
+                                    }
+                                    else msg = "协商次数已达上限（3次）。";
+                                }
+                                else msg = "当前状态不允许接收方修改。";
+                                break;
+
+                            default:
+                                msg = "无效的操作类型。";
+                                break;
+                        }
+
+                        if (canProceed)
+                        {
+                            // 更新物品
+                            SQLHelper.DeleteOfferItemsByOfferId(offerId);
+                            foreach (long itemId in offerorItems)
+                            {
+                                SQLHelper.AddOfferItem(offerId, offer.Offeror, itemId);
+                            }
+                            foreach (long itemId in offereeItems)
+                            {
+                                SQLHelper.AddOfferItem(offerId, offer.Offeree, itemId);
+                            }
+
+                            offer = SQLHelper.GetOffer(offerId);
+                            if (offer != null)
+                            {
+                                SQLHelper.Commit();
+                                resultData.Add("offer", offer);
+                                msg = "";
+                            }
+                        }
+
+                        if (msg != "")
+                        {
+                            SQLHelper.Rollback();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        SQLHelper.Rollback();
+                        ServerHelper.Error(e);
+                        msg = "修改报价时发生错误，请稍后再试。";
+                    }
+                }
+                else
+                {
+                    msg = "报价不存在或您无权修改。";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1200,7 +1396,114 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void RespondOffer(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            string msg = "无法回应报价，请稍后再试。";
+            if (SQLHelper != null && requestData.Count >= 2) // 只需要 offerId 和 action
+            {
+                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
+                OfferActionType action = DataRequest.GetDictionaryJsonObject<OfferActionType>(requestData, "action");
+                long userId = Server.User.Id;
+
+                Offer? offer = SQLHelper.GetOffer(offerId);
+                if (offer != null && offer.Offeree == userId)
+                {
+                    bool canProceed = false;
+                    bool isNegotiating = false;
+
+                    try
+                    {
+                        SQLHelper.NewTransaction();
+
+                        // 根据 action 处理状态
+                        switch (action)
+                        {
+                            case OfferActionType.OffereeAccept:
+                                if (offer.Status == OfferState.Sent || offer.Status == OfferState.Negotiating || offer.Status == OfferState.NegotiationAccepted)
+                                {
+                                    if (offer.Status == OfferState.Negotiating)
+                                    {
+                                        isNegotiating = true;
+                                    }
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.Completed);
+                                    SQLHelper.UpdateOfferFinishTime(offerId, DateTime.Now);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许接受。";
+                                break;
+
+                            case OfferActionType.OffereeReject:
+                                if (offer.Status == OfferState.Sent || offer.Status == OfferState.Negotiating)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.Rejected);
+                                    SQLHelper.UpdateOfferFinishTime(offerId, DateTime.Now);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许拒绝。";
+                                break;
+
+                            default:
+                                msg = "无效的操作类型。";
+                                break;
+                        }
+
+                        if (canProceed)
+                        {
+                            offer = SQLHelper.GetOffer(offerId, isNegotiating);
+                            if (offer != null)
+                            {
+                                if (offer.Status == OfferState.Completed)
+                                {
+                                    User? offeror = SQLHelper.GetUserById(offer.Offeror);
+                                    if (offeror != null)
+                                    {
+                                        foreach (Item item in offer.OffereeItems)
+                                        {
+                                            Item newItem = item.Copy();
+                                            newItem.User = offeror;
+                                            newItem.IsSellable = false;
+                                            newItem.IsTradable = false;
+                                            newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
+                                            newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
+                                            offeror.Inventory.Items.Add(newItem);
+                                        }
+                                        SQLHelper.UpdateInventory(offeror.Inventory);
+                                        User offeree = Server.User;
+                                        foreach (Item item in offer.OfferorItems)
+                                        {
+                                            Item newItem = item.Copy();
+                                            newItem.User = offeree;
+                                            newItem.IsSellable = false;
+                                            newItem.IsTradable = false;
+                                            newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
+                                            newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
+                                            offeree.Inventory.Items.Add(newItem);
+                                        }
+                                        SQLHelper.UpdateInventory(offeree.Inventory);
+                                        SQLHelper.Commit();
+                                        resultData.Add("offer", offer);
+                                        msg = "";
+                                    }
+                                }
+                            }
+                        }
+
+                        if (msg != "")
+                        {
+                            SQLHelper.Rollback();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        SQLHelper.Rollback();
+                        ServerHelper.Error(e);
+                        msg = "回应报价时发生错误，请稍后再试。";
+                    }
+                }
+                else
+                {
+                    msg = "报价不存在或您无权回应。";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         #endregion
