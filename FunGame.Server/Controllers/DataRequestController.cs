@@ -4,13 +4,13 @@ using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Addon;
-using Milimoe.FunGame.Core.Library.Common.Event;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Services;
+using ProjectRedbud.FunGame.SQLQueryExtension;
 
 namespace Milimoe.FunGame.Server.Controller
 {
@@ -51,6 +51,7 @@ namespace Milimoe.FunGame.Server.Controller
         {
             Dictionary<string, object> result = [];
             _lastRequest = type;
+            ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
 
             switch (type)
             {
@@ -118,6 +119,7 @@ namespace Milimoe.FunGame.Server.Controller
                     break;
 
                 case DataRequestType.Room_GetRoomSettings:
+                    GetRoomSettings(data, result);
                     break;
 
                 case DataRequestType.Room_GetRoomPlayerCount:
@@ -125,6 +127,79 @@ namespace Milimoe.FunGame.Server.Controller
                     break;
 
                 case DataRequestType.Room_UpdateRoomMaster:
+                    await UpdateRoomMaster(data, result);
+                    break;
+
+                case DataRequestType.UserCenter_GetUserProfile:
+                    GetUserProfile(data, result);
+                    break;
+
+                case DataRequestType.UserCenter_GetUserStatistics:
+                    GetUserStatistics(data, result);
+                    break;
+
+                case DataRequestType.UserCenter_UpdateUser:
+                    UpdateUser(data, result);
+                    break;
+
+                case DataRequestType.UserCenter_UpdatePassword:
+                    UpdatePassword(data, result);
+                    break;
+
+                case DataRequestType.UserCenter_DailySignIn:
+                    DailySignIn(result);
+                    break;
+
+                case DataRequestType.Inventory_GetStore:
+                    GetStore(data, result);
+                    break;
+
+                case DataRequestType.Inventory_GetMarket:
+                    GetMarket(data, result);
+                    break;
+
+                case DataRequestType.Inventory_StoreBuy:
+                    StoreBuy(data, result);
+                    break;
+
+                case DataRequestType.Inventory_MarketBuy:
+                    MarketBuy(data, result);
+                    break;
+
+                case DataRequestType.Inventory_GetInventory:
+                    GetInventory(data, result);
+                    break;
+
+                case DataRequestType.Inventory_Use:
+                    Use(data, result);
+                    break;
+
+                case DataRequestType.Inventory_StoreSell:
+                    StoreSell(data, result);
+                    break;
+
+                case DataRequestType.Inventory_MarketSell:
+                    MarketSell(data, result);
+                    break;
+
+                case DataRequestType.Inventory_UpdateMarketPrice:
+                    UpdateMarketPrice(data, result);
+                    break;
+
+                case DataRequestType.Inventory_GetOffer:
+                    GetOffer(data, result);
+                    break;
+
+                case DataRequestType.Inventory_MakeOffer:
+                    MakeOffer(data, result);
+                    break;
+
+                case DataRequestType.Inventory_ReviseOffer:
+                    ReviseOffer(data, result);
+                    break;
+
+                case DataRequestType.Inventory_RespondOffer:
+                    RespondOffer(data, result);
                     break;
 
                 default:
@@ -147,7 +222,6 @@ namespace Milimoe.FunGame.Server.Controller
             Guid key = Guid.Empty;
             if (requestData.Count >= 1)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 key = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "key");
                 if (Server.IsLoginKey(key))
                 {
@@ -169,9 +243,8 @@ namespace Milimoe.FunGame.Server.Controller
         /// 获取公告
         /// </summary>
         /// <param name="resultData"></param>
-        private void GetServerNotice(Dictionary<string, object> resultData)
+        private static void GetServerNotice(Dictionary<string, object> resultData)
         {
-            ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
             resultData.Add("notice", Config.ServerNotice);
         }
 
@@ -189,7 +262,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string gamemodule = DataRequest.GetDictionaryJsonObject<string>(requestData, "gamemoduleserver") ?? "";
                 string gamemap = DataRequest.GetDictionaryJsonObject<string>(requestData, "gamemap") ?? "";
                 bool isrank = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isrank");
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest) + " : " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gamemodule, gamemap]) + ")", InvokeMessageType.DataRequest);
+                ServerHelper.WriteLine("[CreateRoom] " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gamemodule, gamemap]) + ")", InvokeMessageType.DataRequest);
                 if (gamemodule == "" || gamemap == "" || FunGameSystem.GameModuleLoader is null || !FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(gamemodule) || !FunGameSystem.GameModuleLoader.Maps.ContainsKey(gamemap))
                 {
                     ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
@@ -218,10 +291,10 @@ namespace Milimoe.FunGame.Server.Controller
                         if (SQLHelper.Result == SQLResult.Success)
                         {
                             ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
-                            SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
-                            if (SQLHelper.Result == SQLResult.Success && SQLHelper.DataSet.Tables[0].Rows.Count > 0)
+                            DataRow? dr = SQLHelper.ExecuteDataRow(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
+                            if (dr != null)
                             {
-                                room = Factory.GetRoom(SQLHelper.DataSet.Tables[0].Rows[0], user);
+                                room = Factory.GetRoom(dr, user);
                                 FunGameSystem.RoomList.AddRoom(room);
                             }
                         }
@@ -235,9 +308,8 @@ namespace Milimoe.FunGame.Server.Controller
         /// 更新房间列表
         /// </summary>
         /// <param name="resultData"></param>
-        private void UpdateRoom(Dictionary<string, object> resultData)
+        private static void UpdateRoom(Dictionary<string, object> resultData)
         {
-            ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
             resultData.Add("rooms", FunGameSystem.RoomList.ListRoom); // 传RoomList
         }
 
@@ -251,7 +323,6 @@ namespace Milimoe.FunGame.Server.Controller
             bool result = false;
             if (requestData.Count >= 2)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 string roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
                 bool isMaster = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isMaster");
 
@@ -273,7 +344,6 @@ namespace Milimoe.FunGame.Server.Controller
             bool result = false;
             if (requestData.Count >= 1)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 string roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
 
                 if (roomid != "-1")
@@ -312,7 +382,7 @@ namespace Milimoe.FunGame.Server.Controller
                 bool iscancel = DataRequest.GetDictionaryJsonObject<bool>(requestData, "iscancel");
                 if (!iscancel)
                 {
-                    ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest) + " : Start", InvokeMessageType.DataRequest);
+                    ServerHelper.WriteLine("[MatchRoom] Start", InvokeMessageType.DataRequest);
                     RoomType type = DataRequest.GetDictionaryJsonObject<RoomType>(requestData, "roomtype");
                     User user = DataRequest.GetDictionaryJsonObject<User>(requestData, "matcher") ?? Factory.GetUser();
                     StartMatching(type, user);
@@ -320,7 +390,7 @@ namespace Milimoe.FunGame.Server.Controller
                 else
                 {
                     // 取消匹配
-                    ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest) + " : Cancel", InvokeMessageType.DataRequest);
+                    ServerHelper.WriteLine("[MatchRoom] Cancel", InvokeMessageType.DataRequest);
                     StopMatching();
                 }
             }
@@ -338,7 +408,6 @@ namespace Milimoe.FunGame.Server.Controller
             string roomid = "-1";
             if (requestData.Count >= 1)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
                 User user = Server.User;
 
@@ -364,7 +433,6 @@ namespace Milimoe.FunGame.Server.Controller
             string roomid = "-1";
             if (requestData.Count >= 1)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
                 User user = Server.User;
 
@@ -406,7 +474,6 @@ namespace Milimoe.FunGame.Server.Controller
             bool result = false;
             if (requestData.Count >= 2)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 string roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
                 bool isMaster = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isMaster");
 
@@ -522,7 +589,6 @@ namespace Milimoe.FunGame.Server.Controller
             bool success = false;
             if (requestData.Count >= 4)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 string username = DataRequest.GetDictionaryJsonObject<string>(requestData, "username") ?? "";
                 string password = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
                 string email = DataRequest.GetDictionaryJsonObject<string>(requestData, "email") ?? "";
@@ -549,7 +615,6 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private async Task Login(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
             string msg = "";
             User user = Factory.GetUser();
 
@@ -567,18 +632,6 @@ namespace Milimoe.FunGame.Server.Controller
             else
             {
                 ServerHelper.WriteLine("客户端提供的参数不足。", InvokeMessageType.DataRequest, LogLevel.Warning);
-            }
-
-            LoginEventArgs eventArgs = new(username, password, autokey);
-            FunGameSystem.ServerPluginLoader?.OnBeforeLoginEvent(this, eventArgs);
-            FunGameSystem.WebAPIPluginLoader?.OnBeforeLoginEvent(this, eventArgs);
-            if (eventArgs.Cancel)
-            {
-                msg = $"{DataRequestSet.GetTypeString(_lastRequest)} 请求已取消。{(eventArgs.EventMsg != "" ? $"原因：{eventArgs.EventMsg}" : "")}";
-                ServerHelper.WriteLine(msg);
-                resultData.Add("msg", msg);
-                resultData.Add("user", user);
-                return;
             }
 
             // CheckLogin的情况
@@ -606,8 +659,6 @@ namespace Milimoe.FunGame.Server.Controller
                 }
             }
 
-            FunGameSystem.ServerPluginLoader?.OnAfterLoginEvent(this, eventArgs);
-            FunGameSystem.WebAPIPluginLoader?.OnAfterLoginEvent(this, eventArgs);
             resultData.Add("msg", msg);
             resultData.Add("user", user);
         }
@@ -622,7 +673,6 @@ namespace Milimoe.FunGame.Server.Controller
             string msg = "无法找回您的密码，请稍后再试。"; // 返回的验证信息
             if (requestData.Count >= 3)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 string username = DataRequest.GetDictionaryJsonObject<string>(requestData, ForgetVerifyCodes.Column_Username) ?? "";
                 string email = DataRequest.GetDictionaryJsonObject<string>(requestData, ForgetVerifyCodes.Column_Email) ?? "";
                 string verifycode = DataRequest.GetDictionaryJsonObject<string>(requestData, ForgetVerifyCodes.Column_ForgetVerifyCode) ?? "";
@@ -633,11 +683,11 @@ namespace Milimoe.FunGame.Server.Controller
                     // 先检查验证码
                     if (SQLHelper != null)
                     {
-                        SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_ForgetVerifyCode(SQLHelper, username, email, verifycode));
-                        if (SQLHelper.Result == SQLResult.Success)
+                        DataRow? dr = SQLHelper.ExecuteDataRow(ForgetVerifyCodes.Select_ForgetVerifyCode(SQLHelper, username, email, verifycode));
+                        if (dr != null)
                         {
                             // 检查验证码是否过期
-                            if (!DateTime.TryParse(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime].ToString(), out DateTime SendTime))
+                            if (!DateTime.TryParse(dr[ForgetVerifyCodes.Column_SendTime].ToString(), out DateTime SendTime))
                             {
                                 SendTime = General.DefaultTime;
                             }
@@ -650,7 +700,7 @@ namespace Milimoe.FunGame.Server.Controller
                             else
                             {
                                 // 检查验证码是否正确
-                                if (verifycode.Equals(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode]))
+                                if (verifycode.Equals(dr[ForgetVerifyCodes.Column_ForgetVerifyCode]))
                                 {
                                     ServerHelper.WriteLine("[ForgerPassword] Username: " + username + " Email: " + email);
                                     SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(SQLHelper, username, email));
@@ -675,8 +725,8 @@ namespace Milimoe.FunGame.Server.Controller
                         else
                         {
                             // 检查验证码是否发送过和是否过期
-                            SQLHelper.ExecuteDataSet(ForgetVerifyCodes.Select_HasSentForgetVerifyCode(SQLHelper, username, email));
-                            if (SQLHelper.Result != SQLResult.Success || (DateTime.TryParse(SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_SendTime].ToString(), out DateTime SendTime) && (DateTime.Now - SendTime).TotalMinutes >= 10))
+                            DataRow? dr = SQLHelper.ExecuteDataRow(ForgetVerifyCodes.Select_HasSentForgetVerifyCode(SQLHelper, username, email));
+                            if (dr is null || (DateTime.TryParse(dr[ForgetVerifyCodes.Column_SendTime].ToString(), out DateTime SendTime) && (DateTime.Now - SendTime).TotalMinutes >= 10))
                             {
                                 // 发送验证码，需要先删除之前过期的验证码
                                 SQLHelper.Execute(ForgetVerifyCodes.Delete_ForgetVerifyCode(SQLHelper, username, email));
@@ -688,8 +738,8 @@ namespace Milimoe.FunGame.Server.Controller
                                     {
                                         // 发送验证码
                                         string ServerName = Config.ServerName;
-                                        string Subject = $"[{ServerName}] FunGame 找回密码验证码";
-                                        string Body = $"亲爱的 {username}， <br/>    您正在找回[{ServerName}]账号的密码，您的验证码是 {forgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
+                                        string Subject = $"[{ServerName}] 找回密码验证码";
+                                        string Body = $"亲爱的 {username}， <br/>    您正在找回 [{ServerName}] 账号的密码，您的验证码是 {forgetVerify} ，10分钟内有效，请及时输入！<br/><br/>{ServerName}<br/>{DateTimeUtility.GetDateTimeToString(TimeType.LongDateOnly)}";
                                         string[] To = [email];
                                         if (MailSender.Send(MailSender.CreateMail(Subject, Body, System.Net.Mail.MailPriority.Normal, true, To)) == MailSendResult.Success)
                                         {
@@ -704,7 +754,7 @@ namespace Milimoe.FunGame.Server.Controller
                                     }
                                     else // 不使用MailSender的情况
                                     {
-                                        ServerHelper.WriteLine(Server.GetClientName() + $" 验证码为：{forgetVerify}，请服务器管理员告知此用户");
+                                        ServerHelper.WriteLine(Server.GetClientName() + $" 验证码为：{forgetVerify}，但因 SMTP 服务未开启，请服务器管理员告知此用户");
                                         msg = "";
                                     }
                                 }
@@ -712,39 +762,11 @@ namespace Milimoe.FunGame.Server.Controller
                             else
                             {
                                 // 发送过验证码且验证码没有过期
-                                string ForgetVerifyCode = (string)SQLHelper.DataSet.Tables[0].Rows[0][ForgetVerifyCodes.Column_ForgetVerifyCode];
+                                string ForgetVerifyCode = (string)dr[ForgetVerifyCodes.Column_ForgetVerifyCode];
                                 ServerHelper.WriteLine(Server.GetClientName() + $" 十分钟内已向{email}发送过验证码：{ForgetVerifyCode}");
                                 msg = "";
                             }
                         }
-                    }
-                }
-            }
-            resultData.Add("msg", msg);
-        }
-
-        /// <summary>
-        /// 更新用户的密码
-        /// </summary>
-        /// <param name="requestData"></param>
-        /// <param name="resultData"></param>
-        private void UpdatePassword(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
-        {
-            string msg = "无法更新您的密码，请稍后再试。";
-            if (requestData.Count >= 2)
-            {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
-                string username = DataRequest.GetDictionaryJsonObject<string>(requestData, UserQuery.Column_Username) ?? "";
-                string password = DataRequest.GetDictionaryJsonObject<string>(requestData, UserQuery.Column_Password) ?? "";
-                if (username.Trim() != "" && password.Trim() != "")
-                {
-                    FunGameSystem.UpdateUserKey(username);
-                    password = password.Encrypt(FunGameSystem.GetUserKey(username));
-                    SQLHelper?.Execute(UserQuery.Update_Password(SQLHelper, username, password));
-                    if (SQLHelper?.Success ?? false)
-                    {
-                        // 更新成功返回空值
-                        msg = "";
                     }
                 }
             }
@@ -756,19 +778,70 @@ namespace Milimoe.FunGame.Server.Controller
         #region Room
 
         /// <summary>
+        /// 获取房间设置
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private static void GetRoomSettings(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
         /// 获取房间内玩家数量
         /// </summary>
         /// <param name="requestData"></param>
         /// <param name="resultData"></param>
-        private void GetRoomPlayerCount(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        private static void GetRoomPlayerCount(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
             string roomid = "-1";
             if (requestData.Count >= 1)
             {
-                ServerHelper.WriteLine(Server.GetClientName() + " -> " + DataRequestSet.GetTypeString(_lastRequest), InvokeMessageType.DataRequest);
                 roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
             }
             resultData.Add("count", FunGameSystem.RoomList.GetUserCount(roomid));
+        }
+
+        /// <summary>
+        /// 更新房主
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        /// <returns></returns>
+        private async Task UpdateRoomMaster(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            bool result = false;
+
+            if (requestData.Count >= 2)
+            {
+                string roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
+                User newMaster = DataRequest.GetDictionaryJsonObject<User>(requestData, "newMaster") ?? Factory.GetUser();
+
+                if (roomid != "-1" && FunGameSystem.RoomList.IsExist(roomid) && newMaster.Id != 0)
+                {
+                    Room room = FunGameSystem.RoomList[roomid];
+                    User oldMaster = room.RoomMaster;
+                    room.RoomMaster = newMaster;
+                    result = true;
+
+                    if (SQLHelper != null)
+                    {
+                        SQLHelper.UpdateRoomMaster(roomid, newMaster.Id);
+                        if (SQLHelper.Result == SQLResult.Success)
+                        {
+                            await Server.SendClients(Server.Listener.ClientList.Where(c => c != null && c.InRoom.Roomid == roomid), SocketMessageType.UpdateRoomMaster, room);
+                            ServerHelper.WriteLine($"[UpdateRoomMaster] RoomID: {roomid} 房主变更: {oldMaster.Username} -> {newMaster.Username}");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                ServerHelper.WriteLine("客户端提供的参数不足。", InvokeMessageType.DataRequest, LogLevel.Warning);
+            }
+
+            // 返回结果
+            resultData.Add("result", result);
         }
 
         /// <summary>
@@ -822,18 +895,32 @@ namespace Milimoe.FunGame.Server.Controller
             double time = 0; // 已经匹配的时间
             double expandInterval = 10; // 扩大匹配范围的间隔时间
             double maxTime = 50; // 最大匹配时间
+            bool isRefreshRoom = false; // 是否刷新房间列表
+
+            // 匹配房间类型（如果是All，则匹配所有房间）
+            List<Room> targets;
+            if (roomtype == RoomType.All)
+            {
+                targets = [.. FunGameSystem.RoomList.ListRoom.Where(r => r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching)];
+            }
+            else
+            {
+                targets = [.. FunGameSystem.RoomList.ListRoom.Where(r => (r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching) && r.RoomType == roomtype)];
+            }
 
             while (_isMatching)
             {
-                // 匹配房间类型（如果是All，则匹配所有房间）
-                List<Room> targets;
-                if (roomtype == RoomType.All)
+                if (isRefreshRoom)
                 {
-                    targets = [.. FunGameSystem.RoomList.ListRoom.Where(r => r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching)];
-                }
-                else
-                {
-                    targets = [.. FunGameSystem.RoomList.ListRoom.Where(r => (r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching) && r.RoomType == roomtype)];
+                    isRefreshRoom = false;
+                    if (roomtype == RoomType.All)
+                    {
+                        targets = [.. FunGameSystem.RoomList.ListRoom.Where(r => r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching)];
+                    }
+                    else
+                    {
+                        targets = [.. FunGameSystem.RoomList.ListRoom.Where(r => (r.RoomState == RoomState.Created || r.RoomState == RoomState.Matching) && r.RoomType == roomtype)];
+                    }
                 }
 
                 // 如果匹配停止，则退出
@@ -865,6 +952,8 @@ namespace Milimoe.FunGame.Server.Controller
                 if (time >= expandInterval * i)
                 {
                     i++;
+                    // 刷新房间列表
+                    isRefreshRoom = true;
                 }
                 // 达到最大匹配时间后不再匹配Elo，直接返回第一个房间
                 if (time >= maxTime)
@@ -877,6 +966,556 @@ namespace Milimoe.FunGame.Server.Controller
             }
 
             return General.HallInstance;
+        }
+
+        #endregion
+
+        #region UserCenter
+
+        /// <summary>
+        /// 获取用户资料信息
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void GetUserProfile(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 获取用户统计数据
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void GetUserStatistics(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 更新用户（全部数据）
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void UpdateUser(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 更新用户的密码
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void UpdatePassword(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            string msg = "无法更新您的密码，请稍后再试。";
+            if (requestData.Count >= 2)
+            {
+                string username = DataRequest.GetDictionaryJsonObject<string>(requestData, UserQuery.Column_Username) ?? "";
+                string password = DataRequest.GetDictionaryJsonObject<string>(requestData, UserQuery.Column_Password) ?? "";
+                if (username.Trim() != "" && password.Trim() != "")
+                {
+                    FunGameSystem.UpdateUserKey(username);
+                    password = password.Encrypt(FunGameSystem.GetUserKey(username));
+                    SQLHelper?.UpdatePassword(username, password);
+                    if (SQLHelper?.Success ?? false)
+                    {
+                        // 更新成功返回空值
+                        msg = "";
+                    }
+                }
+            }
+            resultData.Add("msg", msg);
+        }
+
+        /// <summary>
+        /// 每日签到
+        /// </summary>
+        /// <param name="resultData"></param>
+        private void DailySignIn(Dictionary<string, object> resultData)
+        {
+            if (SQLHelper != null)
+            {
+                long userId = Server.User.Id;
+                if (userId != 0)
+                {
+                    DataRow? dr = SQLHelper.ExecuteDataRow(UserSignIns.Select_GetUserSignIn(SQLHelper, userId));
+                    if (dr != null)
+                    {
+                        int days = Convert.ToInt32(dr[UserSignIns.Column_Days]) + 1;
+                        bool isSigned = Convert.ToInt32(dr[UserSignIns.Column_IsSigned]) != 0;
+                        if (dr[UserSignIns.Column_LastTime] != DBNull.Value && DateTime.TryParseExact(dr[UserSignIns.Column_LastTime].ToString(), General.GeneralDateTimeFormat, null, System.Globalization.DateTimeStyles.None, out DateTime dt))
+                        {
+                            if (isSigned)
+                            {
+                                resultData.Add("msg", "今天已经签到过了，请明天再来。");
+                                return;
+                            }
+                            if ((DateTime.Now - dt).TotalDays > 1)
+                            {
+                                days = 1;
+                            }
+                        }
+                        SQLHelper.Execute(UserSignIns.Update_UserSignIn(SQLHelper, userId, days));
+                        if (SQLHelper.Success)
+                        {
+                            resultData.Add("msg", $"签到成功！你已经连续签到 {days} 天！");
+                            return;
+                        }
+                    }
+                }
+            }
+            resultData.Add("msg", "签到失败！");
+        }
+
+        #endregion
+
+        #region Inventory
+
+        /// <summary>
+        /// 获取商店信息
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void GetStore(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 获取市场信息
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void GetMarket(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 购买物品（商店）
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void StoreBuy(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 购买物品（市场）
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void MarketBuy(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 获取库存信息
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void GetInventory(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 使用物品
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void Use(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 出售物品（商店）
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void StoreSell(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 出售物品（市场）
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void MarketSell(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 更新市场价格
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void UpdateMarketPrice(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            // TODO
+        }
+
+        /// <summary>
+        /// 获取交易报价
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void GetOffer(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            string msg = "无法获取报价，请稍后再试。";
+            if (SQLHelper != null && requestData.Count >= 1)
+            {
+                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
+                bool apiQuery = DataRequest.GetDictionaryJsonObject<bool>(requestData, "apiQuery");
+                Offer? offer = SQLHelper.GetOffer(offerId);
+                if (offer != null)
+                {
+                    // 检查当前用户是否有权限查看（报价创建者或接收者）允许管理员使用 API 查询报价
+                    long userId = Server.User.Id;
+                    if ((apiQuery && Server.User.IsAdmin) || offer.Offeror == userId || offer.Offeree == userId)
+                    {
+                        resultData.Add("offer", offer);
+                        msg = "";
+                    }
+                    else
+                    {
+                        msg = "您无权查看此报价。";
+                    }
+                }
+                else
+                {
+                    msg = "报价不存在。";
+                }
+            }
+            resultData.Add("msg", msg);
+        }
+
+        /// <summary>
+        /// 创建交易报价
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void MakeOffer(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            string msg = "无法创建报价，请稍后再试。";
+            if (SQLHelper != null && requestData.Count >= 1)
+            {
+                long offeree = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Offeree);
+                long offeror = Server.User.Id;
+                if (offeror != 0 && offeree != 0 && offeror != offeree)
+                {
+                    SQLHelper.AddOffer(offeror, offeree);
+                    if (SQLHelper.Success)
+                    {
+                        long offerId = SQLHelper.LastInsertId;
+                        Offer? offer = SQLHelper.GetOffer(offerId);
+                        if (offer != null)
+                        {
+                            resultData.Add("offer", offer);
+                            msg = "";
+                        }
+                    }
+                }
+                else
+                {
+                    msg = "无效的用户ID。";
+                }
+            }
+            resultData.Add("msg", msg);
+        }
+
+        /// <summary>
+        /// 修改交易报价
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void ReviseOffer(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            string msg = "无法修改报价，请稍后再试。";
+            if (SQLHelper != null && requestData.Count >= 3)
+            {
+                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
+                OfferActionType action = DataRequest.GetDictionaryJsonObject<OfferActionType>(requestData, "action");
+                List<Guid> offerorItems = DataRequest.GetDictionaryJsonObject<List<Guid>>(requestData, "offerorItems") ?? [];
+                List<Guid> offereeItems = DataRequest.GetDictionaryJsonObject<List<Guid>>(requestData, "offereeItems") ?? [];
+                long userId = Server.User.Id;
+
+                Offer? offer = SQLHelper.GetOffer(offerId);
+                if (offer != null && (offer.Offeror == userId || offer.Offeree == userId))
+                {
+                    try
+                    {
+                        SQLHelper.NewTransaction();
+
+                        bool isOfferor = offer.Offeror == userId;
+                        bool canProceed = false;
+
+                        // 根据 action 处理状态
+                        switch (action)
+                        {
+                            case OfferActionType.OfferorRevise:
+                                if (isOfferor && (offer.Status == OfferState.Created || offer.Status == OfferState.Negotiating))
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.PendingOfferorConfirmation);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方修改。";
+                                break;
+
+                            case OfferActionType.OfferorConfirm:
+                                if (isOfferor && offer.Status == OfferState.PendingOfferorConfirmation)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.OfferorConfirmed);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方确认。";
+                                break;
+
+                            case OfferActionType.OfferorSend:
+                                if (isOfferor && offer.Status == OfferState.OfferorConfirmed)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.Sent);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方发送。";
+                                break;
+
+                            case OfferActionType.OfferorCancel:
+                                if (isOfferor && offer.Status != OfferState.Completed && offer.Status != OfferState.Rejected && offer.Status != OfferState.Cancelled && offer.Status != OfferState.Expired)
+                                {
+                                    SQLHelper.DeleteOfferItemsBackupByOfferId(offerId);
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.Cancelled);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方取消。";
+                                break;
+                                
+                            case OfferActionType.OfferorAccept:
+                                if (isOfferor && offer.Status == OfferState.Negotiating)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.NegotiationAccepted);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许发起方同意。";
+                                break;
+
+                            case OfferActionType.OffereeRevise:
+                                // 接收方修改报价
+                                if (!isOfferor && offer.NegotiatedTimes >= 3)
+                                {
+                                    msg = "当前协商次数已达上限（3次），不允许接收方修改。";
+                                }
+                                else if (!isOfferor && (offer.Status == OfferState.Sent || offer.Status == OfferState.NegotiationAccepted))
+                                {
+                                    // 备份
+                                    SQLHelper.BackupOfferItem(offer);
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.PendingOffereeConfirmation);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许接收方修改。";
+                                break;
+
+                            case OfferActionType.OffereeConfirm:
+                                if (!isOfferor && offer.Status == OfferState.PendingOffereeConfirmation)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.OffereeConfirmed);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许接收方确认。";
+                                break;
+                                
+                            case OfferActionType.OffereeSend:
+                                if (!isOfferor && (offer.Status == OfferState.OffereeConfirmed))
+                                {
+                                    if (offer.NegotiatedTimes < 3)
+                                    {
+                                        SQLHelper.UpdateOfferStatus(offerId, OfferState.Negotiating);
+                                        SQLHelper.UpdateOfferNegotiatedTimes(offerId, offer.NegotiatedTimes + 1);
+                                        canProceed = true;
+                                    }
+                                    else msg = "当前协商次数已达上限（3次），不允许接收方发送。";
+                                }
+                                else msg = "当前状态不允许接收方修改。";
+                                break;
+
+                            default:
+                                msg = "无效的操作类型。";
+                                break;
+                        }
+
+                        if (canProceed)
+                        {
+                            // 更新物品
+                            SQLHelper.DeleteOfferItemsByOfferId(offerId);
+                            foreach (Guid itemGuid in offerorItems)
+                            {
+                                SQLHelper.AddOfferItem(offerId, offer.Offeror, itemGuid);
+                            }
+                            foreach (Guid itemGuid in offereeItems)
+                            {
+                                SQLHelper.AddOfferItem(offerId, offer.Offeree, itemGuid );
+                            }
+
+                            offer = SQLHelper.GetOffer(offerId);
+                            if (offer != null)
+                            {
+                                SQLHelper.Commit();
+                                resultData.Add("offer", offer);
+                                msg = "";
+                            }
+                        }
+
+                        if (msg != "")
+                        {
+                            SQLHelper.Rollback();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        SQLHelper.Rollback();
+                        ServerHelper.Error(e);
+                        msg = "修改报价时发生错误，请稍后再试。";
+                    }
+                }
+                else
+                {
+                    msg = "报价不存在或您无权修改。";
+                }
+            }
+            resultData.Add("msg", msg);
+        }
+
+        /// <summary>
+        /// 回应交易报价
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void RespondOffer(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            string msg = "无法回应报价，请稍后再试。";
+            if (SQLHelper != null && requestData.Count >= 2) // 只需要 offerId 和 action
+            {
+                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
+                OfferActionType action = DataRequest.GetDictionaryJsonObject<OfferActionType>(requestData, "action");
+                long userId = Server.User.Id;
+
+                Offer? offer = SQLHelper.GetOffer(offerId);
+                if (offer != null && offer.Offeree == userId)
+                {
+                    bool canProceed = false;
+                    bool isNegotiating = false;
+
+                    try
+                    {
+                        SQLHelper.NewTransaction();
+
+                        // 根据 action 处理状态
+                        switch (action)
+                        {
+                            case OfferActionType.OffereeAccept:
+                                if (offer.Status == OfferState.Sent || offer.Status == OfferState.Negotiating || offer.Status == OfferState.NegotiationAccepted)
+                                {
+                                    if (offer.Status == OfferState.Negotiating)
+                                    {
+                                        isNegotiating = true;
+                                    }
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.Completed);
+                                    SQLHelper.UpdateOfferFinishTime(offerId, DateTime.Now);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许接受。";
+                                break;
+
+                            case OfferActionType.OffereeReject:
+                                if (offer.Status == OfferState.Sent || offer.Status == OfferState.Negotiating)
+                                {
+                                    SQLHelper.UpdateOfferStatus(offerId, OfferState.Rejected);
+                                    SQLHelper.UpdateOfferFinishTime(offerId, DateTime.Now);
+                                    canProceed = true;
+                                }
+                                else msg = "当前状态不允许拒绝。";
+                                break;
+
+                            default:
+                                msg = "无效的操作类型。";
+                                break;
+                        }
+
+                        if (canProceed)
+                        {
+                            offer = SQLHelper.GetOffer(offerId, isNegotiating);
+                            if (offer != null)
+                            {
+                                if (offer.Status == OfferState.Completed)
+                                {
+                                    User offeree = Server.User;
+                                    User? offeror = SQLHelper.GetUserById(offer.Offeror);
+                                    if (offeror != null)
+                                    {
+                                        foreach (Guid itemGuid in offer.OffereeItems)
+                                        {
+                                            if (offeree.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                                            {
+                                                offeree.Inventory.Items.Remove(item);
+                                                Item newItem = item.Copy();
+                                                newItem.User = offeror;
+                                                newItem.IsSellable = false;
+                                                newItem.IsTradable = false;
+                                                newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
+                                                newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
+                                                offeror.Inventory.Items.Add(newItem);
+                                            }
+                                        }
+                                        foreach (Guid itemGuid in offer.OfferorItems)
+                                        {
+                                            if (offeror.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                                            {
+                                                offeror.Inventory.Items.Remove(item);
+                                                Item newItem = item.Copy();
+                                                newItem.User = offeree;
+                                                newItem.IsSellable = false;
+                                                newItem.IsTradable = false;
+                                                newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
+                                                newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
+                                                offeree.Inventory.Items.Add(newItem);
+                                            }
+                                        }
+                                        SQLHelper.UpdateInventory(offeror.Inventory);
+                                        SQLHelper.UpdateInventory(offeree.Inventory);
+                                        SQLHelper.Commit();
+                                        resultData.Add("offer", offer);
+                                        msg = "";
+                                    }
+                                }
+                            }
+                        }
+
+                        if (msg != "")
+                        {
+                            SQLHelper.Rollback();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        SQLHelper.Rollback();
+                        ServerHelper.Error(e);
+                        msg = "回应报价时发生错误，请稍后再试。";
+                    }
+                }
+                else
+                {
+                    msg = "报价不存在或您无权回应。";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         #endregion

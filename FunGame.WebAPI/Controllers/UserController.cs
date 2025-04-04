@@ -28,6 +28,13 @@ namespace Milimoe.FunGame.WebAPI.Controllers
         [Authorize(AuthenticationSchemes = "APIBearer")]
         public IActionResult Register([FromBody] RegDTO dto)
         {
+            string msg = "服务器暂时无法处理注册请求。";
+            PayloadModel<DataRequestType> response = new()
+            {
+                Event = "user_register",
+                RequestType = DataRequestType.Reg_Reg
+            };
+
             try
             {
                 string clientIP = HttpContext.Connection.RemoteIpAddress?.ToString() + ":" + HttpContext.Connection.RemotePort;
@@ -37,39 +44,40 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                 string email = dto.Email;
                 string verifycode = dto.VerifyCode;
 
-                (string msg, RegInvokeType type, bool success) = DataRequestService.Reg(apiListener, username, password, email, verifycode, clientIP);
+                (msg, RegInvokeType type, bool success) = DataRequestService.Reg(apiListener, username, password, email, verifycode, clientIP);
 
-                return Ok(new PayloadModel<DataRequestType>()
+                response.StatusCode = 200;
+                response.Message = msg;
+                response.Data = new()
                 {
-                    RequestType = DataRequestType.Reg_Reg,
-                    StatusCode = 200,
-                    Message = msg,
-                    Data = new()
-                    {
-                        { "success", success },
-                        { "type", type }
-                    }
-                });
+                    { "success", success },
+                    { "type", type }
+                };
+                return Ok(response);
             }
             catch (Exception e)
             {
                 logger.LogError("Error: {e}", e);
             }
-            return BadRequest("服务器暂时无法处理注册请求。");
+
+            response.StatusCode = 500;
+            response.Message = msg;
+            return StatusCode(500, response);
         }
 
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDTO dto)
         {
+            string msg = "服务器暂时无法处理登录请求。";
             Config.ConnectingPlayerCount++;
+            PayloadModel<DataRequestType> response = new()
+            {
+                Event = "user_login",
+                RequestType = DataRequestType.Login_Login
+            };
+
             try
             {
-                PayloadModel<DataRequestType> response = new()
-                {
-                    RequestType = DataRequestType.Login_Login
-                };
-                string msg = "服务器暂时无法处理登录请求。";
-
                 string clientIP = HttpContext.Connection.RemoteIpAddress?.ToString() + ":" + HttpContext.Connection.RemotePort;
                 ServerHelper.WriteLine(ServerHelper.MakeClientName(clientIP) + " 通过 RESTful API 连接至服务器，正在登录 . . .", InvokeMessageType.Core);
                 string username = dto.Username;
@@ -109,21 +117,26 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                 Config.ConnectingPlayerCount--;
                 logger.LogError("Error: {e}", e);
             }
-            return BadRequest();
+
+            response.StatusCode = 500;
+            response.Message = msg;
+            return StatusCode(500, response);
         }
 
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> LogOut()
         {
+            string msg = "退出登录失败！服务器可能暂时无法处理此请求。";
+            PayloadModel<DataRequestType> response = new()
+            {
+                Event = "user_logout",
+                RequestType = DataRequestType.RunTime_Logout
+            };
+
             try
             {
-                PayloadModel<DataRequestType> response = new()
-                {
-                    RequestType = DataRequestType.RunTime_Logout
-                };
                 string username = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "";
-
                 if (apiListener.UserList.ContainsKey(username))
                 {
                     RESTfulAPIModel model = (RESTfulAPIModel)apiListener.UserList[username];
@@ -134,16 +147,15 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                     response.StatusCode = 200;
                     return Ok(response);
                 }
-
-                response.Message = "退出登录失败！";
-                response.StatusCode = 400;
-                return BadRequest(response);
             }
             catch (Exception e)
             {
                 logger.LogError("Error: {e}", e);
             }
-            return BadRequest();
+
+            response.StatusCode = 500;
+            response.Message = msg;
+            return StatusCode(500, response);
         }
 
         [HttpPost("refresh")]
@@ -163,7 +175,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
             {
                 logger.LogError("Error: {e}", e);
             }
-            return BadRequest();
+            return StatusCode(500);
         }
 
         private async Task<RESTfulAPIModel?> CheckConnection(string username, string clientIP)

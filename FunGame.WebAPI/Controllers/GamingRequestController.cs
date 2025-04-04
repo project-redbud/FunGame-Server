@@ -19,6 +19,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
             {
                 PayloadModel<GamingType> response = new()
                 {
+                    Event = "gaming_request",
                     RequestType = payload.RequestType
                 };
                 if (model.RequestID == Guid.Empty)
