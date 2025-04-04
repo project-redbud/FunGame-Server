@@ -1244,8 +1244,8 @@ namespace Milimoe.FunGame.Server.Controller
             {
                 long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
                 OfferActionType action = DataRequest.GetDictionaryJsonObject<OfferActionType>(requestData, "action");
-                List<long> offerorItems = DataRequest.GetDictionaryJsonObject<List<long>>(requestData, "offerorItems") ?? [];
-                List<long> offereeItems = DataRequest.GetDictionaryJsonObject<List<long>>(requestData, "offereeItems") ?? [];
+                List<Guid> offerorItems = DataRequest.GetDictionaryJsonObject<List<Guid>>(requestData, "offerorItems") ?? [];
+                List<Guid> offereeItems = DataRequest.GetDictionaryJsonObject<List<Guid>>(requestData, "offereeItems") ?? [];
                 long userId = Server.User.Id;
 
                 Offer? offer = SQLHelper.GetOffer(offerId);
@@ -1309,7 +1309,11 @@ namespace Milimoe.FunGame.Server.Controller
 
                             case OfferActionType.OffereeRevise:
                                 // 接收方修改报价
-                                if (!isOfferor && (offer.Status == OfferState.Sent || offer.Status == OfferState.NegotiationAccepted))
+                                if (!isOfferor && offer.NegotiatedTimes >= 3)
+                                {
+                                    msg = "当前协商次数已达上限（3次），不允许接收方修改。";
+                                }
+                                else if (!isOfferor && (offer.Status == OfferState.Sent || offer.Status == OfferState.NegotiationAccepted))
                                 {
                                     // 备份
                                     SQLHelper.BackupOfferItem(offer);
@@ -1329,7 +1333,7 @@ namespace Milimoe.FunGame.Server.Controller
                                 break;
                                 
                             case OfferActionType.OffereeSend:
-                                if (!isOfferor && (offer.Status == OfferState.Sent || offer.Status == OfferState.Negotiating))
+                                if (!isOfferor && (offer.Status == OfferState.OffereeConfirmed))
                                 {
                                     if (offer.NegotiatedTimes < 3)
                                     {
@@ -1337,7 +1341,7 @@ namespace Milimoe.FunGame.Server.Controller
                                         SQLHelper.UpdateOfferNegotiatedTimes(offerId, offer.NegotiatedTimes + 1);
                                         canProceed = true;
                                     }
-                                    else msg = "协商次数已达上限（3次）。";
+                                    else msg = "当前协商次数已达上限（3次），不允许接收方发送。";
                                 }
                                 else msg = "当前状态不允许接收方修改。";
                                 break;
@@ -1351,13 +1355,13 @@ namespace Milimoe.FunGame.Server.Controller
                         {
                             // 更新物品
                             SQLHelper.DeleteOfferItemsByOfferId(offerId);
-                            foreach (long itemId in offerorItems)
+                            foreach (Guid itemGuid in offerorItems)
                             {
-                                SQLHelper.AddOfferItem(offerId, offer.Offeror, itemId);
+                                SQLHelper.AddOfferItem(offerId, offer.Offeror, itemGuid);
                             }
-                            foreach (long itemId in offereeItems)
+                            foreach (Guid itemGuid in offereeItems)
                             {
-                                SQLHelper.AddOfferItem(offerId, offer.Offeree, itemId);
+                                SQLHelper.AddOfferItem(offerId, offer.Offeree, itemGuid );
                             }
 
                             offer = SQLHelper.GetOffer(offerId);
@@ -1452,31 +1456,39 @@ namespace Milimoe.FunGame.Server.Controller
                             {
                                 if (offer.Status == OfferState.Completed)
                                 {
+                                    User offeree = Server.User;
                                     User? offeror = SQLHelper.GetUserById(offer.Offeror);
                                     if (offeror != null)
                                     {
-                                        foreach (Item item in offer.OffereeItems)
+                                        foreach (Guid itemGuid in offer.OffereeItems)
                                         {
-                                            Item newItem = item.Copy();
-                                            newItem.User = offeror;
-                                            newItem.IsSellable = false;
-                                            newItem.IsTradable = false;
-                                            newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
-                                            newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
-                                            offeror.Inventory.Items.Add(newItem);
+                                            if (offeree.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                                            {
+                                                offeree.Inventory.Items.Remove(item);
+                                                Item newItem = item.Copy();
+                                                newItem.User = offeror;
+                                                newItem.IsSellable = false;
+                                                newItem.IsTradable = false;
+                                                newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
+                                                newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
+                                                offeror.Inventory.Items.Add(newItem);
+                                            }
+                                        }
+                                        foreach (Guid itemGuid in offer.OfferorItems)
+                                        {
+                                            if (offeror.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                                            {
+                                                offeror.Inventory.Items.Remove(item);
+                                                Item newItem = item.Copy();
+                                                newItem.User = offeree;
+                                                newItem.IsSellable = false;
+                                                newItem.IsTradable = false;
+                                                newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
+                                                newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
+                                                offeree.Inventory.Items.Add(newItem);
+                                            }
                                         }
                                         SQLHelper.UpdateInventory(offeror.Inventory);
-                                        User offeree = Server.User;
-                                        foreach (Item item in offer.OfferorItems)
-                                        {
-                                            Item newItem = item.Copy();
-                                            newItem.User = offeree;
-                                            newItem.IsSellable = false;
-                                            newItem.IsTradable = false;
-                                            newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
-                                            newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
-                                            offeree.Inventory.Items.Add(newItem);
-                                        }
                                         SQLHelper.UpdateInventory(offeree.Inventory);
                                         SQLHelper.Commit();
                                         resultData.Add("offer", offer);
