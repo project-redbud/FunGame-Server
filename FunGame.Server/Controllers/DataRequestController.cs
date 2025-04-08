@@ -1457,7 +1457,7 @@ namespace Milimoe.FunGame.Server.Controller
                                 if (offer.Status == OfferState.Completed)
                                 {
                                     User offeree = Server.User;
-                                    User? offeror = SQLHelper.GetUserById(offer.Offeror);
+                                    User? offeror = SQLHelper.GetUserById(offer.Offeror, true);
                                     if (offeror != null)
                                     {
                                         foreach (Guid itemGuid in offer.OffereeItems)
