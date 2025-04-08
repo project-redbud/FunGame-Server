@@ -1435,7 +1435,7 @@ namespace Milimoe.FunGame.Server.Controller
                                 break;
 
                             case OfferActionType.OffereeReject:
-                                if (offer.Status == OfferState.Sent || offer.Status == OfferState.Negotiating)
+                                if (offer.Status == OfferState.Sent || offer.Status == OfferState.Negotiating || offer.Status == OfferState.NegotiationAccepted)
                                 {
                                     SQLHelper.UpdateOfferStatus(offerId, OfferState.Rejected);
                                     SQLHelper.UpdateOfferFinishTime(offerId, DateTime.Now);
@@ -1465,6 +1465,8 @@ namespace Milimoe.FunGame.Server.Controller
                                             if (offeree.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
                                             {
                                                 offeree.Inventory.Items.Remove(item);
+                                                item.EntityState = EntityState.Deleted;
+
                                                 Item newItem = item.Copy();
                                                 newItem.User = offeror;
                                                 newItem.IsSellable = false;
@@ -1472,6 +1474,7 @@ namespace Milimoe.FunGame.Server.Controller
                                                 newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
                                                 newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
                                                 offeror.Inventory.Items.Add(newItem);
+                                                newItem.EntityState = EntityState.Added;
                                             }
                                         }
                                         foreach (Guid itemGuid in offer.OfferorItems)
@@ -1479,6 +1482,8 @@ namespace Milimoe.FunGame.Server.Controller
                                             if (offeror.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
                                             {
                                                 offeror.Inventory.Items.Remove(item);
+                                                item.EntityState = EntityState.Deleted;
+
                                                 Item newItem = item.Copy();
                                                 newItem.User = offeree;
                                                 newItem.IsSellable = false;
@@ -1486,6 +1491,7 @@ namespace Milimoe.FunGame.Server.Controller
                                                 newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
                                                 newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
                                                 offeree.Inventory.Items.Add(newItem);
+                                                newItem.EntityState = EntityState.Added;
                                             }
                                         }
                                         SQLHelper.UpdateInventory(offeror.Inventory);
