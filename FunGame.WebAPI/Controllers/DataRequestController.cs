@@ -19,6 +19,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
             {
                 PayloadModel<DataRequestType> response = new()
                 {
+                    Event = "data_request",
                     RequestType = payload.RequestType
                 };
 

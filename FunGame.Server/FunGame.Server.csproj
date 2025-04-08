@@ -47,6 +47,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\FunGame.Core\FunGame.Core.csproj" />
+    <ProjectReference Include="..\..\FunGame.Extension\FunGame.SQLQueryExtension\FunGame.SQLQueryExtension.csproj" />
     <ProjectReference Include="..\FunGame.Implement\FunGame.Implement.csproj" />
   </ItemGroup>
 

@@ -225,7 +225,7 @@ namespace Milimoe.FunGame.Server.Services
         /// </summary>
         public static void ServerLogin(SQLHelper sqlHelper)
         {
-            sqlHelper.Execute(ServerLoginLogs.Insert_ServerLoginLogs(sqlHelper, Config.ServerName, Config.ServerKey));
+            sqlHelper.Execute(ServerLoginLogs.Insert_ServerLoginLog(sqlHelper, Config.ServerName, Config.ServerKey));
         }
 
         /// <summary>
