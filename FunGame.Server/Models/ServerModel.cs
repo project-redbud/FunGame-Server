@@ -83,6 +83,8 @@ namespace Milimoe.FunGame.Server.Model
                     NowGamingServer.CloseAnonymousServer(this);
                 }
                 NowGamingServer = null;
+                User.OnlineState = OnlineState.InRoom;
+                if (User.Id == InRoom.RoomMaster.Id) InRoom.RoomState = RoomState.Created;
                 return true;
             }
 
@@ -388,6 +390,7 @@ namespace Milimoe.FunGame.Server.Model
             FunGameSystem.RoomList.CancelReady(roomid, User);
             FunGameSystem.RoomList.QuitRoom(roomid, User);
             Room Room = FunGameSystem.RoomList[roomid] ?? General.HallInstance;
+            User.OnlineState = OnlineState.Online;
             // 是否是房主
             if (isMaster)
             {
@@ -476,6 +479,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             // 创建User对象
             User = Factory.GetUser(_dsUser);
+            User.OnlineState = OnlineState.Online;
             // 检查有没有重复登录的情况
             await ForceLogOutDuplicateLogonUser();
             // 添加至玩家列表
@@ -502,6 +506,7 @@ namespace Milimoe.FunGame.Server.Model
         {
             if (User.Id != 0 && this != null)
             {
+                User.OnlineState = OnlineState.Offline;
                 _checkLoginKey = Guid.Empty;
                 _logoutTime = DateTime.Now.Ticks;
                 int TotalMinutes = Convert.ToInt32((new DateTime(_logoutTime) - new DateTime(_loginTime)).TotalMinutes);

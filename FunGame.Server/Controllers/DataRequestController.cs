@@ -118,8 +118,8 @@ namespace Milimoe.FunGame.Server.Controller
                     UpdatePassword(data, result);
                     break;
 
-                case DataRequestType.Room_GetRoomSettings:
-                    GetRoomSettings(data, result);
+                case DataRequestType.Room_UpdateRoomSettings:
+                    UpdateRoomSettings(data, result);
                     break;
 
                 case DataRequestType.Room_GetRoomPlayerCount:
@@ -131,7 +131,7 @@ namespace Milimoe.FunGame.Server.Controller
                     break;
 
                 case DataRequestType.UserCenter_GetUserProfile:
-                    GetUserProfile(data, result);
+                    GetUserProfile(result);
                     break;
 
                 case DataRequestType.UserCenter_GetUserStatistics:
@@ -355,6 +355,7 @@ namespace Milimoe.FunGame.Server.Controller
                         {
                             FunGameSystem.RoomList.IntoRoom(roomid, Server.User);
                             Server.InRoom = FunGameSystem.RoomList[roomid];
+                            Server.User.OnlineState = OnlineState.InRoom;
                             await Server.SendClients(Server.Listener.ClientList.Where(c => c != null && roomid == c.InRoom.Roomid && c.User.Id != 0),
                                 SocketMessageType.Chat, Server.User.Username, DateTimeUtility.GetNowShortTime() + " [ " + Server.User.Username + " ] 进入了房间。");
                             result = true;
@@ -549,12 +550,15 @@ namespace Milimoe.FunGame.Server.Controller
             {
                 if (FunGameSystem.GameModuleLoader != null && FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(room.GameModule))
                 {
+                    room.RoomState = RoomState.Gaming;
                     Server.NowGamingServer = FunGameSystem.GameModuleLoader.GetServerMode(room.GameModule);
+                    Server.User.OnlineState = OnlineState.Gaming;
                     Dictionary<string, IServerModel> all = Server.Listener.UserList.Cast<IServerModel>().ToDictionary(k => k.User.Username, v => v);
                     // 给其他玩家赋值模组服务器
                     foreach (IServerModel model in all.Values.Where(s => s.User.Username != Server.User.Username))
                     {
                         model.NowGamingServer = Server.NowGamingServer;
+                        model.User.OnlineState = OnlineState.Gaming;
                     }
                     GamingObject obj = new(room, users, Server, all);
                     if (Server.NowGamingServer.StartServer(obj))
@@ -778,13 +782,49 @@ namespace Milimoe.FunGame.Server.Controller
         #region Room
 
         /// <summary>
-        /// 获取房间设置
+        /// 更新房间设置
         /// </summary>
         /// <param name="requestData"></param>
         /// <param name="resultData"></param>
-        private static void GetRoomSettings(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        private void UpdateRoomSettings(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            bool result = false;
+            string msg = "";
+            string room = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
+            RoomType newType = DataRequest.GetDictionaryJsonObject<RoomType>(requestData, "type");
+            string newPassword = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
+            int newMaxUsers = DataRequest.GetDictionaryJsonObject<int>(requestData, "maxUsers");
+            string newModule = DataRequest.GetDictionaryJsonObject<string>(requestData, "module") ?? "";
+            string newMap = DataRequest.GetDictionaryJsonObject<string>(requestData, "map") ?? "";
+            User user = Server.User;
+            if (room != "-1" && FunGameSystem.RoomList.IsExist(room))
+            {
+                Room r = FunGameSystem.RoomList[room];
+                if (user.Id != r.RoomMaster.Id)
+                {
+                    msg = "更新失败，只有房主才可以更新房间设置。";
+                }
+                else
+                {
+                    result = true;
+                    ServerHelper.WriteLine("[UpdateRoomSettings] User: " + user.Username + " RoomID: " + r.Roomid);
+                    if (r.RoomState == RoomState.Created)
+                    {
+                        r.RoomType = newType;
+                        r.Password = newPassword;
+                        r.MaxUsers = newMaxUsers;
+                        r.GameModule = newModule;
+                        r.GameMap = newMap;
+                    }
+                    else
+                    {
+                        msg = "更新失败，只能在房间状态稳定时更新其设置。";
+                    }
+                }
+            }
+            resultData.Add("result", result);
+            resultData.Add("msg", msg);
+            resultData.Add("room", room);
         }
 
         /// <summary>
@@ -852,6 +892,7 @@ namespace Milimoe.FunGame.Server.Controller
         private void StartMatching(RoomType type, User user)
         {
             _isMatching = true;
+            if (user.OnlineState == OnlineState.Online) user.OnlineState = OnlineState.Matching;
             ServerHelper.WriteLine(Server.GetClientName() + " 开始匹配。类型：" + RoomSet.GetTypeString(type));
             TaskUtility.NewTask(async () =>
             {
@@ -879,6 +920,7 @@ namespace Milimoe.FunGame.Server.Controller
             if (_isMatching)
             {
                 ServerHelper.WriteLine(Server.GetClientName() + " 取消了匹配。");
+                if (Server.User.OnlineState == OnlineState.Matching) Server.User.OnlineState = OnlineState.Online;
                 _isMatching = false;
             }
         }
@@ -975,9 +1017,8 @@ namespace Milimoe.FunGame.Server.Controller
         /// <summary>
         /// 获取用户资料信息
         /// </summary>
-        /// <param name="requestData"></param>
         /// <param name="resultData"></param>
-        private void GetUserProfile(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        private void GetUserProfile(Dictionary<string, object> resultData)
         {
             // TODO
         }

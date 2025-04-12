@@ -251,6 +251,35 @@ namespace Milimoe.FunGame.WebAPI.Controllers
         }
 
         /// <summary>
+        /// 更新房间设置
+        /// </summary>
+        [HttpPost("updateroomsettings")]
+        public async Task<IActionResult> UpdateRoomSettings([FromBody] Dictionary<string, object> data)
+        {
+            PayloadModel<DataRequestType> response = new()
+            {
+                Event = "room_updatesettings",
+                RequestType = DataRequestType.Room_UpdateRoomSettings
+            };
+
+            try
+            {
+                Dictionary<string, object> result = await model.DataRequestController.GetResultData(DataRequestType.Room_UpdateRoomSettings, data);
+                response.StatusCode = 200;
+                response.Data = result;
+                return Ok(response);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Error: {e}", e);
+            }
+
+            response.StatusCode = 500;
+            response.Message = "服务器暂时无法处理此请求。";
+            return StatusCode(500, response);
+        }
+        
+        /// <summary>
         /// 获取房间内玩家数量
         /// </summary>
         [HttpPost("playercount")]
