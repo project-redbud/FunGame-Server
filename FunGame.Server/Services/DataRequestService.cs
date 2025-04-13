@@ -6,6 +6,7 @@ using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Server.Others;
+using ProjectRedbud.FunGame.SQLQueryExtension;
 
 namespace Milimoe.FunGame.Server.Services
 {
@@ -128,7 +129,7 @@ namespace Milimoe.FunGame.Server.Services
                                 ServerHelper.WriteLine("[Reg] Username: " + username + " Email: " + email);
                                 FunGameSystem.UpdateUserKey(username);
                                 password = password.Encrypt(FunGameSystem.GetUserKey(username));
-                                sqlHelper.Execute(UserQuery.Insert_Register(sqlHelper, username, password, email, clientIP));
+                                sqlHelper.RegisterUser(username, password, email, clientIP);
                                 if (sqlHelper.Result == SQLResult.Success)
                                 {
                                     success = true;

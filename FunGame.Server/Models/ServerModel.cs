@@ -479,6 +479,10 @@ namespace Milimoe.FunGame.Server.Model
         {
             // 创建User对象
             User = Factory.GetUser(_dsUser);
+            if (SQLHelper?.GetUserById(User.Id, true, true) is User real)
+            {
+                User = real;
+            }
             User.OnlineState = OnlineState.Online;
             // 检查有没有重复登录的情况
             await ForceLogOutDuplicateLogonUser();

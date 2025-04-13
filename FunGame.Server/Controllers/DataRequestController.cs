@@ -130,14 +130,6 @@ namespace Milimoe.FunGame.Server.Controller
                     await UpdateRoomMaster(data, result);
                     break;
 
-                case DataRequestType.UserCenter_GetUserProfile:
-                    GetUserProfile(result);
-                    break;
-
-                case DataRequestType.UserCenter_GetUserStatistics:
-                    GetUserStatistics(data, result);
-                    break;
-
                 case DataRequestType.UserCenter_UpdateUser:
                     UpdateUser(data, result);
                     break;
@@ -166,8 +158,8 @@ namespace Milimoe.FunGame.Server.Controller
                     MarketBuy(data, result);
                     break;
 
-                case DataRequestType.Inventory_GetInventory:
-                    GetInventory(data, result);
+                case DataRequestType.Inventory_UpdateInventory:
+                    UpdateInventory(data, result);
                     break;
 
                 case DataRequestType.Inventory_Use:
@@ -1015,25 +1007,6 @@ namespace Milimoe.FunGame.Server.Controller
         #region UserCenter
 
         /// <summary>
-        /// 获取用户资料信息
-        /// </summary>
-        /// <param name="resultData"></param>
-        private void GetUserProfile(Dictionary<string, object> resultData)
-        {
-            // TODO
-        }
-
-        /// <summary>
-        /// 获取用户统计数据
-        /// </summary>
-        /// <param name="requestData"></param>
-        /// <param name="resultData"></param>
-        private void GetUserStatistics(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
-        {
-            // TODO
-        }
-
-        /// <summary>
         /// 更新用户（全部数据）
         /// </summary>
         /// <param name="requestData"></param>
@@ -1155,11 +1128,11 @@ namespace Milimoe.FunGame.Server.Controller
         }
 
         /// <summary>
-        /// 获取库存信息
+        /// 更新库存
         /// </summary>
         /// <param name="requestData"></param>
         /// <param name="resultData"></param>
-        private void GetInventory(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        private void UpdateInventory(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
             // TODO
         }
