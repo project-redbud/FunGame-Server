@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="logo.ico" />
+    <None Remove="logo.ico" />
   </ItemGroup>
 
   <ItemGroup>
