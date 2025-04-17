@@ -105,8 +105,8 @@ void StartServer()
 
             ServerHelper.WriteLine("请输入 help 来获取帮助，按下 Ctrl+C 关闭服务器。");
 
-            // 初始化用户密钥列表
-            FunGameSystem.InitUserKeys();
+            // 初始化服务器其他配置文件
+            FunGameSystem.InitOtherConfig();
 
             ServerHelper.PrintFunGameTitle();
 

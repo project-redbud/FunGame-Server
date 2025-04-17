@@ -46,12 +46,22 @@ namespace Milimoe.FunGame.Server.Services
         /// <summary>
         /// 服务器配置
         /// </summary>
+        public static PluginConfig LocalConfig { get; set; } = new("system", "local");
+        
+        /// <summary>
+        /// 数据库配置
+        /// </summary>
         public static PluginConfig SQLConfig { get; set; } = new("system", "sqlconfig");
 
         /// <summary>
         /// 默认的 Web API Token ID，在首次初始化数据库时生成一个 Secret Key
         /// </summary>
         public const string FunGameWebAPITokenID = "fungame_web_api";
+
+        /// <summary>
+        /// API Secret 字段名
+        /// </summary>
+        public const string APISecretField = "api_secret";
 
         /// <summary>
         /// 初始化数据库连接器
@@ -237,10 +247,12 @@ namespace Milimoe.FunGame.Server.Services
         }
 
         /// <summary>
-        /// 初始化用户密钥列表
+        /// 初始化服务器其他配置文件
         /// </summary>
-        public static void InitUserKeys()
+        public static void InitOtherConfig()
         {
+            LocalConfig.LoadConfig();
+            LocalConfig.SaveConfig();
             UserKeys.LoadConfig();
             UserKeys.SaveConfig();
         }
@@ -279,6 +291,7 @@ namespace Milimoe.FunGame.Server.Services
             using SQLHelper? sql = Factory.OpenFactory.GetSQLHelper();
             if (sql != null)
             {
+                key = Encryption.HmacSha256(key, LocalConfig.Get<string>(APISecretField) ?? "");
                 sql.ExecuteDataSet(ApiTokens.Select_GetAPISecretKey(sql, key));
                 if (sql.Result == SQLResult.Success)
                 {
@@ -289,50 +302,34 @@ namespace Milimoe.FunGame.Server.Services
         }
         
         /// <summary>
-        /// 获取 API Secret Key
-        /// </summary>
-        /// <param name="token"></param>
-        public static string GetAPISecretKey(string token)
-        {
-            using SQLHelper? sql = Factory.OpenFactory.GetSQLHelper();
-            if (sql != null)
-            {
-                sql.ExecuteDataSet(ApiTokens.Select_GetAPIToken(sql, token));
-                if (sql.Result == SQLResult.Success)
-                {
-                    return sql.DataSet.Tables[0].Rows[0][ApiTokens.Column_SecretKey].ToString() ?? "";
-                }
-            }
-            return "";
-        }
-
-        /// <summary>
         /// 设置 API Secret Key
         /// </summary>
         /// <param name="token"></param>
         /// <param name="reference1"></param>
         /// <param name="reference2"></param>
-        public static void SetAPISecretKey(string token, string reference1 = "", string reference2 = "", SQLHelper? sqlHelper = null)
+        public static string SetAPISecretKey(string token, string reference1 = "", string reference2 = "", SQLHelper? sqlHelper = null)
         {
             bool useSQLHelper = sqlHelper != null;
             sqlHelper ??= Factory.OpenFactory.GetSQLHelper();
             string key = Encryption.GenerateRandomString();
+            string enKey = Encryption.HmacSha256(key, LocalConfig.Get<string>(APISecretField) ?? "");
             if (sqlHelper != null)
             {
                 sqlHelper.ExecuteDataSet(ApiTokens.Select_GetAPIToken(sqlHelper, token));
                 if (sqlHelper.Success)
                 {
-                    sqlHelper.Execute(ApiTokens.Update_APIToken(sqlHelper, token, key, reference1, reference2));
+                    sqlHelper.Execute(ApiTokens.Update_APIToken(sqlHelper, token, enKey, reference1, reference2));
                 }
                 else
                 {
-                    sqlHelper.Execute(ApiTokens.Insert_APIToken(sqlHelper, token, key, reference1, reference2));
+                    sqlHelper.Execute(ApiTokens.Insert_APIToken(sqlHelper, token, enKey, reference1, reference2));
                 }
             }
             if (!useSQLHelper)
             {
                 sqlHelper?.Dispose();
             }
+            return key;
         }
 
         /// <summary>
@@ -354,6 +351,7 @@ namespace Milimoe.FunGame.Server.Services
                 {
                     mysqlHelper.ExecuteSqlFile(AppDomain.CurrentDomain.BaseDirectory + "fungame.sql");
                 }
+                LocalConfig.Add(APISecretField, Encryption.GenerateRandomString());
                 SetAPISecretKey(FunGameWebAPITokenID, sqlHelper: sqlHelper);
                 sqlHelper.Execute(Configs.Insert_Config(sqlHelper, "Initialization", FunGameInfo.FunGame_Version, "SQL Service Installed."));
                 SQLConfig.Clear();
