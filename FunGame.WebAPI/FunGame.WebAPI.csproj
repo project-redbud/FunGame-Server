@@ -7,7 +7,6 @@
     <RootNamespace>Milimoe.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
     <BaseOutputPath>..\bin\</BaseOutputPath>
     <AssemblyName>FunGameWebAPI</AssemblyName>
-    <ApplicationIcon>Images\logo.ico</ApplicationIcon>
     <Authors>Milimoe</Authors>
   </PropertyGroup>
 
@@ -18,10 +17,6 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DebugType>embedded</DebugType>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Content Include="Images\logo.ico" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.2" />
@@ -35,13 +30,6 @@
     <ProjectReference Include="..\..\FunGame.Extension\FunGame.SQLQueryExtension\FunGame.SQLQueryExtension.csproj" />
     <ProjectReference Include="..\FunGame.Implement\FunGame.Implement.csproj" />
     <ProjectReference Include="..\FunGame.Server\FunGame.Server.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Images\logo.ico">
-      <PackagePath>\</PackagePath>
-      <Pack>True</Pack>
-    </None>
   </ItemGroup>
 
   <ItemGroup>
