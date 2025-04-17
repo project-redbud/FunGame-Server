@@ -5,8 +5,6 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <ApplicationIcon>logo.ico</ApplicationIcon>
-    <PackageIcon>logo.ico</PackageIcon>
     <BaseOutputPath>..\bin</BaseOutputPath>
     <Title>FunGameServer</Title>
     <Company>Milimoe</Company>
@@ -17,6 +15,7 @@
     <AssemblyName>FunGameServer</AssemblyName>
     <RootNamespace>Milimoe.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -47,14 +46,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\FunGame.Core\FunGame.Core.csproj" />
+    <ProjectReference Include="..\..\FunGame.Extension\FunGame.SQLQueryExtension\FunGame.SQLQueryExtension.csproj" />
     <ProjectReference Include="..\FunGame.Implement\FunGame.Implement.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Images\logo.ico">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
   </ItemGroup>
 
 </Project>

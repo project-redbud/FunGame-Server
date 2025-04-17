@@ -62,8 +62,8 @@ try
     // 读取 Server 插件
     FunGameSystem.GetServerPlugins();
 
-    // 初始化用户密钥列表
-    FunGameSystem.InitUserKeys();
+    // 初始化服务器其他配置文件
+    FunGameSystem.InitOtherConfig();
 
     // Add services to the container.
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -215,12 +215,17 @@ try
             IExceptionHandlerFeature? contextFeature = context.Features.Get<IExceptionHandlerFeature>();
             if (contextFeature != null)
             {
-                await context.Response.WriteAsync(new
+                await context.Response.WriteAsync(NetworkUtility.JsonSerialize(new PayloadModel<DataRequestType>()
                 {
-                    context.Response.StatusCode,
+                    Event = "system_error",
+                    RequestType = DataRequestType.UnKnown,
+                    StatusCode = context.Response.StatusCode,
                     Message = "Internal Server Error.",
-                    Detailed = contextFeature.Error.Message
-                }.ToString() ?? "");
+                    Data = new()
+                    {
+                        { "msg", contextFeature.Error.Message }
+                    }
+                }));
             }
         });
     });
