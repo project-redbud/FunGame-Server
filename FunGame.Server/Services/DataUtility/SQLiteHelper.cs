@@ -1,4 +1,5 @@
 using System.Data;
+using System.Data.Common;
 using Microsoft.Data.Sqlite;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Library.Constant;
@@ -9,14 +10,59 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 {
     public class SQLiteHelper : SQLHelper
     {
+        /// <summary>
+        /// FunGame 类型
+        /// </summary>
         public override FunGameInfo.FunGame FunGameType { get; } = FunGameInfo.FunGame.FunGame_Server;
+
+        /// <summary>
+        /// 使用的数据库类型
+        /// </summary>
         public override SQLMode Mode { get; } = SQLMode.SQLite;
+
+        /// <summary>
+        /// SQL 脚本
+        /// </summary>
         public override string Script { get; set; } = "";
+
+        /// <summary>
+        /// 命令类型
+        /// </summary>
         public override CommandType CommandType { get; set; } = CommandType.Text;
+
+        /// <summary>
+        /// 数据库事务
+        /// </summary>
+        public override DbTransaction? Transaction => _transaction;
+
+        /// <summary>
+        /// 执行结果
+        /// </summary>
         public override SQLResult Result => _result;
+
+        /// <summary>
+        /// SQL 服务器信息
+        /// </summary>
         public override SQLServerInfo ServerInfo => _serverInfo ?? SQLServerInfo.Create();
-        public override int UpdateRows => _updateRows;
+
+        /// <summary>
+        /// 上一次执行命令影响的行数
+        /// </summary>
+        public override int AffectedRows => _affectedRows;
+
+        /// <summary>
+        /// 上一次执行的命令是 Insert 时，返回的自增 ID，大于 0 有效
+        /// </summary>
+        public override long LastInsertId => _lastInsertId;
+
+        /// <summary>
+        /// 上一次执行命令的查询结果集
+        /// </summary>
         public override DataSet DataSet => _dataSet;
+
+        /// <summary>
+        /// SQL 语句参数
+        /// </summary>
         public override Dictionary<string, object> Parameters { get; } = [];
 
         private readonly string _connectionString = "";
@@ -25,7 +71,8 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         private DataSet _dataSet = new();
         private SQLResult _result = SQLResult.NotFound;
         private readonly SQLServerInfo? _serverInfo;
-        private int _updateRows = 0;
+        private int _affectedRows = 0;
+        private long _lastInsertId = 0;
 
         public SQLiteHelper(string script = "", CommandType type = CommandType.Text)
         {
@@ -67,7 +114,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         }
 
         /// <summary>
-        /// 执行一个命令
+        /// 执行现有命令（<see cref="Script"/>）
         /// </summary>
         /// <returns></returns>
         public override int Execute()
@@ -102,14 +149,26 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
                 }
                 if (_transaction != null) command.Transaction = _transaction;
 
-                _updateRows = command.ExecuteNonQuery();
-                _result = SQLResult.Success;
+                ReSet();
+                _affectedRows = command.ExecuteNonQuery();
+                if (_affectedRows > 0)
+                {
+                    _result = SQLResult.Success;
+                    if (script.Contains(Core.Library.SQLScript.Constant.Command_Insert, StringComparison.OrdinalIgnoreCase))
+                    {
+                        using SqliteCommand idCommand = new("SELECT last_insert_rowid()", _connection);
+                        if (_transaction != null) idCommand.Transaction = _transaction;
+                        _lastInsertId = (long?)idCommand.ExecuteScalar() ?? 0;
+                        if (_lastInsertId < 0) _lastInsertId = 0;
+                    }
+                }
+                else _result = SQLResult.Fail;
                 if (localTransaction) Commit();
             }
             catch (Exception e)
             {
                 if (localTransaction) Rollback();
-                _result = SQLResult.Fail;
+                _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
             }
             finally
@@ -117,11 +176,77 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
                 if (localTransaction) Close();
                 if (ClearParametersAfterExecute) Parameters.Clear();
             }
-            return UpdateRows;
+            return AffectedRows;
         }
 
         /// <summary>
-        /// 查询DataSet
+        /// 异步执行现有命令（<see cref="Script"/>）
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<int> ExecuteAsync()
+        {
+            return await ExecuteAsync(Script);
+        }
+
+        /// <summary>
+        /// 异步执行一个指定的命令
+        /// </summary>
+        /// <param name="script"></param>
+        /// <returns></returns>
+        public override async Task<int> ExecuteAsync(string script)
+        {
+            bool localTransaction = _transaction == null;
+
+            try
+            {
+                if (localTransaction)
+                {
+                    NewTransaction();
+                }
+
+                OpenConnection();
+                Script = script;
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                using SqliteCommand command = new(script, _connection);
+                command.CommandType = CommandType;
+                foreach (KeyValuePair<string, object> param in Parameters)
+                {
+                    command.Parameters.AddWithValue(param.Key, param.Value);
+                }
+                if (_transaction != null) command.Transaction = _transaction;
+
+                ReSet();
+                _affectedRows = await command.ExecuteNonQueryAsync();
+                if (_affectedRows > 0)
+                {
+                    _result = SQLResult.Success;
+                    if (script.Contains(Core.Library.SQLScript.Constant.Command_Insert, StringComparison.OrdinalIgnoreCase))
+                    {
+                        using SqliteCommand idCommand = new("SELECT last_insert_rowid()", _connection);
+                        if (_transaction != null) idCommand.Transaction = _transaction;
+                        _lastInsertId = (long?)await idCommand.ExecuteScalarAsync() ?? 0;
+                        if (_lastInsertId < 0) _lastInsertId = 0;
+                    }
+                }
+                else _result = SQLResult.Fail;
+                if (localTransaction) Commit();
+            }
+            catch (Exception e)
+            {
+                if (localTransaction) Rollback();
+                _result = SQLResult.SQLError;
+                ServerHelper.Error(e);
+            }
+            finally
+            {
+                if (localTransaction) Close();
+                if (ClearParametersAfterExecute) Parameters.Clear();
+            }
+            return AffectedRows;
+        }
+
+        /// <summary>
+        /// 执行现有命令（<see cref="Script"/>）查询 DataSet
         /// </summary>
         /// <returns></returns>
         public override DataSet ExecuteDataSet()
@@ -130,7 +255,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         }
 
         /// <summary>
-        /// 执行指定的命令查询DataSet
+        /// 执行指定的命令查询 DataSet
         /// </summary>
         /// <param name="script"></param>
         /// <returns></returns>
@@ -158,6 +283,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
                 }
                 if (_transaction != null) command.Transaction = _transaction;
 
+                ReSet();
                 using SqliteDataReader reader = command.ExecuteReader();
                 _dataSet = new();
                 do
@@ -174,7 +300,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             catch (Exception e)
             {
                 if (localTransaction) Rollback();
-                _result = SQLResult.Fail;
+                _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
             }
             finally
@@ -186,7 +312,73 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         }
 
         /// <summary>
-        /// 创建一个SQL事务
+        /// 异步执行现有命令（<see cref="Script"/>）查询 DataSet
+        /// </summary>
+        /// <returns></returns>
+        public override async Task<DataSet> ExecuteDataSetAsync()
+        {
+            return await ExecuteDataSetAsync(Script);
+        }
+
+        /// <summary>
+        /// 异步执行指定的命令查询 DataSet
+        /// </summary>
+        /// <param name="script"></param>
+        /// <returns></returns>
+        public override async Task<DataSet> ExecuteDataSetAsync(string script)
+        {
+            bool localTransaction = _transaction == null;
+
+            try
+            {
+                if (localTransaction)
+                {
+                    NewTransaction();
+                }
+
+                OpenConnection();
+                Script = script;
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                using SqliteCommand command = new(script, _connection)
+                {
+                    CommandType = CommandType
+                };
+                foreach (KeyValuePair<string, object> param in Parameters)
+                {
+                    command.Parameters.AddWithValue(param.Key, param.Value);
+                }
+                if (_transaction != null) command.Transaction = _transaction;
+
+                ReSet();
+                using SqliteDataReader reader = await command.ExecuteReaderAsync();
+                _dataSet = new();
+                do
+                {
+                    DataTable table = new();
+                    table.Load(reader);
+                    _dataSet.Tables.Add(table);
+                } while (!reader.IsClosed && reader.NextResult());
+
+                if (localTransaction) Commit();
+
+                _result = _dataSet.Tables.Cast<DataTable>().Any(table => table.Rows.Count > 0) ? SQLResult.Success : SQLResult.NotFound;
+            }
+            catch (Exception e)
+            {
+                if (localTransaction) Rollback();
+                _result = SQLResult.SQLError;
+                ServerHelper.Error(e);
+            }
+            finally
+            {
+                if (localTransaction) Close();
+                if (ClearParametersAfterExecute) Parameters.Clear();
+            }
+            return _dataSet;
+        }
+
+        /// <summary>
+        /// 创建一个 SQL 事务
         /// </summary>
         public override void NewTransaction()
         {
@@ -209,7 +401,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             }
             catch (Exception e)
             {
-                _result = SQLResult.Fail;
+                _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
             }
             finally
@@ -230,7 +422,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             }
             catch (Exception e)
             {
-                _result = SQLResult.Fail;
+                _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
             }
             finally
@@ -253,7 +445,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             catch (Exception e)
             {
                 ServerHelper.Error(e);
-                _result = SQLResult.Fail;
+                _result = SQLResult.SQLError;
                 return false;
             }
             finally
@@ -267,7 +459,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         /// <summary>
         /// 资源清理
         /// </summary>
-        public void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (!_isDisposed)
             {
@@ -287,6 +479,14 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        private void ReSet()
+        {
+            _result = SQLResult.NotFound;
+            _affectedRows = 0;
+            _lastInsertId = 0;
+            DataSet.Clear();
         }
     }
 }

@@ -1,7 +1,13 @@
-﻿using Milimoe.FunGame.Core.Interface.Base;
+﻿using System.Text;
+using Milimoe.FunGame.Core.Api.Transmittal;
+using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Entity;
+using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Addon;
+using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Services;
+using ProjectRedbud.FunGame.SQLQueryExtension;
 
 namespace Milimoe.FunGame.Server.Model
 {
@@ -44,9 +50,6 @@ namespace Milimoe.FunGame.Server.Model
                     case OrderDictionary.ShowUsers1:
                     case OrderDictionary.ShowUsers2:
                         ShowUsers(server);
-                        break;
-                    case OrderDictionary.Help:
-                        ShowHelp();
                         break;
                     default:
                         break;
@@ -109,9 +112,90 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public static void ShowHelp()
+        public static void FirstRunRegAdmin()
         {
-            ServerHelper.WriteLine("Milimoe -> 帮助");
+            using SQLHelper? sql = Factory.OpenFactory.GetSQLHelper() ?? throw new SQLServiceException();
+            ServerHelper.WriteLine("首次启动需要注册管理员账号，请按提示输入信息！", InvokeMessageType.Core);
+            string username, password, email;
+            ServerHelper.Write("请输入管理员用户名：", InvokeMessageType.Core);
+            while (true)
+            {
+                username = Console.ReadLine() ?? "";
+                int usernameLength = NetworkUtility.GetUserNameLength(username);
+                if (usernameLength < 3 || usernameLength > 12)
+                {
+                    ServerHelper.WriteLine("账号名长度不符合要求：3~12个字符数（一个中文2个字符）", InvokeMessageType.Error);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            ServerHelper.Write("请输入管理员邮箱：", InvokeMessageType.Core);
+            while (true)
+            {
+                email = Console.ReadLine() ?? "";
+                if (!NetworkUtility.IsEmail(email))
+                {
+                    ServerHelper.WriteLine("这不是一个邮箱地址！", InvokeMessageType.Error);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            ServerHelper.Write("请输入管理员密码：", InvokeMessageType.Core);
+            while (true)
+            {
+                StringBuilder passwordBuilder = new();
+                ConsoleKeyInfo key;
+
+                do
+                {
+                    key = Console.ReadKey(true);
+
+                    if (key.Key == ConsoleKey.Enter)
+                    {
+                        Console.WriteLine();
+                        break;
+                    }
+                    else if (key.Key == ConsoleKey.Backspace)
+                    {
+                        if (passwordBuilder.Length > 0)
+                        {
+                            passwordBuilder.Remove(passwordBuilder.Length - 1, 1);
+                            Console.Write("\b \b");
+                        }
+                    }
+                    else if (!char.IsControl(key.KeyChar))
+                    {
+                        passwordBuilder.Append(key.KeyChar);
+                        Console.Write("*");
+                    }
+                } while (true);
+
+                password = passwordBuilder.ToString();
+
+                if (password.Length < 6 || password.Length > 15)
+                {
+                    ServerHelper.WriteLine("密码长度不符合要求：6~15个字符数", InvokeMessageType.Error);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            (string msg, RegInvokeType type, bool success) = DataRequestService.RegisterUser(sql, username, password, email, "localhost");
+            ServerHelper.WriteLine(msg, InvokeMessageType.Core);
+            if (success)
+            {
+                User? user = sql.GetUserByUsernameAndEmail(username, email);
+                if (user != null)
+                {
+                    user.IsAdmin = true;
+                    sql.UpdateUser(user);
+                }
+            }
         }
     }
 }

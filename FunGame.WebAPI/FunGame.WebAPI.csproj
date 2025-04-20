@@ -7,8 +7,8 @@
     <RootNamespace>Milimoe.$(MSBuildProjectName.Replace(" ", "_"))</RootNamespace>
     <BaseOutputPath>..\bin\</BaseOutputPath>
     <AssemblyName>FunGameWebAPI</AssemblyName>
-    <ApplicationIcon>Images\logo.ico</ApplicationIcon>
     <Authors>Milimoe</Authors>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -20,7 +20,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Images\logo.ico" />
+    <Content Include="logo.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,15 +32,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\FunGame.Core\FunGame.Core.csproj" />
+    <ProjectReference Include="..\..\FunGame.Extension\FunGame.SQLQueryExtension\FunGame.SQLQueryExtension.csproj" />
     <ProjectReference Include="..\FunGame.Implement\FunGame.Implement.csproj" />
     <ProjectReference Include="..\FunGame.Server\FunGame.Server.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Images\logo.ico">
-      <PackagePath>\</PackagePath>
-      <Pack>True</Pack>
-    </None>
   </ItemGroup>
 
   <ItemGroup>

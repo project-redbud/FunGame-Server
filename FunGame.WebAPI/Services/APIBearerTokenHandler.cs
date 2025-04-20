@@ -25,7 +25,7 @@ namespace Milimoe.FunGame.WebAPI.Services
             string key = authorizationHeader["Bearer ".Length..].Trim();
 
             // 验证 API Bearer Token
-            if (key == "" || !FunGameSystem.IsAPISecretKeyExist(key))
+            if (key == "" || !FunGameSystem.APISecretKeyExists(key))
             {
                 await Task.CompletedTask;
                 return AuthenticateResult.Fail("Invalid Token.");

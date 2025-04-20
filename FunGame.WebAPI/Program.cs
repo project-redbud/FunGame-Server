@@ -62,8 +62,8 @@ try
     // 读取 Server 插件
     FunGameSystem.GetServerPlugins();
 
-    // 初始化用户密钥列表
-    FunGameSystem.InitUserKeys();
+    // 初始化服务器其他配置文件
+    FunGameSystem.InitOtherConfig();
 
     // Add services to the container.
     WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -215,12 +215,17 @@ try
             IExceptionHandlerFeature? contextFeature = context.Features.Get<IExceptionHandlerFeature>();
             if (contextFeature != null)
             {
-                await context.Response.WriteAsync(new
+                await context.Response.WriteAsync(NetworkUtility.JsonSerialize(new PayloadModel<DataRequestType>()
                 {
-                    context.Response.StatusCode,
+                    Event = "system_error",
+                    RequestType = DataRequestType.UnKnown,
+                    StatusCode = context.Response.StatusCode,
                     Message = "Internal Server Error.",
-                    Detailed = contextFeature.Error.Message
-                }.ToString() ?? "");
+                    Data = new()
+                    {
+                        { "msg", contextFeature.Error.Message }
+                    }
+                }));
             }
         });
     });
@@ -242,6 +247,16 @@ try
     // 开始监听连接
     listener.BannedList.AddRange(Config.ServerBannedList);
 
+    FunGameSystem.CloseListener += async () =>
+    {
+        foreach (ServerModel<ServerWebSocket> model in listener.ClientList.Cast<ServerModel<ServerWebSocket>>())
+        {
+            await model.Kick("服务器正在关闭。");
+        }
+        listener.Close();
+        await app.StopAsync();
+    };
+
     Task order = Task.Factory.StartNew(GetConsoleOrder);
 
     app.Run();
@@ -260,8 +275,20 @@ async Task GetConsoleOrder()
         if (order != "")
         {
             order = order.ToLower();
+            if (FunGameSystem.OrderList.TryGetValue(order, out Action<string>? action) && action != null)
+            {
+                action(order);
+            }
             switch (order)
             {
+                case OrderDictionary.Quit:
+                case OrderDictionary.Exit:
+                case OrderDictionary.Close:
+                    CloseServer();
+                    break;
+                case OrderDictionary.Restart:
+                    ServerHelper.WriteLine("服务器正在运行，请手动结束服务器进程再启动！");
+                    break;
                 default:
                     await ConsoleModel.Order(listener, order);
                     break;
