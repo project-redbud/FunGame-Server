@@ -392,7 +392,7 @@ namespace Milimoe.FunGame.Server.Model
             Room Room = FunGameSystem.RoomList[roomid] ?? General.HallInstance;
             User.OnlineState = OnlineState.Online;
             // 是否是房主
-            if (isMaster)
+            if (isMaster && Room.Roomid != "-1")
             {
                 List<User> users = [.. FunGameSystem.RoomList[roomid].UserAndIsReady.Keys];
                 User? newRoomMaster = null;

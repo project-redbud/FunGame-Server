@@ -174,6 +174,10 @@ namespace Milimoe.FunGame.Server.Controller
                     MarketSell(data, result);
                     break;
 
+                case DataRequestType.Inventory_MarketDelist:
+                    MarketDelist(data, result);
+                    break;
+
                 case DataRequestType.Inventory_UpdateMarketPrice:
                     UpdateMarketPrice(data, result);
                     break;
@@ -250,12 +254,12 @@ namespace Milimoe.FunGame.Server.Controller
             Room room = General.HallInstance;
             if (requestData.Count >= 3)
             {
-                RoomType type = DataRequest.GetDictionaryJsonObject<RoomType>(requestData, "roomtype");
-                string gamemodule = DataRequest.GetDictionaryJsonObject<string>(requestData, "gamemoduleserver") ?? "";
-                string gamemap = DataRequest.GetDictionaryJsonObject<string>(requestData, "gamemap") ?? "";
-                bool isrank = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isrank");
-                ServerHelper.WriteLine("[CreateRoom] " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gamemodule, gamemap]) + ")", InvokeMessageType.DataRequest);
-                if (gamemodule == "" || gamemap == "" || FunGameSystem.GameModuleLoader is null || !FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(gamemodule) || !FunGameSystem.GameModuleLoader.Maps.ContainsKey(gamemap))
+                RoomType type = DataRequest.GetDictionaryJsonObject<RoomType>(requestData, "roomType");
+                string gameModule = DataRequest.GetDictionaryJsonObject<string>(requestData, "moduleServer") ?? "";
+                string gameMap = DataRequest.GetDictionaryJsonObject<string>(requestData, "map") ?? "";
+                bool isRank = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isRank");
+                ServerHelper.WriteLine("[CreateRoom] " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gameModule, gameMap]) + ")", InvokeMessageType.DataRequest);
+                if (gameModule == "" || gameMap == "" || FunGameSystem.GameModuleLoader is null || !FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(gameModule) || !FunGameSystem.GameModuleLoader.Maps.ContainsKey(gameMap))
                 {
                     ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
                     resultData.Add("room", room);
@@ -263,7 +267,7 @@ namespace Milimoe.FunGame.Server.Controller
                 }
                 User user = DataRequest.GetDictionaryJsonObject<User>(requestData, "master") ?? Factory.GetUser();
                 string password = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
-                int maxusers = DataRequest.GetDictionaryJsonObject<int>(requestData, "maxusers");
+                int maxusers = DataRequest.GetDictionaryJsonObject<int>(requestData, "maxUsers");
 
                 if (user.Id != 0)
                 {
@@ -279,7 +283,7 @@ namespace Milimoe.FunGame.Server.Controller
                     }
                     if (roomid != "-1" && SQLHelper != null)
                     {
-                        SQLHelper.Execute(RoomQuery.Insert_CreateRoom(SQLHelper, roomid, user.Id, type, gamemodule, gamemap, isrank, password, maxusers));
+                        SQLHelper.Execute(RoomQuery.Insert_CreateRoom(SQLHelper, roomid, user.Id, type, gameModule, gameMap, isRank, password, maxusers));
                         if (SQLHelper.Result == SQLResult.Success)
                         {
                             ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
@@ -372,11 +376,11 @@ namespace Milimoe.FunGame.Server.Controller
             bool result = true;
             if (requestData.Count >= 1)
             {
-                bool iscancel = DataRequest.GetDictionaryJsonObject<bool>(requestData, "iscancel");
+                bool iscancel = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isCancel");
                 if (!iscancel)
                 {
                     ServerHelper.WriteLine("[MatchRoom] Start", InvokeMessageType.DataRequest);
-                    RoomType type = DataRequest.GetDictionaryJsonObject<RoomType>(requestData, "roomtype");
+                    RoomType type = DataRequest.GetDictionaryJsonObject<RoomType>(requestData, "roomType");
                     User user = DataRequest.GetDictionaryJsonObject<User>(requestData, "matcher") ?? Factory.GetUser();
                     StartMatching(type, user);
                 }
@@ -669,9 +673,9 @@ namespace Milimoe.FunGame.Server.Controller
             string msg = "无法找回您的密码，请稍后再试。"; // 返回的验证信息
             if (requestData.Count >= 3)
             {
-                string username = DataRequest.GetDictionaryJsonObject<string>(requestData, ForgetVerifyCodes.Column_Username) ?? "";
-                string email = DataRequest.GetDictionaryJsonObject<string>(requestData, ForgetVerifyCodes.Column_Email) ?? "";
-                string verifycode = DataRequest.GetDictionaryJsonObject<string>(requestData, ForgetVerifyCodes.Column_ForgetVerifyCode) ?? "";
+                string username = DataRequest.GetDictionaryJsonObject<string>(requestData, "username") ?? "";
+                string email = DataRequest.GetDictionaryJsonObject<string>(requestData, "email") ?? "";
+                string verifycode = DataRequest.GetDictionaryJsonObject<string>(requestData, "forgetVerifyCode") ?? "";
 
                 // 客户端发来了验证码就进行验证，没有发就生成
                 if (verifycode.Trim() != "")
@@ -1013,7 +1017,17 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void UpdateUser(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            string msg = "无法更新用户数据，请稍后再试。";
+            if (SQLHelper != null && requestData.Count > 0)
+            {
+                User user = DataRequest.GetDictionaryJsonObject<User>(requestData, "user") ?? Factory.GetUser();
+                SQLHelper.UpdateUser(user);
+                if (SQLHelper.Success)
+                {
+                    msg = "";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1026,8 +1040,8 @@ namespace Milimoe.FunGame.Server.Controller
             string msg = "无法更新您的密码，请稍后再试。";
             if (requestData.Count >= 2)
             {
-                string username = DataRequest.GetDictionaryJsonObject<string>(requestData, UserQuery.Column_Username) ?? "";
-                string password = DataRequest.GetDictionaryJsonObject<string>(requestData, UserQuery.Column_Password) ?? "";
+                string username = DataRequest.GetDictionaryJsonObject<string>(requestData, "username") ?? "";
+                string password = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
                 if (username.Trim() != "" && password.Trim() != "")
                 {
                     FunGameSystem.UpdateUserKey(username);
@@ -1094,7 +1108,16 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void GetStore(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            List<Store> stores = [];
+
+            if (requestData.Count > 0)
+            {
+                long[] ids = DataRequest.GetDictionaryJsonObject<long[]>(requestData, "ids") ?? [];
+                stores = SQLHelper?.GetStoresWithGoods(ids) ?? [];
+            }
+
+            resultData.Add("result", stores.Count > 0);
+            resultData.Add("stores", stores);
         }
 
         /// <summary>
@@ -1104,7 +1127,34 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void GetMarket(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            List<MarketItem> markets = [];
+
+            if (requestData.Count > 0)
+            {
+                long[] users = DataRequest.GetDictionaryJsonObject<long[]>(requestData, "users") ?? [];
+                MarketItemState state = DataRequest.GetDictionaryJsonObject<MarketItemState>(requestData, "state");
+
+                if (users.Length > 0)
+                {
+                    foreach (long userid in users)
+                    {
+                        markets.AddRange(SQLHelper?.GetAllMarketsItem(userid, state) ?? []);
+                    }
+                }
+                else
+                {
+                    markets = SQLHelper?.GetAllMarketsItem(0, state) ?? [];
+                }
+
+                long[] items = DataRequest.GetDictionaryJsonObject<long[]>(requestData, "items") ?? [];
+                if (items.Length > 0)
+                {
+                    markets = [.. markets.Where(i => items.Contains(i.Id))];
+                }
+            }
+
+            resultData.Add("result", markets.Count > 0);
+            resultData.Add("markets", markets);
         }
 
         /// <summary>
@@ -1114,7 +1164,122 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void StoreBuy(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            bool result = true;
+            double totalCost = 0;
+            List<string> buyResult = [];
+            if (SQLHelper != null && requestData.Count > 0)
+            {
+                long storeid = DataRequest.GetDictionaryJsonObject<long>(requestData, "storeid");
+                long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
+                string currency = DataRequest.GetDictionaryJsonObject<string>(requestData, "currency") ?? "";
+                Dictionary<long, int> counts = DataRequest.GetDictionaryJsonObject<Dictionary<long, int>>(requestData, "counts") ?? [];
+                bool ignore = DataRequest.GetDictionaryJsonObject<bool>(requestData, "ignore");
+
+                Store? store = SQLHelper.GetStore(storeid);
+                User? user = SQLHelper.GetUserById(userid, true);
+                if (store != null && user != null)
+                {
+                    try
+                    {
+                        SQLHelper.NewTransaction();
+
+                        foreach (long goodsId in counts.Keys)
+                        {
+                            Goods goods = store.Goods[goodsId];
+                            int count = counts[goodsId];
+                            if (count > goods.Stock)
+                            {
+                                result = false;
+                                buyResult.Add($"购买失败，原因：库存不足，当前库存为：{goods.Stock}，购买数量：{count}。");
+                                continue;
+                            }
+                            if (goods.GetPrice(currency, out double price))
+                            {
+                                bool subResult = true;
+                                bool useCredits = true;
+                                double totalPrice = price * count;
+                                if (currency == General.GameplayEquilibriumConstant.InGameCurrency && user.Inventory.Credits >= totalPrice)
+                                {
+                                    user.Inventory.Credits -= totalPrice;
+                                }
+                                else
+                                {
+                                    subResult = false;
+                                    buyResult.Add($"购买失败，原因：需要花费 {totalPrice} {General.GameplayEquilibriumConstant.InGameCurrency}，但是您只有 {user.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameCurrency}。");
+                                }
+                                if (currency == General.GameplayEquilibriumConstant.InGameMaterial && user.Inventory.Materials >= totalPrice)
+                                {
+                                    user.Inventory.Materials -= totalPrice;
+                                    useCredits = false;
+                                }
+                                else
+                                {
+                                    subResult = false;
+                                    buyResult.Add($"购买失败，原因：需要花费 {totalPrice} {General.GameplayEquilibriumConstant.InGameMaterial}，但是您只有 {user.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameMaterial}。");
+                                }
+                                if (subResult)
+                                {
+                                    goods.Stock -= count;
+                                    totalCost += totalPrice;
+                                    ProcessStoreBuy(goods, useCredits, price, count, user);
+                                    buyResult.Add($"成功消费：{totalPrice} {currency}，购买了 {count} 个 {goods.Name}。");
+                                }
+                                else
+                                {
+                                    result = false;
+                                }
+                            }
+                        }
+
+                        if (result || (!result && ignore))
+                        {
+                            SQLHelper.UpdateInventory(user.Inventory);
+                        }
+
+                        if (SQLHelper.Success)
+                        {
+                            SQLHelper.Commit();
+                        }
+                        else
+                        {
+                            SQLHelper.Rollback();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        SQLHelper.Rollback();
+                        ServerHelper.Error(e);
+                        buyResult.Add("暂时无法处理此购买，请稍后再试。");
+                    }
+                }
+            }
+            resultData.Add("result", result);
+            resultData.Add("msg", string.Join("\r\n", buyResult));
+        }
+
+        /// <summary>
+        /// 处理商店购买
+        /// </summary>
+        /// <param name="goods"></param>
+        /// <param name="useCredits"></param>
+        /// <param name="price"></param>
+        /// <param name="count"></param>
+        /// <param name="user"></param>
+        private static void ProcessStoreBuy(Goods goods, bool useCredits, double price, int count, User user)
+        {
+            foreach (Item item in goods.Items)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    Item newItem = item.Copy();
+                    newItem.IsTradable = false;
+                    newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
+                    newItem.Price = useCredits ? Calculation.Round2Digits(price * 0.35) : Calculation.Round2Digits(price * 7);
+                    newItem.User = user;
+                    newItem.EntityState = EntityState.Added;
+                    user.Inventory.Items.Add(newItem);
+                }
+            }
         }
 
         /// <summary>
@@ -1124,7 +1289,86 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void MarketBuy(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            bool result = false;
+            string msg = "无法购买此物品，请稍后再试。";
+            if (SQLHelper != null && requestData.Count > 0)
+            {
+                Guid itemGuid = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "itemGuid");
+
+                MarketItem? marketItem = SQLHelper.GetMarketItem(itemGuid);
+                if (marketItem != null)
+                {
+                    long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
+                    double price = DataRequest.GetDictionaryJsonObject<double>(requestData, "price");
+
+                    try
+                    {
+                        User? buyer = SQLHelper.GetUserById(userid, true);
+                        User? itemUser = SQLHelper.GetUserById(marketItem.User.Id, true);
+                        if (itemUser != null && buyer != null && itemUser.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                        {
+                            if (buyer.Inventory.Credits >= price)
+                            {
+                                buyer.Inventory.Credits -= price;
+                                double fee = Calculation.Round2Digits(price * 0.15);
+                                itemUser.Inventory.Credits += price - fee;
+                                result = true;
+                            }
+                            else
+                            {
+                                msg = $"购买失败，原因：需要花费 {price} {General.GameplayEquilibriumConstant.InGameCurrency}，但是您只有 {buyer.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameCurrency}。";
+                            }
+
+                            if (result)
+                            {
+                                SQLHelper.NewTransaction();
+
+                                try
+                                {
+                                    item.EntityState = EntityState.Deleted;
+                                    SQLHelper.DeleteMarketItem(itemGuid);
+
+                                    Item newItem = item.Copy();
+                                    newItem.IsTradable = false;
+                                    newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
+                                    newItem.User = buyer;
+                                    newItem.EntityState = EntityState.Added;
+                                    buyer.Inventory.Items.Add(newItem);
+
+                                    SQLHelper.UpdateInventory(itemUser.Inventory);
+                                    SQLHelper.UpdateInventory(buyer.Inventory);
+                                }
+                                catch
+                                {
+                                    result = false;
+                                }
+
+                                if (result)
+                                {
+                                    msg = $"成功消费：{price} {General.GameplayEquilibriumConstant.InGameCurrency}，购买了 {itemUser.Username} 出售的 {item.Name}。";
+                                    SQLHelper.Commit();
+                                }
+                                else
+                                {
+                                    SQLHelper.Rollback();
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        SQLHelper.Rollback();
+                        ServerHelper.Error(e);
+                        msg = "暂时无法处理此购买，请稍后再试。";
+                    }
+                }
+                else
+                {
+                    msg = "目标物品不存在。";
+                }
+            }
+            resultData.Add("result", result);
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1134,7 +1378,18 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void UpdateInventory(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            string msg = "无法更新库存数据，请稍后再试。";
+            if (SQLHelper != null && requestData.Count > 0)
+            {
+                Inventory inventory = DataRequest.GetDictionaryJsonObject<Inventory>(requestData, "inventory") ?? Factory.GetInventory();
+                bool fullUpdate = DataRequest.GetDictionaryJsonObject<bool>(requestData, "fullUpdate");
+                SQLHelper.UpdateInventory(inventory, fullUpdate);
+                if (SQLHelper.Success)
+                {
+                    msg = "";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1144,7 +1399,36 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void Use(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            bool result = false;
+            string msg = "无法使用此物品，请稍后再试。";
+            if (SQLHelper != null && requestData.Count > 0)
+            {
+                Guid itemGuid = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "itemGuid");
+                long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
+                Character[] targets = DataRequest.GetDictionaryJsonObject<Character[]>(requestData, "targets") ?? [];
+                long useCount = DataRequest.GetDictionaryJsonObject<long>(requestData, "useCount");
+                User? user = SQLHelper.GetUserById(userid, true);
+                if (user != null && user.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                {
+                    // 暂定标准实现是传这两个参数，作用目标和使用数量
+                    Dictionary<string, object> args = new()
+                    {
+                        { "targets", targets },
+                        { "useCount", useCount }
+                    };
+                    bool used = item.UseItem(args);
+                    if (used)
+                    {
+                        SQLHelper.UpdateInventory(user.Inventory);
+                    }
+                }
+                if (result)
+                {
+                    msg = "";
+                }
+            }
+            resultData.Add("result", result);
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1154,7 +1438,33 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void StoreSell(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            bool result = false;
+            string msg = "无法出售此物品，请稍后再试。";
+            if (SQLHelper != null && requestData.Count > 0)
+            {
+                Guid itemGuid = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "itemGuid");
+                long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
+                User? user = SQLHelper.GetUserById(userid, true);
+                if (user != null && user.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                {
+                    if (!item.IsSellable)
+                    {
+                        msg = $"此物品无法出售{(item.NextSellableTime != DateTime.MinValue ? $"，此物品将在 {item.NextSellableTime.ToString(General.GeneralDateTimeFormatChinese)} 后可出售" : "")}。";
+                    }
+                    else
+                    {
+                        double reward = item.Price;
+                        user.Inventory.Credits += reward;
+                        item.EntityState = EntityState.Deleted;
+                        SQLHelper.UpdateInventory(user.Inventory);
+                    }
+                }
+                if (result)
+                {
+                    msg = "";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1164,7 +1474,58 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void MarketSell(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            string msg = "无法上架此物品，请稍后再试。";
+            if (requestData.Count > 0)
+            {
+                Guid itemGuid = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "itemGuid");
+                long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
+                double price = DataRequest.GetDictionaryJsonObject<double>(requestData, "price");
+                User? user = SQLHelper?.GetUserById(userid, true);
+                if (user != null && user.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                {
+                    if (!item.IsSellable)
+                    {
+                        msg = $"此物品无法出售{(item.NextSellableTime != DateTime.MinValue ? $"，此物品将在 {item.NextSellableTime.ToString(General.GeneralDateTimeFormatChinese)} 后可出售" : "")}。";
+                    }
+                    else
+                    {
+                        SQLHelper?.AddMarketItem(itemGuid, userid, price);
+                        if (SQLHelper?.Success ?? false)
+                        {
+                            msg = "";
+                        }
+                    }
+                }
+            }
+            resultData.Add("msg", msg);
+        }
+        
+        /// <summary>
+        /// 下架市场物品
+        /// </summary>
+        /// <param name="requestData"></param>
+        /// <param name="resultData"></param>
+        private void MarketDelist(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
+        {
+            string msg = "无法下架市场物品，请稍后再试。";
+            if (requestData.Count > 0)
+            {
+                long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
+                if (userid != 0)
+                {
+                    SQLHelper?.DeleteMarketItemByUserId(userid);
+                }
+                else
+                {
+                    Guid itemGuid = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "itemGuid");
+                    if (itemGuid != Guid.Empty) SQLHelper?.DeleteMarketItem(itemGuid);
+                }
+                if (SQLHelper?.Success ?? false)
+                {
+                    msg = "";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1174,7 +1535,18 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void UpdateMarketPrice(Dictionary<string, object> requestData, Dictionary<string, object> resultData)
         {
-            // TODO
+            string msg = "无法更新市场价格，请稍后再试。";
+            if (requestData.Count > 0)
+            {
+                Guid itemGuid = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "itemGuid");
+                double price = DataRequest.GetDictionaryJsonObject<double>(requestData, "price");
+                SQLHelper?.UpdateMarketItemPrice(itemGuid, price);
+                if (SQLHelper?.Success ?? false)
+                {
+                    msg = "";
+                }
+            }
+            resultData.Add("msg", msg);
         }
 
         /// <summary>
@@ -1187,7 +1559,7 @@ namespace Milimoe.FunGame.Server.Controller
             string msg = "无法获取报价，请稍后再试。";
             if (SQLHelper != null && requestData.Count >= 1)
             {
-                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
+                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, "id");
                 bool apiQuery = DataRequest.GetDictionaryJsonObject<bool>(requestData, "apiQuery");
                 Offer? offer = SQLHelper.GetOffer(offerId);
                 if (offer != null)
@@ -1222,7 +1594,7 @@ namespace Milimoe.FunGame.Server.Controller
             string msg = "无法创建报价，请稍后再试。";
             if (SQLHelper != null && requestData.Count >= 1)
             {
-                long offeree = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Offeree);
+                long offeree = DataRequest.GetDictionaryJsonObject<long>(requestData, "offeree");
                 long offeror = Server.User.Id;
                 if (offeror != 0 && offeree != 0 && offeror != offeree)
                 {
@@ -1256,7 +1628,7 @@ namespace Milimoe.FunGame.Server.Controller
             string msg = "无法修改报价，请稍后再试。";
             if (SQLHelper != null && requestData.Count >= 3)
             {
-                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
+                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, "id");
                 OfferActionType action = DataRequest.GetDictionaryJsonObject<OfferActionType>(requestData, "action");
                 List<Guid> offerorItems = DataRequest.GetDictionaryJsonObject<List<Guid>>(requestData, "offerorItems") ?? [];
                 List<Guid> offereeItems = DataRequest.GetDictionaryJsonObject<List<Guid>>(requestData, "offereeItems") ?? [];
@@ -1367,23 +1739,53 @@ namespace Milimoe.FunGame.Server.Controller
 
                         if (canProceed)
                         {
-                            // 更新物品
-                            SQLHelper.DeleteOfferItemsByOfferId(offerId);
-                            foreach (Guid itemGuid in offerorItems)
+                            // 更新物品，同时对物品进行检查
+                            User? offeree = SQLHelper.GetUserById(offer.Offeree, true);
+                            User? offeror = SQLHelper.GetUserById(offer.Offeror, true);
+                            if (offeree != null && offeror != null)
                             {
-                                SQLHelper.AddOfferItem(offerId, offer.Offeror, itemGuid);
-                            }
-                            foreach (Guid itemGuid in offereeItems)
-                            {
-                                SQLHelper.AddOfferItem(offerId, offer.Offeree, itemGuid );
-                            }
+                                SQLHelper.DeleteOfferItemsByOfferId(offerId);
+                                foreach (Guid itemGuid in offerorItems)
+                                {
+                                    if (offeror.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                                    {
+                                        if (!item.IsTradable)
+                                        {
+                                            msg = $"此物品无法交易{(item.NextTradableTime != DateTime.MinValue ? $"，此物品将在 {item.NextTradableTime.ToString(General.GeneralDateTimeFormatChinese)} 后可交易" : "")}。";
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            SQLHelper.AddOfferItem(offerId, offer.Offeror, item.Guid);
+                                        }
+                                    }
+                                }
+                                foreach (Guid itemGuid in offereeItems)
+                                {
+                                    if (offeree.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                                    {
+                                        if (!item.IsTradable)
+                                        {
+                                            msg = $"此物品无法交易{(item.NextTradableTime != DateTime.MinValue ? $"，此物品将在 {item.NextTradableTime.ToString(General.GeneralDateTimeFormatChinese)} 后可交易" : "")}。";
+                                            break;
+                                        }
+                                        else
+                                        {
+                                            SQLHelper.AddOfferItem(offerId, offer.Offeree, item.Guid);
+                                        }
+                                    }
+                                }
 
-                            offer = SQLHelper.GetOffer(offerId);
-                            if (offer != null)
-                            {
-                                SQLHelper.Commit();
-                                resultData.Add("offer", offer);
-                                msg = "";
+                                if (msg != "")
+                                {
+                                    offer = SQLHelper.GetOffer(offerId);
+                                    if (offer != null)
+                                    {
+                                        SQLHelper.Commit();
+                                        resultData.Add("offer", offer);
+                                        msg = "";
+                                    }
+                                }
                             }
                         }
 
@@ -1417,7 +1819,7 @@ namespace Milimoe.FunGame.Server.Controller
             string msg = "无法回应报价，请稍后再试。";
             if (SQLHelper != null && requestData.Count >= 2) // 只需要 offerId 和 action
             {
-                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, OffersQuery.Column_Id);
+                long offerId = DataRequest.GetDictionaryJsonObject<long>(requestData, "id");
                 OfferActionType action = DataRequest.GetDictionaryJsonObject<OfferActionType>(requestData, "action");
                 long userId = Server.User.Id;
 
@@ -1470,15 +1872,14 @@ namespace Milimoe.FunGame.Server.Controller
                             {
                                 if (offer.Status == OfferState.Completed)
                                 {
-                                    User offeree = Server.User;
+                                    User? offeree = SQLHelper.GetUserById(offer.Offeree, true);
                                     User? offeror = SQLHelper.GetUserById(offer.Offeror, true);
-                                    if (offeror != null)
+                                    if (offeree != null && offeror != null)
                                     {
                                         foreach (Guid itemGuid in offer.OffereeItems)
                                         {
                                             if (offeree.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
                                             {
-                                                offeree.Inventory.Items.Remove(item);
                                                 item.EntityState = EntityState.Deleted;
 
                                                 Item newItem = item.Copy();
@@ -1487,15 +1888,14 @@ namespace Milimoe.FunGame.Server.Controller
                                                 newItem.IsTradable = false;
                                                 newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
                                                 newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
-                                                offeror.Inventory.Items.Add(newItem);
                                                 newItem.EntityState = EntityState.Added;
+                                                offeror.Inventory.Items.Add(newItem);
                                             }
                                         }
                                         foreach (Guid itemGuid in offer.OfferorItems)
                                         {
                                             if (offeror.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
                                             {
-                                                offeror.Inventory.Items.Remove(item);
                                                 item.EntityState = EntityState.Deleted;
 
                                                 Item newItem = item.Copy();
@@ -1504,8 +1904,8 @@ namespace Milimoe.FunGame.Server.Controller
                                                 newItem.IsTradable = false;
                                                 newItem.NextSellableTime = DateTimeUtility.GetTradableTime();
                                                 newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
-                                                offeree.Inventory.Items.Add(newItem);
                                                 newItem.EntityState = EntityState.Added;
+                                                offeree.Inventory.Items.Add(newItem);
                                             }
                                         }
                                         SQLHelper.UpdateInventory(offeror.Inventory);

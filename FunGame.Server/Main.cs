@@ -1,5 +1,4 @@
-﻿using Milimoe.FunGame;
-using Milimoe.FunGame.Core.Api.Utility;
+﻿using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Controller;
@@ -23,6 +22,28 @@ Console.CancelKeyPress += (sender, e) =>
     Environment.Exit(0); // 退出程序
 };
 
+FunGameSystem.CloseListener += async () =>
+{
+    if (SocketListener != null)
+    {
+        foreach (ServerModel<ServerSocket> model in SocketListener.ClientList.Cast<ServerModel<ServerSocket>>())
+        {
+            await model.Kick("服务器正在关闭。");
+        }
+        SocketListener.Close();
+        SocketListener = null;
+    }
+    if (WebSocketListener != null)
+    {
+        foreach (ServerModel<ServerWebSocket> model in WebSocketListener.ClientList.Cast<ServerModel<ServerWebSocket>>())
+        {
+            await model.Kick("服务器正在关闭。");
+        }
+        WebSocketListener.Close();
+        WebSocketListener = null;
+    }
+};
+
 while (Running)
 {
     string order = Console.ReadLine() ?? "";
@@ -30,21 +51,23 @@ while (Running)
     if (order != "" && Running)
     {
         order = order.ToLower();
+        if (FunGameSystem.OrderList.TryGetValue(order, out Action<string>? action) && action != null)
+        {
+            action(order);
+        }
         switch (order)
         {
             case OrderDictionary.Quit:
             case OrderDictionary.Exit:
             case OrderDictionary.Close:
-                Running = false;
                 CloseServer();
                 break;
             case OrderDictionary.Restart:
                 if (SocketListener is null || WebSocketListener is null)
                 {
-                    ServerHelper.WriteLine("重启服务器");
                     StartServer();
                 }
-                else ServerHelper.WriteLine("服务器正在运行，拒绝重启！");
+                else ServerHelper.WriteLine("服务器正在运行，请手动结束服务器进程再启动！");
                 break;
             default:
                 if (SocketListener != null)
@@ -59,9 +82,6 @@ while (Running)
         }
     }
 }
-
-ServerHelper.WriteLine("服务器已关闭，按任意键退出程序。");
-Console.ReadKey();
 
 void StartServer()
 {
@@ -246,38 +266,18 @@ void StartServer()
         }
         catch (Exception e)
         {
-            if (e.Message.Equals(new ServerErrorException().Message))
-            {
-                if (SocketListener != null)
-                {
-                    SocketListener.Close();
-                    SocketListener = null;
-                }
-                if (WebSocketListener != null)
-                {
-                    WebSocketListener.Close();
-                    WebSocketListener = null;
-                }
-            }
             ServerHelper.Error(e);
+            CloseServer();
         }
         finally
         {
-            if (SocketListener != null)
-            {
-                SocketListener.Close();
-                SocketListener = null;
-            }
-            if (WebSocketListener != null)
-            {
-                WebSocketListener.Close();
-                WebSocketListener = null;
-            }
+            CloseServer();
         }
     });
 }
 
 void CloseServer()
 {
+    Running = false;
     FunGameSystem.CloseServer();
 }

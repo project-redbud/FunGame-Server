@@ -1,11 +1,11 @@
-﻿using System.Collections;
-using Milimoe.FunGame.Core.Api.Transmittal;
+﻿using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.Core.Model;
+using Milimoe.FunGame.Server.Model;
 using Milimoe.FunGame.Server.Others;
 using Milimoe.FunGame.Server.Services.DataUtility;
 
@@ -13,10 +13,13 @@ namespace Milimoe.FunGame.Server.Services
 {
     public class FunGameSystem
     {
+        public delegate Task CloseListenerHandler();
+        public static event CloseListenerHandler? CloseListener;
+
         /// <summary>
         /// 服务器指令列表
         /// </summary>
-        public static Hashtable OrderList { get; } = [];
+        public static Dictionary<string, Action<string>> OrderList { get; } = [];
 
         /// <summary>
         /// 在线房间列表
@@ -59,9 +62,9 @@ namespace Milimoe.FunGame.Server.Services
         public const string FunGameWebAPITokenID = "fungame_web_api";
 
         /// <summary>
-        /// API Secret 字段名
+        /// API Secret 文件名
         /// </summary>
-        public const string APISecretField = "api_secret";
+        public const string APISecretFileName = ".apisecret";
 
         /// <summary>
         /// 初始化数据库连接器
@@ -286,12 +289,12 @@ namespace Milimoe.FunGame.Server.Services
         /// 检查是否存在 API Secret Key
         /// </summary>
         /// <param name="key"></param>
-        public static bool IsAPISecretKeyExist(string key)
+        public static bool APISecretKeyExists(string key)
         {
             using SQLHelper? sql = Factory.OpenFactory.GetSQLHelper();
             if (sql != null)
             {
-                key = Encryption.HmacSha256(key, LocalConfig.Get<string>(APISecretField) ?? "");
+                key = Encryption.HmacSha256(key, Encryption.FileSha256(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, APISecretFileName)));
                 sql.ExecuteDataSet(ApiTokens.Select_GetAPISecretKey(sql, key));
                 if (sql.Result == SQLResult.Success)
                 {
@@ -302,18 +305,18 @@ namespace Milimoe.FunGame.Server.Services
         }
         
         /// <summary>
-        /// 设置 API Secret Key
+        /// 创建 API Secret Key
         /// </summary>
         /// <param name="token"></param>
         /// <param name="reference1"></param>
         /// <param name="reference2"></param>
-        public static string SetAPISecretKey(string token, string reference1 = "", string reference2 = "", SQLHelper? sqlHelper = null)
+        public static string CreateAPISecretKey(string token, string reference1 = "", string reference2 = "", SQLHelper? sqlHelper = null)
         {
             bool useSQLHelper = sqlHelper != null;
             sqlHelper ??= Factory.OpenFactory.GetSQLHelper();
             string key = Encryption.GenerateRandomString();
-            string enKey = Encryption.HmacSha256(key, LocalConfig.Get<string>(APISecretField) ?? "");
-            if (sqlHelper != null)
+            string enKey = Encryption.HmacSha256(key, Encryption.FileSha256(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, APISecretFileName)));
+            if (sqlHelper != null && enKey != "")
             {
                 sqlHelper.ExecuteDataSet(ApiTokens.Select_GetAPIToken(sqlHelper, token));
                 if (sqlHelper.Success)
@@ -325,6 +328,10 @@ namespace Milimoe.FunGame.Server.Services
                     sqlHelper.Execute(ApiTokens.Insert_APIToken(sqlHelper, token, enKey, reference1, reference2));
                 }
             }
+            else
+            {
+                ServerHelper.WriteLine($"API Secret Key '{token}' 创建失败，未连接到数据库或者找不到加密秘钥。", InvokeMessageType.Error);
+            }
             if (!useSQLHelper)
             {
                 sqlHelper?.Dispose();
@@ -333,7 +340,7 @@ namespace Milimoe.FunGame.Server.Services
         }
 
         /// <summary>
-        /// 创建 SQL 服务后需要做的事
+        /// 创建 SQL 服务后需要做的事，包括数据库初始化，API 初始化，首次建立管理员账户等等
         /// </summary>
         /// <param name="sqlHelper"></param>
         public static void AfterCreateSQLService(SQLHelper sqlHelper)
@@ -351,8 +358,12 @@ namespace Milimoe.FunGame.Server.Services
                 {
                     mysqlHelper.ExecuteSqlFile(AppDomain.CurrentDomain.BaseDirectory + "fungame.sql");
                 }
-                LocalConfig.Add(APISecretField, Encryption.GenerateRandomString());
-                SetAPISecretKey(FunGameWebAPITokenID, sqlHelper: sqlHelper);
+                ConsoleModel.FirstRunRegAdmin();
+                using StreamWriter sw = File.CreateText(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, APISecretFileName));
+                sw.WriteLine(Encryption.GenerateRandomString());
+                sw.Flush();
+                sw.Close();
+                ServerHelper.WriteLine($"已生成一个默认的 API Token，Token ID: {FunGameWebAPITokenID}, Secret Key: 【{CreateAPISecretKey(FunGameWebAPITokenID, sqlHelper: sqlHelper)}】，请妥善保管方括号内的内容，仅显示一次。如遗忘需要使用管理员账号重置。");
                 sqlHelper.Execute(Configs.Insert_Config(sqlHelper, "Initialization", FunGameInfo.FunGame_Version, "SQL Service Installed."));
                 SQLConfig.Clear();
                 SQLConfig.Add("Initialized", true);
@@ -365,6 +376,10 @@ namespace Milimoe.FunGame.Server.Services
             sqlHelper.Dispose();
         }
 
+        /// <summary>
+        /// 数据库是否存在
+        /// </summary>
+        /// <returns></returns>
         public static bool DatabaseExists()
         {
             SQLConfig.LoadConfig();
@@ -401,6 +416,8 @@ namespace Milimoe.FunGame.Server.Services
                     plugin.Controller.Close();
                 }
             }
+            // 停止所有正在运行的监听
+            CloseListener?.Invoke();
         }
     }
 }
