@@ -47,10 +47,10 @@ namespace Milimoe.FunGame.WebAPI.Controllers
         }
 
         /// <summary>
-        /// 获取市场内容
+        /// 获取市场内容（用户）
         /// </summary>
-        [HttpGet("getmarket")]
-        public async Task<IActionResult> GetMarket(long[]? users = null, MarketItemState state = MarketItemState.Listed, long[]? items = null)
+        [HttpGet("getmarketbyuser")]
+        public async Task<IActionResult> GetMarketByUser(long userid, MarketItemState state = MarketItemState.Listed)
         {
             PayloadModel<DataRequestType> response = new()
             {
@@ -62,9 +62,42 @@ namespace Milimoe.FunGame.WebAPI.Controllers
             {
                 Dictionary<string, object> data = new()
                 {
-                    { "users", users ?? [] },
+                    { "users", new long[] { userid } },
+                    { "state", state }
+                };
+                Dictionary<string, object> result = await model.DataRequestController.GetResultData(DataRequestType.Inventory_GetMarket, data);
+                response.StatusCode = 200;
+                response.Data = result;
+                return Ok(response);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("Error: {e}", e);
+            }
+
+            response.StatusCode = 500;
+            response.Message = "服务器暂时无法处理此请求。";
+            return StatusCode(500, response);
+        }
+        
+        /// <summary>
+        /// 获取市场内容（物品）
+        /// </summary>
+        [HttpGet("getmarketbyitem")]
+        public async Task<IActionResult> GetMarketByItem(long itemid, MarketItemState state = MarketItemState.Listed)
+        {
+            PayloadModel<DataRequestType> response = new()
+            {
+                Event = "inventory_getmarket",
+                RequestType = DataRequestType.Inventory_GetMarket
+            };
+
+            try
+            {
+                Dictionary<string, object> data = new()
+                {
                     { "state", state },
-                    { "items", items ?? [] }
+                    { "items", new long[] { itemid } }
                 };
                 Dictionary<string, object> result = await model.DataRequestController.GetResultData(DataRequestType.Inventory_GetMarket, data);
                 response.StatusCode = 200;
