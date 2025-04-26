@@ -456,15 +456,24 @@ namespace Milimoe.FunGame.Server.Model
             await Send(SocketMessageType.ForceLogout, msg);
         }
 
-        public async Task ForceLogOutDuplicateLogonUser()
+        public async Task ForceLogOutDuplicateLogonUser(bool checkGlobal = true)
         {
             if (User.Id != 0)
             {
                 string user = User.Username;
-                if (Listener.UserList.ContainsKey(user))
+                if (Listener.UserList.ContainsKey(user) || (checkGlobal && FunGameSystem.UserList.ContainsKey(user)))
                 {
+                    IServerModel model;
+                    try
+                    {
+                        model = Listener.UserList[user];
+                    }
+                    catch
+                    {
+                        model = FunGameSystem.UserList[user];
+                    }
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + user + " 重复登录！");
-                    await ((ServerModel<T>)Listener.UserList[user]).ForceLogOut("您的账号在别处登录，已强制下线。");
+                    await model.ForceLogOut("您的账号在别处登录，已强制下线。");
                 }
             }
         }
@@ -496,6 +505,7 @@ namespace Milimoe.FunGame.Server.Model
             if (User.Id != 0 && this != null)
             {
                 Listener.UserList.Add(User.Username, this);
+                FunGameSystem.UserList.Add(User.Username, this);
                 _username = User.Username;
                 ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已添加");
                 // 更新最后登录时间、IP地址
@@ -522,6 +532,7 @@ namespace Milimoe.FunGame.Server.Model
                 else ServerHelper.WriteLine("OnlinePlayers: 无法更新玩家 " + User.Username + " 的游戏时长");
                 if (Listener.UserList.Remove(User.Username))
                 {
+                    FunGameSystem.UserList.Remove(User.Username);
                     ServerHelper.WriteLine("OnlinePlayers: 玩家 " + User.Username + " 已移除");
                     User = General.UnknownUserInstance;
                     return true;

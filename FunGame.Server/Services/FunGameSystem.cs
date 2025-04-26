@@ -1,5 +1,6 @@
 ﻿using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
@@ -25,6 +26,11 @@ namespace Milimoe.FunGame.Server.Services
         /// 在线房间列表
         /// </summary>
         public static RoomList RoomList { get; } = new();
+
+        /// <summary>
+        /// 在线用户列表（如果需要统一管理用户在线的话用这个）
+        /// </summary>
+        public static ConcurrentModelList<IServerModel> UserList { get; } = [];
 
         /// <summary>
         /// Server实际安装的模组

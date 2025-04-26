@@ -272,6 +272,12 @@ namespace Milimoe.FunGame.Server.Services
                 }
             }
 
+            if (success)
+            {
+                // 检查重复登录
+
+            }
+
             return (success, dsUser, msg, key);
         }
 

@@ -25,7 +25,7 @@ namespace Milimoe.FunGame.Server.Model
                             string client = Console.ReadLine() ?? "";
                             if (client != "" && server != null)
                             {
-                                await Kick((ServerModel<T>)server.ClientList[client]);
+                                await Kick(server.ClientList[client]);
                             }
                             break;
                         }
@@ -35,7 +35,7 @@ namespace Milimoe.FunGame.Server.Model
                             string user = Console.ReadLine() ?? "";
                             if (user != "" && server != null)
                             {
-                                await ForceLogOut((ServerModel<T>)server.UserList[user]);
+                                await ForceLogOut(server.UserList[user]);
                             }
                             break;
                         }
@@ -76,12 +76,12 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public static async Task Kick<T>(ServerModel<T> clientModel) where T : ISocketMessageProcessor
+        public static async Task Kick(IServerModel clientModel)
         {
             await clientModel.Kick("您已被服务器管理员踢出此服务器。");
         }
 
-        public static async Task ForceLogOut<T>(ServerModel<T> clientModel) where T : ISocketMessageProcessor
+        public static async Task ForceLogOut(IServerModel clientModel)
         {
             await clientModel.ForceLogOut("您已被服务器管理员强制下线。");
         }
