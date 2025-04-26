@@ -4,6 +4,7 @@ using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Addon;
+using Milimoe.FunGame.Core.Library.Common.Event;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
 using Milimoe.FunGame.Core.Library.SQLScript.Entity;
@@ -219,13 +220,27 @@ namespace Milimoe.FunGame.Server.Controller
             if (requestData.Count >= 1)
             {
                 key = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "key");
-                if (Server.IsLoginKey(key))
+
+                GeneralEventArgs eventArgs = new();
+                FunGameSystem.ServerPluginLoader?.OnBeforeLogoutEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeLogoutEvent(this, eventArgs);
+
+                if (eventArgs.Cancel)
+                {
+                    msg = DataRequestService.GetPluginCancelString(DataRequestType.RunTime_Logout, eventArgs);
+                    ServerHelper.WriteLine(msg, InvokeMessageType.DataRequest, LogLevel.Warning);
+                }
+                else if (Server.IsLoginKey(key))
                 {
                     // 从玩家列表移除
                     Server.RemoveUser();
                     Server.GetUsersCount();
                     msg = "你已成功退出登录！ ";
                 }
+                else eventArgs.Success = false;
+
+                FunGameSystem.ServerPluginLoader?.OnBeforeLogoutEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeLogoutEvent(this, eventArgs);
             }
             resultData.Add("msg", msg);
             resultData.Add("key", key);
@@ -258,44 +273,62 @@ namespace Milimoe.FunGame.Server.Controller
                 string gameModule = DataRequest.GetDictionaryJsonObject<string>(requestData, "moduleServer") ?? "";
                 string gameMap = DataRequest.GetDictionaryJsonObject<string>(requestData, "map") ?? "";
                 bool isRank = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isRank");
-                ServerHelper.WriteLine("[CreateRoom] " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gameModule, gameMap]) + ")", InvokeMessageType.DataRequest);
-                if (gameModule == "" || gameMap == "" || FunGameSystem.GameModuleLoader is null || !FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(gameModule) || !FunGameSystem.GameModuleLoader.Maps.ContainsKey(gameMap))
-                {
-                    ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
-                    resultData.Add("room", room);
-                    return;
-                }
                 User user = DataRequest.GetDictionaryJsonObject<User>(requestData, "master") ?? Factory.GetUser();
                 string password = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
                 int maxusers = DataRequest.GetDictionaryJsonObject<int>(requestData, "maxUsers");
 
-                if (user.Id != 0)
+                RoomEventArgs eventArgs = new(type, password);
+                FunGameSystem.ServerPluginLoader?.OnBeforeCreateRoomEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeCreateRoomEvent(this, eventArgs);
+
+                if (eventArgs.Cancel)
                 {
-                    string roomid;
-                    while (true)
+                    ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Main_CreateRoom, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                    resultData.Add("room", room);
+                    return;
+                }
+                else
+                {
+                    ServerHelper.WriteLine("[CreateRoom] " + RoomSet.GetTypeString(type) + " (" + string.Join(", ", [gameModule, gameMap]) + ")", InvokeMessageType.DataRequest);
+                    if (gameModule == "" || gameMap == "" || FunGameSystem.GameModuleLoader is null || !FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(gameModule) || !FunGameSystem.GameModuleLoader.Maps.ContainsKey(gameMap))
                     {
-                        // 防止重复
-                        roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
-                        if (FunGameSystem.RoomList.GetRoom(roomid).Roomid == "-1")
-                        {
-                            break;
-                        }
+                        ServerHelper.WriteLine("缺少对应的模组或地图，无法创建房间。");
+                        resultData.Add("room", room);
+                        return;
                     }
-                    if (roomid != "-1" && SQLHelper != null)
+
+                    if (user.Id != 0)
                     {
-                        SQLHelper.Execute(RoomQuery.Insert_CreateRoom(SQLHelper, roomid, user.Id, type, gameModule, gameMap, isRank, password, maxusers));
-                        if (SQLHelper.Result == SQLResult.Success)
+                        string roomid;
+                        while (true)
                         {
-                            ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
-                            DataRow? dr = SQLHelper.ExecuteDataRow(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
-                            if (dr != null)
+                            // 防止重复
+                            roomid = Verification.CreateVerifyCode(VerifyCodeType.MixVerifyCode, 7).ToUpper();
+                            if (FunGameSystem.RoomList.GetRoom(roomid).Roomid == "-1")
                             {
-                                room = Factory.GetRoom(dr, user);
-                                FunGameSystem.RoomList.AddRoom(room);
+                                break;
+                            }
+                        }
+                        if (roomid != "-1" && SQLHelper != null)
+                        {
+                            SQLHelper.Execute(RoomQuery.Insert_CreateRoom(SQLHelper, roomid, user.Id, type, gameModule, gameMap, isRank, password, maxusers));
+                            if (SQLHelper.Result == SQLResult.Success)
+                            {
+                                ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
+                                DataRow? dr = SQLHelper.ExecuteDataRow(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
+                                if (dr != null)
+                                {
+                                    room = Factory.GetRoom(dr, user);
+                                    FunGameSystem.RoomList.AddRoom(room);
+                                }
                             }
                         }
                     }
                 }
+
+                eventArgs.Success = room.Roomid != "-1";
+                FunGameSystem.ServerPluginLoader?.OnAfterCreateRoomEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterCreateRoomEvent(this, eventArgs);
             }
             resultData.Add("room", room);
         }
@@ -324,7 +357,22 @@ namespace Milimoe.FunGame.Server.Controller
 
                 if (roomid != "-1" && FunGameSystem.RoomList.IsExist(roomid))
                 {
-                    result = await Server.QuitRoom(roomid, isMaster);
+                    Room room = FunGameSystem.RoomList[roomid];
+                    RoomEventArgs eventArgs = new(room);
+                    FunGameSystem.ServerPluginLoader?.OnBeforeQuitRoomEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnBeforeQuitRoomEvent(this, eventArgs);
+                    if (eventArgs.Cancel)
+                    {
+                        ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Main_QuitRoom, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                    }
+                    else
+                    {
+                        result = await Server.QuitRoom(roomid, isMaster);
+                    }
+
+                    eventArgs.Success = result;
+                    FunGameSystem.ServerPluginLoader?.OnAfterQuitRoomEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnAfterQuitRoomEvent(this, eventArgs);
                 }
             }
             resultData.Add("result", result);
@@ -344,13 +392,22 @@ namespace Milimoe.FunGame.Server.Controller
 
                 if (roomid != "-1")
                 {
-                    if (SQLHelper != null)
+                    Room room = FunGameSystem.RoomList[roomid];
+                    RoomEventArgs eventArgs = new(room);
+                    FunGameSystem.ServerPluginLoader?.OnBeforeIntoRoomEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnBeforeIntoRoomEvent(this, eventArgs);
+
+                    if (eventArgs.Cancel)
+                    {
+                        ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Main_IntoRoom, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                    }
+                    else if (SQLHelper != null)
                     {
                         SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
                         if (SQLHelper.Success)
                         {
                             FunGameSystem.RoomList.IntoRoom(roomid, Server.User);
-                            Server.InRoom = FunGameSystem.RoomList[roomid];
+                            Server.InRoom = room;
                             Server.User.OnlineState = OnlineState.InRoom;
                             await Server.SendClients(Server.Listener.ClientList.Where(c => c != null && roomid == c.InRoom.Roomid && c.User.Id != 0),
                                 SocketMessageType.Chat, Server.User.Username, DateTimeUtility.GetNowShortTime() + " [ " + Server.User.Username + " ] 进入了房间。");
@@ -361,6 +418,10 @@ namespace Milimoe.FunGame.Server.Controller
                             FunGameSystem.RoomList.RemoveRoom(roomid);
                         }
                     }
+
+                    eventArgs.Success = result;
+                    FunGameSystem.ServerPluginLoader?.OnAfterIntoRoomEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnAfterIntoRoomEvent(this, eventArgs);
                 }
             }
             resultData.Add("result", result);
@@ -376,13 +437,28 @@ namespace Milimoe.FunGame.Server.Controller
             bool result = true;
             if (requestData.Count >= 1)
             {
-                bool iscancel = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isCancel");
-                if (!iscancel)
+                bool isCancel = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isCancel");
+                if (!isCancel)
                 {
-                    ServerHelper.WriteLine("[MatchRoom] Start", InvokeMessageType.DataRequest);
-                    RoomType type = DataRequest.GetDictionaryJsonObject<RoomType>(requestData, "roomType");
-                    User user = DataRequest.GetDictionaryJsonObject<User>(requestData, "matcher") ?? Factory.GetUser();
-                    StartMatching(type, user);
+                    GeneralEventArgs eventArgs = new();
+                    FunGameSystem.ServerPluginLoader?.OnBeforeStartMatchEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnBeforeStartMatchEvent(this, eventArgs);
+
+                    if (eventArgs.Cancel)
+                    {
+                        ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Main_MatchRoom, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                    }
+                    else
+                    {
+                        ServerHelper.WriteLine("[MatchRoom] Start", InvokeMessageType.DataRequest);
+                        RoomType type = DataRequest.GetDictionaryJsonObject<RoomType>(requestData, "roomType");
+                        User user = DataRequest.GetDictionaryJsonObject<User>(requestData, "matcher") ?? Factory.GetUser();
+                        StartMatching(type, user);
+                    }
+
+                    eventArgs.Success = !eventArgs.Cancel;
+                    FunGameSystem.ServerPluginLoader?.OnAfterStartMatchEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnAfterStartMatchEvent(this, eventArgs);
                 }
                 else
                 {
@@ -453,11 +529,24 @@ namespace Milimoe.FunGame.Server.Controller
             if (requestData.Count >= 1)
             {
                 string msg = DataRequest.GetDictionaryJsonObject<string>(requestData, "msg") ?? "";
-                if (msg.Trim() != "")
+
+                SendTalkEventArgs eventArgs = new(msg);
+                FunGameSystem.ServerPluginLoader?.OnBeforeSendTalkEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeSendTalkEvent(this, eventArgs);
+
+                if (eventArgs.Cancel)
+                {
+                    ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Main_Chat, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                }
+                else if (msg.Trim() != "")
                 {
                     await Server.SendClients(Server.Listener.ClientList.Where(c => c != null && Server.InRoom.Roomid == c.InRoom.Roomid && c.User.Id != 0),
                         SocketMessageType.Chat, Server.User.Username, msg);
                 }
+
+                eventArgs.Success = !eventArgs.Cancel;
+                FunGameSystem.ServerPluginLoader?.OnAfterSendTalkEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterSendTalkEvent(this, eventArgs);
             }
         }
 
@@ -476,58 +565,73 @@ namespace Milimoe.FunGame.Server.Controller
 
                 if (roomid != "-1")
                 {
-                    if (isMaster)
+                    GeneralEventArgs eventArgs = new(FunGameSystem.RoomList[roomid], isMaster);
+                    FunGameSystem.ServerPluginLoader?.OnBeforeStartGameEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnBeforeStartGameEvent(this, eventArgs);
+
+                    if (eventArgs.Cancel)
                     {
-                        string[] usernames = [.. FunGameSystem.RoomList.GetNotReadyUserList(roomid).Select(user => user.Username)];
-                        if (usernames.Length > 0)
-                        {
-                            if (_isReadyCheckCD[0] == false)
-                            {
-                                // 提醒玩家准备
-                                Server.SendSystemMessage(ShowMessageType.None, "还有玩家尚未准备，无法开始游戏。", "", 0, Server.User.Username);
-                                Server.SendSystemMessage(ShowMessageType.Tip, "房主即将开始游戏，请准备！", "请准备就绪", 10, usernames);
-                                _isReadyCheckCD[0] = true;
-                                TaskUtility.RunTimer(() =>
-                                {
-                                    _isReadyCheckCD[0] = false;
-                                }, 15000);
-                            }
-                            else
-                            {
-                                Server.SendSystemMessage(ShowMessageType.None, "还有玩家尚未准备，无法开始游戏。15秒内只能发送一次准备提醒。", "", 0, Server.User.Username);
-                            }
-                        }
-                        else
-                        {
-                            List<User> users = FunGameSystem.RoomList.GetUsers(roomid);
-                            if (users.Count < 2)
-                            {
-                                Server.SendSystemMessage(ShowMessageType.None, "玩家数量不足，无法开始游戏。", "", 0, Server.User.Username);
-                            }
-                            else
-                            {
-                                usernames = [.. users.Select(user => user.Username)];
-                                Server.SendSystemMessage(ShowMessageType.None, "所有玩家均已准备，游戏将在10秒后开始。", "", 0, usernames);
-                                StartGame(roomid, users, usernames);
-                                result = true;
-                            }
-                        }
-                    }
-                    else if (_isReadyCheckCD[1] == false)
-                    {
-                        // 提醒房主开始游戏
-                        Server.SendSystemMessage(ShowMessageType.None, "已提醒房主立即开始游戏。", "", 0, Server.User.Username);
-                        Server.SendSystemMessage(ShowMessageType.Tip, "房间中的玩家已请求你立即开始游戏。", "请求开始", 10, FunGameSystem.RoomList[roomid].RoomMaster.Username);
-                        _isReadyCheckCD[1] = true;
-                        TaskUtility.RunTimer(() =>
-                        {
-                            _isReadyCheckCD[1] = false;
-                        }, 15000);
+                        ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Main_StartGame, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
                     }
                     else
                     {
-                        Server.SendSystemMessage(ShowMessageType.None, "15秒内只能发送一次提醒，请稍后再试。", "", 0, Server.User.Username);
+                        if (isMaster)
+                        {
+                            string[] usernames = [.. FunGameSystem.RoomList.GetNotReadyUserList(roomid).Select(user => user.Username)];
+                            if (usernames.Length > 0)
+                            {
+                                if (_isReadyCheckCD[0] == false)
+                                {
+                                    // 提醒玩家准备
+                                    Server.SendSystemMessage(ShowMessageType.None, "还有玩家尚未准备，无法开始游戏。", "", 0, Server.User.Username);
+                                    Server.SendSystemMessage(ShowMessageType.Tip, "房主即将开始游戏，请准备！", "请准备就绪", 10, usernames);
+                                    _isReadyCheckCD[0] = true;
+                                    TaskUtility.RunTimer(() =>
+                                    {
+                                        _isReadyCheckCD[0] = false;
+                                    }, 15000);
+                                }
+                                else
+                                {
+                                    Server.SendSystemMessage(ShowMessageType.None, "还有玩家尚未准备，无法开始游戏。15秒内只能发送一次准备提醒。", "", 0, Server.User.Username);
+                                }
+                            }
+                            else
+                            {
+                                List<User> users = FunGameSystem.RoomList.GetUsers(roomid);
+                                if (users.Count < 2)
+                                {
+                                    Server.SendSystemMessage(ShowMessageType.None, "玩家数量不足，无法开始游戏。", "", 0, Server.User.Username);
+                                }
+                                else
+                                {
+                                    usernames = [.. users.Select(user => user.Username)];
+                                    Server.SendSystemMessage(ShowMessageType.None, "所有玩家均已准备，游戏将在10秒后开始。", "", 0, usernames);
+                                    StartGame(roomid, users, usernames);
+                                    result = true;
+                                }
+                            }
+                        }
+                        else if (_isReadyCheckCD[1] == false)
+                        {
+                            // 提醒房主开始游戏
+                            Server.SendSystemMessage(ShowMessageType.None, "已提醒房主立即开始游戏。", "", 0, Server.User.Username);
+                            Server.SendSystemMessage(ShowMessageType.Tip, "房间中的玩家已请求你立即开始游戏。", "请求开始", 10, FunGameSystem.RoomList[roomid].RoomMaster.Username);
+                            _isReadyCheckCD[1] = true;
+                            TaskUtility.RunTimer(() =>
+                            {
+                                _isReadyCheckCD[1] = false;
+                            }, 15000);
+                        }
+                        else
+                        {
+                            Server.SendSystemMessage(ShowMessageType.None, "15秒内只能发送一次提醒，请稍后再试。", "", 0, Server.User.Username);
+                        }
                     }
+
+                    eventArgs.Success = result;
+                    FunGameSystem.ServerPluginLoader?.OnAfterStartGameEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnAfterStartGameEvent(this, eventArgs);
                 }
             }
             resultData.Add("result", result);
@@ -786,41 +890,57 @@ namespace Milimoe.FunGame.Server.Controller
         {
             bool result = false;
             string msg = "";
-            string room = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
+            string roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
             RoomType newType = DataRequest.GetDictionaryJsonObject<RoomType>(requestData, "type");
             string newPassword = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
             int newMaxUsers = DataRequest.GetDictionaryJsonObject<int>(requestData, "maxUsers");
             string newModule = DataRequest.GetDictionaryJsonObject<string>(requestData, "module") ?? "";
             string newMap = DataRequest.GetDictionaryJsonObject<string>(requestData, "map") ?? "";
             User user = Server.User;
-            if (room != "-1" && FunGameSystem.RoomList.IsExist(room))
+            if (roomid != "-1" && FunGameSystem.RoomList.IsExist(roomid))
             {
-                Room r = FunGameSystem.RoomList[room];
-                if (user.Id != r.RoomMaster.Id)
+                Room room = FunGameSystem.RoomList[roomid];
+                RoomEventArgs eventArgs = new(room);
+                FunGameSystem.ServerPluginLoader?.OnBeforeChangeRoomSettingEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeChangeRoomSettingEvent(this, eventArgs);
+
+                if (eventArgs.Cancel)
                 {
-                    msg = "更新失败，只有房主才可以更新房间设置。";
+                    msg = DataRequestService.GetPluginCancelString(DataRequestType.Room_UpdateRoomSettings, eventArgs);
+                    ServerHelper.WriteLine(msg, InvokeMessageType.DataRequest, LogLevel.Warning);
                 }
                 else
                 {
-                    result = true;
-                    ServerHelper.WriteLine("[UpdateRoomSettings] User: " + user.Username + " RoomID: " + r.Roomid);
-                    if (r.RoomState == RoomState.Created)
+                    if (user.Id != room.RoomMaster.Id)
                     {
-                        r.RoomType = newType;
-                        r.Password = newPassword;
-                        r.MaxUsers = newMaxUsers;
-                        r.GameModule = newModule;
-                        r.GameMap = newMap;
+                        msg = "更新失败，只有房主才可以更新房间设置。";
                     }
                     else
                     {
-                        msg = "更新失败，只能在房间状态稳定时更新其设置。";
+                        result = true;
+                        ServerHelper.WriteLine("[UpdateRoomSettings] User: " + user.Username + " RoomID: " + room.Roomid);
+                        if (room.RoomState == RoomState.Created)
+                        {
+                            room.RoomType = newType;
+                            room.Password = newPassword;
+                            room.MaxUsers = newMaxUsers;
+                            room.GameModule = newModule;
+                            room.GameMap = newMap;
+                        }
+                        else
+                        {
+                            msg = "更新失败，只能在房间状态稳定时更新其设置。";
+                        }
                     }
                 }
+
+                eventArgs.Success = result;
+                FunGameSystem.ServerPluginLoader?.OnAfterChangeRoomSettingEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterChangeRoomSettingEvent(this, eventArgs);
             }
             resultData.Add("result", result);
             resultData.Add("msg", msg);
-            resultData.Add("room", room);
+            resultData.Add("room", roomid);
         }
 
         /// <summary>
@@ -856,19 +976,34 @@ namespace Milimoe.FunGame.Server.Controller
                 if (roomid != "-1" && FunGameSystem.RoomList.IsExist(roomid) && newMaster.Id != 0)
                 {
                     Room room = FunGameSystem.RoomList[roomid];
-                    User oldMaster = room.RoomMaster;
-                    room.RoomMaster = newMaster;
-                    result = true;
+                    RoomEventArgs eventArgs = new(room);
+                    FunGameSystem.ServerPluginLoader?.OnBeforeChangeRoomSettingEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnBeforeChangeRoomSettingEvent(this, eventArgs);
 
-                    if (SQLHelper != null)
+                    if (eventArgs.Cancel)
                     {
-                        SQLHelper.UpdateRoomMaster(roomid, newMaster.Id);
-                        if (SQLHelper.Result == SQLResult.Success)
+                        ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Room_UpdateRoomSettings, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                    }
+                    else
+                    {
+                        User oldMaster = room.RoomMaster;
+                        room.RoomMaster = newMaster;
+                        result = true;
+
+                        if (SQLHelper != null)
                         {
-                            await Server.SendClients(Server.Listener.ClientList.Where(c => c != null && c.InRoom.Roomid == roomid), SocketMessageType.UpdateRoomMaster, room);
-                            ServerHelper.WriteLine($"[UpdateRoomMaster] RoomID: {roomid} 房主变更: {oldMaster.Username} -> {newMaster.Username}");
+                            SQLHelper.UpdateRoomMaster(roomid, newMaster.Id);
+                            if (SQLHelper.Result == SQLResult.Success)
+                            {
+                                await Server.SendClients(Server.Listener.ClientList.Where(c => c != null && c.InRoom.Roomid == roomid), SocketMessageType.UpdateRoomMaster, room);
+                                ServerHelper.WriteLine($"[UpdateRoomMaster] RoomID: {roomid} 房主变更: {oldMaster.Username} -> {newMaster.Username}");
+                            }
                         }
                     }
+
+                    eventArgs.Success = result;
+                    FunGameSystem.ServerPluginLoader?.OnAfterChangeRoomSettingEvent(this, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnAfterChangeRoomSettingEvent(this, eventArgs);
                 }
             }
             else
@@ -1021,11 +1156,28 @@ namespace Milimoe.FunGame.Server.Controller
             if (SQLHelper != null && requestData.Count > 0)
             {
                 User user = DataRequest.GetDictionaryJsonObject<User>(requestData, "user") ?? Factory.GetUser();
-                SQLHelper.UpdateUser(user);
-                if (SQLHelper.Success)
+
+                GeneralEventArgs eventArgs = new(user);
+                FunGameSystem.ServerPluginLoader?.OnBeforeChangeProfileEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeChangeProfileEvent(this, eventArgs);
+
+                if (eventArgs.Cancel)
                 {
-                    msg = "";
+                    msg = DataRequestService.GetPluginCancelString(DataRequestType.UserCenter_UpdateUser, eventArgs);
+                    ServerHelper.WriteLine(msg, InvokeMessageType.DataRequest, LogLevel.Warning);
                 }
+                else
+                {
+                    SQLHelper.UpdateUser(user);
+                    if (SQLHelper.Success)
+                    {
+                        msg = "";
+                    }
+                }
+
+                eventArgs.Success = msg == "";
+                FunGameSystem.ServerPluginLoader?.OnAfterChangeProfileEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterChangeProfileEvent(this, eventArgs);
             }
             resultData.Add("msg", msg);
         }
@@ -1042,7 +1194,17 @@ namespace Milimoe.FunGame.Server.Controller
             {
                 string username = DataRequest.GetDictionaryJsonObject<string>(requestData, "username") ?? "";
                 string password = DataRequest.GetDictionaryJsonObject<string>(requestData, "password") ?? "";
-                if (username.Trim() != "" && password.Trim() != "")
+
+                GeneralEventArgs eventArgs = new(username, password);
+                FunGameSystem.ServerPluginLoader?.OnBeforeChangeAccountSettingEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeChangeAccountSettingEvent(this, eventArgs);
+
+                if (eventArgs.Cancel)
+                {
+                    msg = DataRequestService.GetPluginCancelString(_lastRequest, eventArgs);
+                    ServerHelper.WriteLine(msg, InvokeMessageType.DataRequest, LogLevel.Warning);
+                }
+                else if (username.Trim() != "" && password.Trim() != "")
                 {
                     FunGameSystem.UpdateUserKey(username);
                     password = password.Encrypt(FunGameSystem.GetUserKey(username));
@@ -1053,6 +1215,10 @@ namespace Milimoe.FunGame.Server.Controller
                         msg = "";
                     }
                 }
+
+                eventArgs.Success = msg == "";
+                FunGameSystem.ServerPluginLoader?.OnAfterChangeAccountSettingEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterChangeAccountSettingEvent(this, eventArgs);
             }
             resultData.Add("msg", msg);
         }
@@ -1063,7 +1229,15 @@ namespace Milimoe.FunGame.Server.Controller
         /// <param name="resultData"></param>
         private void DailySignIn(Dictionary<string, object> resultData)
         {
-            if (SQLHelper != null)
+            GeneralEventArgs eventArgs = new();
+            FunGameSystem.ServerPluginLoader?.OnBeforeSignInEvent(this, eventArgs);
+            FunGameSystem.WebAPIPluginLoader?.OnBeforeSignInEvent(this, eventArgs);
+
+            if (eventArgs.Cancel)
+            {
+                ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.UserCenter_DailySignIn, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+            }
+            else if (SQLHelper != null)
             {
                 long userId = Server.User.Id;
                 if (userId != 0)
@@ -1088,12 +1262,21 @@ namespace Milimoe.FunGame.Server.Controller
                         SQLHelper.Execute(UserSignIns.Update_UserSignIn(SQLHelper, userId, days));
                         if (SQLHelper.Success)
                         {
+                            eventArgs.Success = true;
+                            FunGameSystem.ServerPluginLoader?.OnAfterSignInEvent(this, eventArgs);
+                            FunGameSystem.WebAPIPluginLoader?.OnAfterSignInEvent(this, eventArgs);
+
                             resultData.Add("msg", $"签到成功！你已经连续签到 {days} 天！");
                             return;
                         }
                     }
                 }
             }
+
+            eventArgs.Success = false;
+            FunGameSystem.ServerPluginLoader?.OnAfterSignInEvent(this, eventArgs);
+            FunGameSystem.WebAPIPluginLoader?.OnAfterSignInEvent(this, eventArgs);
+
             resultData.Add("msg", "签到失败！");
         }
 
@@ -1113,7 +1296,20 @@ namespace Milimoe.FunGame.Server.Controller
             if (requestData.Count > 0)
             {
                 long[] ids = DataRequest.GetDictionaryJsonObject<long[]>(requestData, "ids") ?? [];
-                stores = SQLHelper?.GetStoresWithGoods(ids) ?? [];
+
+                GeneralEventArgs eventArgs = new(ids);
+                FunGameSystem.ServerPluginLoader?.OnBeforeOpenStoreEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeOpenStoreEvent(this, eventArgs);
+
+                if (eventArgs.Cancel)
+                {
+                    ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Inventory_GetStore, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                }
+                else stores = SQLHelper?.GetStoresWithGoods(ids) ?? [];
+
+                eventArgs.Success = stores.Count > 0;
+                FunGameSystem.ServerPluginLoader?.OnAfterOpenStoreEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterOpenStoreEvent(this, eventArgs);
             }
 
             resultData.Add("result", stores.Count > 0);
@@ -1175,83 +1371,98 @@ namespace Milimoe.FunGame.Server.Controller
                 Dictionary<long, int> counts = DataRequest.GetDictionaryJsonObject<Dictionary<long, int>>(requestData, "counts") ?? [];
                 bool ignore = DataRequest.GetDictionaryJsonObject<bool>(requestData, "ignore");
 
-                Store? store = SQLHelper.GetStore(storeid);
-                User? user = SQLHelper.GetUserById(userid, true);
-                if (store != null && user != null)
-                {
-                    try
-                    {
-                        SQLHelper.NewTransaction();
+                GeneralEventArgs eventArgs = new(DataRequestType.Inventory_StoreBuy, storeid, userid, currency, counts, ignore);
+                FunGameSystem.ServerPluginLoader?.OnBeforeBuyItemEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeBuyItemEvent(this, eventArgs);
 
-                        foreach (long goodsId in counts.Keys)
+                if (eventArgs.Cancel)
+                {
+                    ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Inventory_StoreBuy, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                }
+                else
+                {
+                    Store? store = SQLHelper.GetStore(storeid);
+                    User? user = SQLHelper.GetUserById(userid, true);
+                    if (store != null && user != null)
+                    {
+                        try
                         {
-                            Goods goods = store.Goods[goodsId];
-                            int count = counts[goodsId];
-                            if (count > goods.Stock)
+                            SQLHelper.NewTransaction();
+
+                            foreach (long goodsId in counts.Keys)
                             {
-                                result = false;
-                                buyResult.Add($"购买失败，原因：库存不足，当前库存为：{goods.Stock}，购买数量：{count}。");
-                                continue;
-                            }
-                            if (goods.GetPrice(currency, out double price))
-                            {
-                                bool subResult = true;
-                                bool useCredits = true;
-                                double totalPrice = price * count;
-                                if (currency == General.GameplayEquilibriumConstant.InGameCurrency && user.Inventory.Credits >= totalPrice)
-                                {
-                                    user.Inventory.Credits -= totalPrice;
-                                }
-                                else
-                                {
-                                    subResult = false;
-                                    buyResult.Add($"购买失败，原因：需要花费 {totalPrice} {General.GameplayEquilibriumConstant.InGameCurrency}，但是您只有 {user.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameCurrency}。");
-                                }
-                                if (currency == General.GameplayEquilibriumConstant.InGameMaterial && user.Inventory.Materials >= totalPrice)
-                                {
-                                    user.Inventory.Materials -= totalPrice;
-                                    useCredits = false;
-                                }
-                                else
-                                {
-                                    subResult = false;
-                                    buyResult.Add($"购买失败，原因：需要花费 {totalPrice} {General.GameplayEquilibriumConstant.InGameMaterial}，但是您只有 {user.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameMaterial}。");
-                                }
-                                if (subResult)
-                                {
-                                    goods.Stock -= count;
-                                    totalCost += totalPrice;
-                                    ProcessStoreBuy(goods, useCredits, price, count, user);
-                                    buyResult.Add($"成功消费：{totalPrice} {currency}，购买了 {count} 个 {goods.Name}。");
-                                }
-                                else
+                                Goods goods = store.Goods[goodsId];
+                                int count = counts[goodsId];
+                                if (count > goods.Stock)
                                 {
                                     result = false;
+                                    buyResult.Add($"购买失败，原因：库存不足，当前库存为：{goods.Stock}，购买数量：{count}。");
+                                    continue;
+                                }
+                                if (goods.GetPrice(currency, out double price))
+                                {
+                                    bool subResult = true;
+                                    bool useCredits = true;
+                                    double totalPrice = price * count;
+                                    if (currency == General.GameplayEquilibriumConstant.InGameCurrency && user.Inventory.Credits >= totalPrice)
+                                    {
+                                        user.Inventory.Credits -= totalPrice;
+                                    }
+                                    else
+                                    {
+                                        subResult = false;
+                                        buyResult.Add($"购买失败，原因：需要花费 {totalPrice} {General.GameplayEquilibriumConstant.InGameCurrency}，但是您只有 {user.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameCurrency}。");
+                                    }
+                                    if (currency == General.GameplayEquilibriumConstant.InGameMaterial && user.Inventory.Materials >= totalPrice)
+                                    {
+                                        user.Inventory.Materials -= totalPrice;
+                                        useCredits = false;
+                                    }
+                                    else
+                                    {
+                                        subResult = false;
+                                        buyResult.Add($"购买失败，原因：需要花费 {totalPrice} {General.GameplayEquilibriumConstant.InGameMaterial}，但是您只有 {user.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameMaterial}。");
+                                    }
+                                    if (subResult)
+                                    {
+                                        goods.Stock -= count;
+                                        totalCost += totalPrice;
+                                        ProcessStoreBuy(goods, useCredits, price, count, user);
+                                        buyResult.Add($"成功消费：{totalPrice} {currency}，购买了 {count} 个 {goods.Name}。");
+                                    }
+                                    else
+                                    {
+                                        result = false;
+                                    }
                                 }
                             }
-                        }
 
-                        if (result || (!result && ignore))
-                        {
-                            SQLHelper.UpdateInventory(user.Inventory);
-                        }
+                            if (result || (!result && ignore))
+                            {
+                                SQLHelper.UpdateInventory(user.Inventory);
+                            }
 
-                        if (SQLHelper.Success)
-                        {
-                            SQLHelper.Commit();
+                            if (SQLHelper.Success)
+                            {
+                                SQLHelper.Commit();
+                            }
+                            else
+                            {
+                                SQLHelper.Rollback();
+                            }
                         }
-                        else
+                        catch (Exception e)
                         {
                             SQLHelper.Rollback();
+                            ServerHelper.Error(e);
+                            buyResult.Add("暂时无法处理此购买，请稍后再试。");
                         }
                     }
-                    catch (Exception e)
-                    {
-                        SQLHelper.Rollback();
-                        ServerHelper.Error(e);
-                        buyResult.Add("暂时无法处理此购买，请稍后再试。");
-                    }
                 }
+
+                eventArgs.Success = result;
+                FunGameSystem.ServerPluginLoader?.OnAfterBuyItemEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterBuyItemEvent(this, eventArgs);
             }
             resultData.Add("result", result);
             resultData.Add("msg", string.Join("\r\n", buyResult));
@@ -1294,78 +1505,92 @@ namespace Milimoe.FunGame.Server.Controller
             if (SQLHelper != null && requestData.Count > 0)
             {
                 Guid itemGuid = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "itemGuid");
+                long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
+                double price = DataRequest.GetDictionaryJsonObject<double>(requestData, "price");
 
-                MarketItem? marketItem = SQLHelper.GetMarketItem(itemGuid);
-                if (marketItem != null)
+                GeneralEventArgs eventArgs = new(DataRequestType.Inventory_MarketBuy, itemGuid, userid, price);
+                FunGameSystem.ServerPluginLoader?.OnBeforeBuyItemEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeBuyItemEvent(this, eventArgs);
+
+                if (eventArgs.Cancel)
                 {
-                    long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
-                    double price = DataRequest.GetDictionaryJsonObject<double>(requestData, "price");
-
-                    try
+                    ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Inventory_MarketBuy, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                }
+                else
+                {
+                    MarketItem? marketItem = SQLHelper.GetMarketItem(itemGuid);
+                    if (marketItem != null)
                     {
-                        User? buyer = SQLHelper.GetUserById(userid, true);
-                        User? itemUser = SQLHelper.GetUserById(marketItem.User.Id, true);
-                        if (itemUser != null && buyer != null && itemUser.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+                        try
                         {
-                            if (buyer.Inventory.Credits >= price)
+                            User? buyer = SQLHelper.GetUserById(userid, true);
+                            User? itemUser = SQLHelper.GetUserById(marketItem.User.Id, true);
+                            if (itemUser != null && buyer != null && itemUser.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
                             {
-                                buyer.Inventory.Credits -= price;
-                                double fee = Calculation.Round2Digits(price * 0.15);
-                                itemUser.Inventory.Credits += price - fee;
-                                result = true;
-                            }
-                            else
-                            {
-                                msg = $"购买失败，原因：需要花费 {price} {General.GameplayEquilibriumConstant.InGameCurrency}，但是您只有 {buyer.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameCurrency}。";
-                            }
-
-                            if (result)
-                            {
-                                SQLHelper.NewTransaction();
-
-                                try
+                                if (buyer.Inventory.Credits >= price)
                                 {
-                                    item.EntityState = EntityState.Deleted;
-                                    SQLHelper.DeleteMarketItem(itemGuid);
-
-                                    Item newItem = item.Copy();
-                                    newItem.IsTradable = false;
-                                    newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
-                                    newItem.User = buyer;
-                                    newItem.EntityState = EntityState.Added;
-                                    buyer.Inventory.Items.Add(newItem);
-
-                                    SQLHelper.UpdateInventory(itemUser.Inventory);
-                                    SQLHelper.UpdateInventory(buyer.Inventory);
+                                    buyer.Inventory.Credits -= price;
+                                    double fee = Calculation.Round2Digits(price * 0.15);
+                                    itemUser.Inventory.Credits += price - fee;
+                                    result = true;
                                 }
-                                catch
+                                else
                                 {
-                                    result = false;
+                                    msg = $"购买失败，原因：需要花费 {price} {General.GameplayEquilibriumConstant.InGameCurrency}，但是您只有 {buyer.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameCurrency}。";
                                 }
 
                                 if (result)
                                 {
-                                    msg = $"成功消费：{price} {General.GameplayEquilibriumConstant.InGameCurrency}，购买了 {itemUser.Username} 出售的 {item.Name}。";
-                                    SQLHelper.Commit();
-                                }
-                                else
-                                {
-                                    SQLHelper.Rollback();
+                                    SQLHelper.NewTransaction();
+
+                                    try
+                                    {
+                                        item.EntityState = EntityState.Deleted;
+                                        SQLHelper.DeleteMarketItem(itemGuid);
+
+                                        Item newItem = item.Copy();
+                                        newItem.IsTradable = false;
+                                        newItem.NextTradableTime = DateTimeUtility.GetTradableTime();
+                                        newItem.User = buyer;
+                                        newItem.EntityState = EntityState.Added;
+                                        buyer.Inventory.Items.Add(newItem);
+
+                                        SQLHelper.UpdateInventory(itemUser.Inventory);
+                                        SQLHelper.UpdateInventory(buyer.Inventory);
+                                    }
+                                    catch
+                                    {
+                                        result = false;
+                                    }
+
+                                    if (result)
+                                    {
+                                        msg = $"成功消费：{price} {General.GameplayEquilibriumConstant.InGameCurrency}，购买了 {itemUser.Username} 出售的 {item.Name}。";
+                                        SQLHelper.Commit();
+                                    }
+                                    else
+                                    {
+                                        SQLHelper.Rollback();
+                                    }
                                 }
                             }
                         }
+                        catch (Exception e)
+                        {
+                            SQLHelper.Rollback();
+                            ServerHelper.Error(e);
+                            msg = "暂时无法处理此购买，请稍后再试。";
+                        }
                     }
-                    catch (Exception e)
+                    else
                     {
-                        SQLHelper.Rollback();
-                        ServerHelper.Error(e);
-                        msg = "暂时无法处理此购买，请稍后再试。";
+                        msg = "目标物品不存在。";
                     }
                 }
-                else
-                {
-                    msg = "目标物品不存在。";
-                }
+
+                eventArgs.Success = result;
+                FunGameSystem.ServerPluginLoader?.OnAfterBuyItemEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterBuyItemEvent(this, eventArgs);
             }
             resultData.Add("result", result);
             resultData.Add("msg", msg);
@@ -1407,25 +1632,41 @@ namespace Milimoe.FunGame.Server.Controller
                 long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
                 Character[] targets = DataRequest.GetDictionaryJsonObject<Character[]>(requestData, "targets") ?? [];
                 long useCount = DataRequest.GetDictionaryJsonObject<long>(requestData, "useCount");
-                User? user = SQLHelper.GetUserById(userid, true);
-                if (user != null && user.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
+
+                GeneralEventArgs eventArgs = new(itemGuid, userid, targets, useCount);
+                FunGameSystem.ServerPluginLoader?.OnBeforeUseItemEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeUseItemEvent(this, eventArgs);
+
+                if (eventArgs.Cancel)
                 {
-                    // 暂定标准实现是传这两个参数，作用目标和使用数量
-                    Dictionary<string, object> args = new()
+                    ServerHelper.WriteLine(DataRequestService.GetPluginCancelString(DataRequestType.Inventory_Use, eventArgs), InvokeMessageType.DataRequest, LogLevel.Warning);
+                }
+                else
+                {
+                    User? user = SQLHelper.GetUserById(userid, true);
+                    if (user != null && user.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
                     {
-                        { "targets", targets },
-                        { "useCount", useCount }
-                    };
-                    bool used = item.UseItem(args);
-                    if (used)
+                        // 暂定标准实现是传这两个参数，作用目标和使用数量
+                        Dictionary<string, object> args = new()
+                        {
+                            { "targets", targets },
+                            { "useCount", useCount }
+                        };
+                        bool used = item.UseItem(args);
+                        if (used)
+                        {
+                            SQLHelper.UpdateInventory(user.Inventory);
+                        }
+                    }
+                    if (result)
                     {
-                        SQLHelper.UpdateInventory(user.Inventory);
+                        msg = "";
                     }
                 }
-                if (result)
-                {
-                    msg = "";
-                }
+
+                eventArgs.Success = result;
+                FunGameSystem.ServerPluginLoader?.OnAfterUseItemEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterUseItemEvent(this, eventArgs);
             }
             resultData.Add("result", result);
             resultData.Add("msg", msg);

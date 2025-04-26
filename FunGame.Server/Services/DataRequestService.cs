@@ -18,7 +18,7 @@ namespace Milimoe.FunGame.Server.Services
         /// <param name="type"></param>
         /// <param name="e"></param>
         /// <returns></returns>
-        private static string GetPluginCancelString(DataRequestType type, GeneralEventArgs e) => $"{DataRequestSet.GetTypeString(type)} 请求已取消。{(e.EventMsg != "" ? $"原因：{e.EventMsg}" : "")}";
+        public static string GetPluginCancelString(DataRequestType type, GeneralEventArgs e) => $"{DataRequestSet.GetTypeString(type)} 请求已取消。{(e.EventMsg != "" ? $"原因：{e.EventMsg}" : "")}";
 
         #region Register
 

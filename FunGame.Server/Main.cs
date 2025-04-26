@@ -13,7 +13,48 @@ bool Running = true;
 SocketListener? SocketListener = null;
 HTTPListener? WebSocketListener = null;
 
-StartServer();
+ServerHelper.WriteLine("正在读取配置文件并初始化服务 . . .");
+
+// 检查是否存在配置文件
+if (!INIHelper.ExistINIFile())
+{
+    ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
+    INIHelper.Init(Config.FunGameType);
+    ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
+    return;
+}
+else
+{
+    ServerHelper.GetServerSettings();
+    Console.Title = Config.ServerName + " - FunGame Server Port: " + Config.ServerPort;
+}
+
+// 初始化命令菜单
+ServerHelper.InitOrderList();
+
+// 初始化SQLHelper
+FunGameSystem.InitSQLHelper();
+
+// 初始化MailSender
+FunGameSystem.InitMailSender();
+
+// 读取Server插件
+FunGameSystem.GetServerPlugins();
+
+// 读取游戏模组
+if (!FunGameSystem.GetGameModuleList())
+{
+    ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
+}
+
+ServerHelper.WriteLine("请输入 help 来获取帮助，按下 Ctrl+C 关闭服务器。");
+
+// 初始化服务器其他配置文件
+FunGameSystem.InitOtherConfig();
+
+ServerHelper.PrintFunGameTitle();
+
+StartServerListening();
 
 Console.CancelKeyPress += (sender, e) =>
 {
@@ -65,7 +106,7 @@ while (Running)
             case OrderDictionary.Restart:
                 if (SocketListener is null || WebSocketListener is null)
                 {
-                    StartServer();
+                    StartServerListening();
                 }
                 else ServerHelper.WriteLine("服务器正在运行，请手动结束服务器进程再启动！");
                 break;
@@ -83,53 +124,12 @@ while (Running)
     }
 }
 
-void StartServer()
+void StartServerListening()
 {
     TaskUtility.NewTask(async () =>
     {
         try
         {
-            ServerHelper.WriteLine("正在读取配置文件并初始化服务 . . .");
-
-            // 检查是否存在配置文件
-            if (!INIHelper.ExistINIFile())
-            {
-                ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
-                INIHelper.Init(Config.FunGameType);
-                ServerHelper.WriteLine("配置文件FunGame.ini创建成功，请修改该配置文件，然后重启服务器。");
-                return;
-            }
-            else
-            {
-                ServerHelper.GetServerSettings();
-                Console.Title = Config.ServerName + " - FunGame Server Port: " + Config.ServerPort;
-            }
-
-            // 初始化命令菜单
-            ServerHelper.InitOrderList();
-
-            // 初始化SQLHelper
-            FunGameSystem.InitSQLHelper();
-
-            // 初始化MailSender
-            FunGameSystem.InitMailSender();
-
-            // 读取Server插件
-            FunGameSystem.GetServerPlugins();
-
-            // 读取游戏模组
-            if (!FunGameSystem.GetGameModuleList())
-            {
-                ServerHelper.WriteLine("服务器似乎未安装任何游戏模组，请检查是否正确安装它们。");
-            }
-
-            ServerHelper.WriteLine("请输入 help 来获取帮助，按下 Ctrl+C 关闭服务器。");
-
-            // 初始化服务器其他配置文件
-            FunGameSystem.InitOtherConfig();
-
-            ServerHelper.PrintFunGameTitle();
-
             // 使用Socket还是WebSocket
             bool useWebSocket = Config.UseWebSocket;
 
