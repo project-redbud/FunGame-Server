@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Milimoe.FunGame.Core.Library.Constant;
-using Milimoe.FunGame.Core.Library.SQLScript.Entity;
 using Milimoe.FunGame.WebAPI.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace Milimoe.FunGame.WebAPI.Controllers
 {

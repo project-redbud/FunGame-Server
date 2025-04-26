@@ -1499,7 +1499,7 @@ namespace Milimoe.FunGame.Server.Controller
             }
             resultData.Add("msg", msg);
         }
-        
+
         /// <summary>
         /// 下架市场物品
         /// </summary>
@@ -1683,7 +1683,7 @@ namespace Milimoe.FunGame.Server.Controller
                                 }
                                 else msg = "当前状态不允许发起方取消。";
                                 break;
-                                
+
                             case OfferActionType.OfferorAccept:
                                 if (isOfferor && offer.Status == OfferState.Negotiating)
                                 {
@@ -1717,7 +1717,7 @@ namespace Milimoe.FunGame.Server.Controller
                                 }
                                 else msg = "当前状态不允许接收方确认。";
                                 break;
-                                
+
                             case OfferActionType.OffereeSend:
                                 if (!isOfferor && (offer.Status == OfferState.OffereeConfirmed))
                                 {

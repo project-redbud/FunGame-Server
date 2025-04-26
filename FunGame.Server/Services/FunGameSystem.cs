@@ -45,12 +45,12 @@ namespace Milimoe.FunGame.Server.Services
         /// 服务器配置
         /// </summary>
         public static PluginConfig UserKeys { get; set; } = new("system", "user_keys");
-        
+
         /// <summary>
         /// 服务器配置
         /// </summary>
         public static PluginConfig LocalConfig { get; set; } = new("system", "local");
-        
+
         /// <summary>
         /// 数据库配置
         /// </summary>
@@ -303,7 +303,7 @@ namespace Milimoe.FunGame.Server.Services
             }
             return false;
         }
-        
+
         /// <summary>
         /// 创建 API Secret Key
         /// </summary>
