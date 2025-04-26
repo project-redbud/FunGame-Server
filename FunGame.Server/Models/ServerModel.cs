@@ -4,6 +4,7 @@ using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Interface.Base;
 using Milimoe.FunGame.Core.Library.Common.Addon;
+using Milimoe.FunGame.Core.Library.Common.Event;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Core.Library.SQLScript.Common;
@@ -78,14 +79,30 @@ namespace Milimoe.FunGame.Server.Model
 
             if (type == SocketMessageType.EndGame)
             {
-                if (NowGamingServer != null && NowGamingServer.IsAnonymous)
+                GeneralEventArgs eventArgs = new();
+                FunGameSystem.ServerPluginLoader?.OnBeforeEndGameEvent(DataRequestController, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeEndGameEvent(DataRequestController, eventArgs);
+
+                if (eventArgs.Cancel)
                 {
-                    NowGamingServer.CloseAnonymousServer(this);
+                    ServerHelper.WriteLine($"{SocketSet.GetTypeString(SocketMessageType.EndGame)} 请求已取消。", InvokeMessageType.Core, LogLevel.Warning);
                 }
-                NowGamingServer = null;
-                User.OnlineState = OnlineState.InRoom;
-                if (User.Id == InRoom.RoomMaster.Id) InRoom.RoomState = RoomState.Created;
-                return true;
+                else
+                {
+                    if (NowGamingServer != null && NowGamingServer.IsAnonymous)
+                    {
+                        NowGamingServer.CloseAnonymousServer(this);
+                    }
+                    NowGamingServer = null;
+                    User.OnlineState = OnlineState.InRoom;
+                    if (User.Id == InRoom.RoomMaster.Id) InRoom.RoomState = RoomState.Created;
+                }
+
+                eventArgs.Success = !eventArgs.Cancel;
+                FunGameSystem.ServerPluginLoader?.OnAfterEndGameEvent(DataRequestController, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterEndGameEvent(DataRequestController, eventArgs);
+
+                return !eventArgs.Cancel;
             }
 
             if (type == SocketMessageType.AnonymousGameServer)
