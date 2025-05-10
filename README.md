@@ -38,3 +38,5 @@ FunGameWebAPI 提供 WebSocket 和 RESTful API 共存的服务，共享数据处
 # 文档
 
 需要更多帮助请查看 [FunGame 开发文档](https://project-redbud.github.io/)，此文档不保证及时更新。
+
+查阅 [DeepWiki](https://deepwiki.com/project-redbud/FunGame-Server) 文档有助于从代码层面解读项目架构和源代码。
