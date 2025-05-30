@@ -1421,7 +1421,7 @@ namespace Milimoe.FunGame.Server.Controller
                                     else
                                     {
                                         subResult = false;
-                                        buyResult.Add($"购买失败，原因：需要花费 {totalPrice} {General.GameplayEquilibriumConstant.InGameMaterial}，但是您只有 {user.Inventory.Credits} {General.GameplayEquilibriumConstant.InGameMaterial}。");
+                                        buyResult.Add($"购买失败，原因：需要花费 {totalPrice} {General.GameplayEquilibriumConstant.InGameMaterial}，但是您只有 {user.Inventory.Materials} {General.GameplayEquilibriumConstant.InGameMaterial}。");
                                     }
                                     if (subResult)
                                     {
@@ -1652,10 +1652,11 @@ namespace Milimoe.FunGame.Server.Controller
                             { "targets", targets },
                             { "useCount", useCount }
                         };
-                        bool used = item.UseItem(args);
+                        bool used = item.UseItem(user, args);
                         if (used)
                         {
                             SQLHelper.UpdateInventory(user.Inventory);
+                            result = true;
                         }
                     }
                     if (result)
@@ -1698,6 +1699,7 @@ namespace Milimoe.FunGame.Server.Controller
                         user.Inventory.Credits += reward;
                         item.EntityState = EntityState.Deleted;
                         SQLHelper.UpdateInventory(user.Inventory);
+                        result = true;
                     }
                 }
                 if (result)
@@ -2017,14 +2019,13 @@ namespace Milimoe.FunGame.Server.Controller
                                     }
                                 }
 
-                                if (msg != "")
+                                if (msg == "")
                                 {
                                     offer = SQLHelper.GetOffer(offerId);
                                     if (offer != null)
                                     {
                                         SQLHelper.Commit();
                                         resultData.Add("offer", offer);
-                                        msg = "";
                                     }
                                 }
                             }
