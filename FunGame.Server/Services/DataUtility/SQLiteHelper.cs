@@ -140,7 +140,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 OpenConnection();
                 Script = script;
-                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api, LogLevel.Debug);
                 using SqliteCommand command = new(script, _connection);
                 command.CommandType = CommandType;
                 foreach (KeyValuePair<string, object> param in Parameters)
@@ -206,7 +206,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 OpenConnection();
                 Script = script;
-                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api, LogLevel.Debug);
                 using SqliteCommand command = new(script, _connection);
                 command.CommandType = CommandType;
                 foreach (KeyValuePair<string, object> param in Parameters)
@@ -272,7 +272,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 OpenConnection();
                 Script = script;
-                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api, LogLevel.Debug);
                 using SqliteCommand command = new(script, _connection)
                 {
                     CommandType = CommandType
@@ -338,7 +338,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 OpenConnection();
                 Script = script;
-                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api, LogLevel.Debug);
                 using SqliteCommand command = new(script, _connection)
                 {
                     CommandType = CommandType

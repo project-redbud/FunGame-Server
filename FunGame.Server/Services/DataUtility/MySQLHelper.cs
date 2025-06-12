@@ -142,7 +142,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 OpenConnection();
                 Script = script;
-                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api, LogLevel.Debug);
                 using MySqlCommand command = new(script, _connection);
                 command.CommandType = CommandType;
                 foreach (KeyValuePair<string, object> param in Parameters)
@@ -206,7 +206,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 OpenConnection();
                 Script = script;
-                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api, LogLevel.Debug);
                 using MySqlCommand command = new(script, _connection);
                 command.CommandType = CommandType;
                 foreach (KeyValuePair<string, object> param in Parameters)
@@ -270,7 +270,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 OpenConnection();
                 Script = script;
-                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api, LogLevel.Debug);
 
                 using MySqlCommand command = new(script, _connection)
                 {
@@ -335,7 +335,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 OpenConnection();
                 Script = script;
-                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api);
+                ServerHelper.WriteLine("SQLQuery -> " + script, InvokeMessageType.Api, LogLevel.Debug);
 
                 using MySqlCommand command = new(script, _connection)
                 {
