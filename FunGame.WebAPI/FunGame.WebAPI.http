@@ -1,6 +1,6 @@
 @FunGame.WebAPI_HostAddress = http://localhost:5117
 
-GET {{FunGame.WebAPI_HostAddress}}/weatherforecast/
+GET {{FunGame.WebAPI_HostAddress}}/Room/GetRoomList/
 Accept: application/json
 
 ###
