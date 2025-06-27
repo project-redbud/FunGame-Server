@@ -94,6 +94,17 @@ try
     ServerHelper.WriteLine("正在启动 Web API 监听 . . .");
     Console.WriteLine("\r ");
 
+    // 添加 JSON 转换器
+    builder.Services.AddControllers().AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.WriteIndented = true;
+        options.JsonSerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
+        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        foreach (JsonConverter converter in JsonTool.JsonSerializerOptions.Converters)
+        {
+            options.JsonSerializerOptions.Converters.Add(converter);
+        }
+    });
     // 读取扩展控制器
     if (FunGameSystem.WebAPIPluginLoader != null)
     {
@@ -108,18 +119,6 @@ try
             }
         }
     }
-
-    // 添加 JSON 转换器
-    builder.Services.AddControllers().AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.WriteIndented = true;
-        options.JsonSerializerOptions.Encoder = JavaScriptEncoder.Create(UnicodeRanges.All);
-        options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
-        foreach (JsonConverter converter in JsonTool.JsonSerializerOptions.Converters)
-        {
-            options.JsonSerializerOptions.Converters.Add(converter);
-        }
-    });
     // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddOpenApi(options =>
