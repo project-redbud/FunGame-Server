@@ -72,6 +72,7 @@ namespace Milimoe.FunGame.Server.Services
         {
             Console.WriteLine("\r" + GetPrefix(InvokeMessageType.Error, LogLevel.Error) + e.Message + "\n" + e.StackTrace);
             Type();
+            TXTHelper.AppendErrorLog(e);
         }
 
         public static void Write(string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)

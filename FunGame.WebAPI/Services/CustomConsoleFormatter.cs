@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Console;
+using Milimoe.FunGame.Core.Api.Utility;
 
 namespace Milimoe.FunGame.WebAPI.Services
 {
@@ -20,6 +21,11 @@ namespace Milimoe.FunGame.WebAPI.Services
                 textWriter.WriteLine($"{colorLevel}{timestamp} {level}/[{category}] {message}");
             }
             textWriter.Write("\x1b[0m\r> ");
+
+            if (logEntry.Exception != null)
+            {
+                TXTHelper.AppendErrorLog(logEntry.Exception);
+            }
         }
 
         private static string GetColorCode(LogLevel logLevel)

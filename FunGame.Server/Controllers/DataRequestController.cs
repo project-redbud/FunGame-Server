@@ -1631,7 +1631,7 @@ namespace Milimoe.FunGame.Server.Controller
                 Guid itemGuid = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "itemGuid");
                 long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
                 Character[] targets = DataRequest.GetDictionaryJsonObject<Character[]>(requestData, "targets") ?? [];
-                long useCount = DataRequest.GetDictionaryJsonObject<long>(requestData, "useCount");
+                int useCount = DataRequest.GetDictionaryJsonObject<int>(requestData, "useCount");
 
                 GeneralEventArgs eventArgs = new(itemGuid, userid, targets, useCount);
                 FunGameSystem.ServerPluginLoader?.OnBeforeUseItemEvent(this, eventArgs);
@@ -1646,13 +1646,12 @@ namespace Milimoe.FunGame.Server.Controller
                     User? user = SQLHelper.GetUserById(userid, true);
                     if (user != null && user.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
                     {
-                        // 暂定标准实现是传这两个参数，作用目标和使用数量
+                        // 暂定标准实现是传这个参数，作用目标
                         Dictionary<string, object> args = new()
                         {
-                            { "targets", targets },
-                            { "useCount", useCount }
+                            { "targets", targets }
                         };
-                        bool used = item.UseItem(user, args);
+                        bool used = item.UseItem(user, useCount, args);
                         if (used)
                         {
                             SQLHelper.UpdateInventory(user.Inventory);
