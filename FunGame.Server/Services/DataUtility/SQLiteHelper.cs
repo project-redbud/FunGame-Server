@@ -285,7 +285,6 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 ReSet();
                 using SqliteDataReader reader = command.ExecuteReader();
-                _dataSet = new();
                 do
                 {
                     DataTable table = new();
@@ -351,7 +350,6 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
 
                 ReSet();
                 using SqliteDataReader reader = await command.ExecuteReaderAsync();
-                _dataSet = new();
                 do
                 {
                     DataTable table = new();
@@ -486,7 +484,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             _result = SQLResult.NotFound;
             _affectedRows = 0;
             _lastInsertId = 0;
-            DataSet.Clear();
+            _dataSet = new();
         }
     }
 }

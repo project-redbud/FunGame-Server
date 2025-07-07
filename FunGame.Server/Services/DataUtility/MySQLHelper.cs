@@ -287,7 +287,6 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
                 {
                     SelectCommand = command
                 };
-                _dataSet = new();
                 _affectedRows = adapter.Fill(_dataSet);
 
                 if (localTransaction) Commit();
@@ -352,7 +351,6 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
                 {
                     SelectCommand = command
                 };
-                _dataSet = new();
                 _affectedRows = await adapter.FillAsync(_dataSet);
 
                 if (localTransaction) Commit();
@@ -482,7 +480,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             _result = SQLResult.NotFound;
             _affectedRows = 0;
             _lastInsertId = 0;
-            DataSet.Clear();
+            _dataSet = new();
         }
     }
 }
