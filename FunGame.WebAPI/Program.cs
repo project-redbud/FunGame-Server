@@ -258,6 +258,9 @@ try
 
     Task order = Task.Factory.StartNew(GetConsoleOrder);
 
+    otherobjs = [app, listener];
+    FunGameSystem.OnWebAPIStarted(otherobjs);
+
     app.Run();
 }
 catch (Exception e)

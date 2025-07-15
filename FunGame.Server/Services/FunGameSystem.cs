@@ -238,6 +238,21 @@ namespace Milimoe.FunGame.Server.Services
                 ServerHelper.Error(e);
             }
         }
+        
+        /// <summary>
+        /// Web API 启动完成回调
+        /// </summary>
+        public static void OnWebAPIStarted(params object[] objs)
+        {
+            try
+            {
+                WebAPIPluginLoader?.OnWebAPIStarted(objs);
+            }
+            catch (Exception e)
+            {
+                ServerHelper.Error(e);
+            }
+        }
 
         /// <summary>
         /// 服务器启动登记
