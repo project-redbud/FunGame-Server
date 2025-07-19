@@ -1393,7 +1393,7 @@ namespace Milimoe.FunGame.Server.Controller
                             {
                                 Goods goods = store.Goods[goodsId];
                                 int count = counts[goodsId];
-                                if (count > goods.Stock)
+                                if (goods.Stock != -1 && count > goods.Stock)
                                 {
                                     result = false;
                                     buyResult.Add($"购买失败，原因：库存不足，当前库存为：{goods.Stock}，购买数量：{count}。");
@@ -1425,7 +1425,7 @@ namespace Milimoe.FunGame.Server.Controller
                                     }
                                     if (subResult)
                                     {
-                                        goods.Stock -= count;
+                                        if (goods.Stock != -1) goods.Stock -= count;
                                         totalCost += totalPrice;
                                         ProcessStoreBuy(goods, useCredits, price, count, user);
                                         buyResult.Add($"成功消费：{totalPrice} {currency}，购买了 {count} 个 {goods.Name}。");
