@@ -77,6 +77,7 @@ namespace Milimoe.FunGame.Server.Services
 
         public static void Write(string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)
         {
+            if (msg.Trim() == "") return;
             if (type == InvokeMessageType.Warning)
             {
                 level = LogLevel.Warning;
@@ -87,7 +88,7 @@ namespace Milimoe.FunGame.Server.Services
             }
             if (!useLevel || (useLevel && (int)level >= (int)Config.LogLevelValue))
             {
-                if (msg.Trim() != "") Console.Write("\r" + GetPrefix(type, level) + msg + "> ");
+                Console.Write("\r" + GetPrefix(type, level) + msg + "> ");
                 Console.ResetColor();
             }
             else Type();
@@ -95,6 +96,7 @@ namespace Milimoe.FunGame.Server.Services
 
         public static void WriteLine(string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)
         {
+            if (msg.Trim() == "") return;
             if (type == InvokeMessageType.Warning)
             {
                 level = LogLevel.Warning;
@@ -105,13 +107,14 @@ namespace Milimoe.FunGame.Server.Services
             }
             if (!useLevel || ((int)level >= (int)Config.LogLevelValue))
             {
-                if (msg.Trim() != "") Console.WriteLine("\r" + GetPrefix(type, level) + msg);
+                Console.WriteLine("\r" + GetPrefix(type, level) + msg);
             }
             Type();
         }
 
         public static void WriteLine_Addons(string addon, string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)
         {
+            if (msg.Trim() == "") return;
             if (type == InvokeMessageType.Warning)
             {
                 level = LogLevel.Warning;
@@ -122,7 +125,7 @@ namespace Milimoe.FunGame.Server.Services
             }
             if (!useLevel || ((int)level >= (int)Config.LogLevelValue))
             {
-                if (msg.Trim() != "") Console.WriteLine("\r" + GetPrefix(type, level, addon) + msg);
+                Console.WriteLine("\r" + GetPrefix(type, level, addon) + msg);
             }
             Type();
         }
