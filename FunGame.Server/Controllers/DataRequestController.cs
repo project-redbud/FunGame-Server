@@ -1524,7 +1524,7 @@ namespace Milimoe.FunGame.Server.Controller
                         try
                         {
                             User? buyer = SQLHelper.GetUserById(userid, true);
-                            User? itemUser = SQLHelper.GetUserById(marketItem.User.Id, true);
+                            User? itemUser = SQLHelper.GetUserById(marketItem.User, true);
                             if (itemUser != null && buyer != null && itemUser.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
                             {
                                 if (buyer.Inventory.Credits >= price)
@@ -1722,6 +1722,7 @@ namespace Milimoe.FunGame.Server.Controller
                 Guid itemGuid = DataRequest.GetDictionaryJsonObject<Guid>(requestData, "itemGuid");
                 long userid = DataRequest.GetDictionaryJsonObject<long>(requestData, "userid");
                 double price = DataRequest.GetDictionaryJsonObject<double>(requestData, "price");
+                int stock = DataRequest.GetDictionaryJsonObject<int>(requestData, "stock");
                 User? user = SQLHelper?.GetUserById(userid, true);
                 if (user != null && user.Inventory.Items.FirstOrDefault(i => i.Guid == itemGuid) is Item item)
                 {
@@ -1731,7 +1732,7 @@ namespace Milimoe.FunGame.Server.Controller
                     }
                     else
                     {
-                        SQLHelper?.AddMarketItem(itemGuid, userid, price);
+                        SQLHelper?.AddMarketItem(itemGuid, userid, price, stock);
                         if (SQLHelper?.Success ?? false)
                         {
                             msg = "";
