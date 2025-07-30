@@ -91,7 +91,6 @@ namespace Milimoe.FunGame.Server.Services
                 Console.Write("\r" + GetPrefix(type, level) + msg + "> ");
                 Console.ResetColor();
             }
-            else Type();
         }
 
         public static void WriteLine(string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)
@@ -108,8 +107,8 @@ namespace Milimoe.FunGame.Server.Services
             if (!useLevel || ((int)level >= (int)Config.LogLevelValue))
             {
                 Console.WriteLine("\r" + GetPrefix(type, level) + msg);
+                Type();
             }
-            Type();
         }
 
         public static void WriteLine_Addons(string addon, string msg, InvokeMessageType type = InvokeMessageType.System, LogLevel level = LogLevel.Info, bool useLevel = true)
@@ -126,8 +125,8 @@ namespace Milimoe.FunGame.Server.Services
             if (!useLevel || ((int)level >= (int)Config.LogLevelValue))
             {
                 Console.WriteLine("\r" + GetPrefix(type, level, addon) + msg);
+                Type();
             }
-            Type();
         }
 
         public static void Type()
