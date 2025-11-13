@@ -119,11 +119,11 @@ try
             }
         }
     }
-    // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+    // 添加 OpenAPI 文档
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddOpenApi(options =>
     {
-        options.AddDocumentTransformer(new SecurityDocumentTransformer());
+        options.AddDocumentTransformer<SecurityDocumentTransformer>();
     });
     // 添加 CORS 服务
     builder.Services.AddCors(options =>
