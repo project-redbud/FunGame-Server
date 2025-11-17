@@ -20,7 +20,7 @@ namespace Milimoe.FunGame.Server.Models
         {
             if (Name == "" && DataSource == "" && Port == "" && DataBase == "" && User == "" && Password == "")
             {
-                if (INIHelper.ExistINIFile())
+                if (INIHelper.INIFileExists())
                 {
                     DataSource = INIHelper.ReadINI("MySQL", "DBServer");
                     Port = INIHelper.ReadINI("MySQL", "DBPort");
@@ -41,7 +41,7 @@ namespace Milimoe.FunGame.Server.Models
         {
             if (DataSource == "")
             {
-                if (INIHelper.ExistINIFile())
+                if (INIHelper.INIFileExists())
                 {
                     DataSource = INIHelper.ReadINI("SQLite", "DataSource");
                 }

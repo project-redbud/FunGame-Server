@@ -315,7 +315,7 @@ namespace Milimoe.FunGame.Server.Controller
                             if (SQLHelper.Result == SQLResult.Success)
                             {
                                 ServerHelper.WriteLine("[CreateRoom] Master: " + user.Username + " RoomID: " + roomid);
-                                DataRow? dr = SQLHelper.ExecuteDataRow(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
+                                DataRow? dr = SQLHelper.ExecuteDataRow(RoomQuery.Select_RoomByRoomId(SQLHelper, roomid));
                                 if (dr != null)
                                 {
                                     room = Factory.GetRoom(dr, user);
@@ -355,7 +355,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
                 bool isMaster = DataRequest.GetDictionaryJsonObject<bool>(requestData, "isMaster");
 
-                if (roomid != "-1" && FunGameSystem.RoomList.IsExist(roomid))
+                if (roomid != "-1" && FunGameSystem.RoomList.Exists(roomid))
                 {
                     Room room = FunGameSystem.RoomList[roomid];
                     RoomEventArgs eventArgs = new(room);
@@ -403,7 +403,7 @@ namespace Milimoe.FunGame.Server.Controller
                     }
                     else if (SQLHelper != null)
                     {
-                        SQLHelper.ExecuteDataSet(RoomQuery.Select_IsExistRoom(SQLHelper, roomid));
+                        SQLHelper.ExecuteDataSet(RoomQuery.Select_RoomByRoomId(SQLHelper, roomid));
                         if (SQLHelper.Success)
                         {
                             FunGameSystem.RoomList.IntoRoom(roomid, Server.User);
@@ -897,7 +897,7 @@ namespace Milimoe.FunGame.Server.Controller
             string newModule = DataRequest.GetDictionaryJsonObject<string>(requestData, "module") ?? "";
             string newMap = DataRequest.GetDictionaryJsonObject<string>(requestData, "map") ?? "";
             User user = Server.User;
-            if (roomid != "-1" && FunGameSystem.RoomList.IsExist(roomid))
+            if (roomid != "-1" && FunGameSystem.RoomList.Exists(roomid))
             {
                 Room room = FunGameSystem.RoomList[roomid];
                 RoomEventArgs eventArgs = new(room);
@@ -973,7 +973,7 @@ namespace Milimoe.FunGame.Server.Controller
                 string roomid = DataRequest.GetDictionaryJsonObject<string>(requestData, "roomid") ?? "-1";
                 User newMaster = DataRequest.GetDictionaryJsonObject<User>(requestData, "newMaster") ?? Factory.GetUser();
 
-                if (roomid != "-1" && FunGameSystem.RoomList.IsExist(roomid) && newMaster.Id != 0)
+                if (roomid != "-1" && FunGameSystem.RoomList.Exists(roomid) && newMaster.Id != 0)
                 {
                     Room room = FunGameSystem.RoomList[roomid];
                     RoomEventArgs eventArgs = new(room);

@@ -85,7 +85,7 @@ namespace Milimoe.FunGame.Server.Services
                     SQLMode.SQLite => new SQLiteHelper(),
                     _ => null,
                 });
-                if (INIHelper.ExistINIFile())
+                if (INIHelper.INIFileExists())
                 {
                     string useMySQL = INIHelper.ReadINI("MySQL", "UseMySQL").Trim();
                     string useSQLite = INIHelper.ReadINI("SQLite", "UseSQLite").Trim();
@@ -238,7 +238,7 @@ namespace Milimoe.FunGame.Server.Services
                 ServerHelper.Error(e);
             }
         }
-        
+
         /// <summary>
         /// Web API 启动完成回调
         /// </summary>

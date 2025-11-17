@@ -73,7 +73,7 @@ namespace Milimoe.FunGame.Server.Services
         internal static (string Msg, RegInvokeType Type, bool Success) HandleNoVerifyCode(SQLHelper sqlHelper, MailSender? mailSender, string username, string email, string clientName)
         {
             // 先检查账号是否重复
-            sqlHelper.ExecuteDataSet(UserQuery.Select_IsExistUsername(sqlHelper, username));
+            sqlHelper.ExecuteDataSet(UserQuery.Select_UserByUsername(sqlHelper, username));
             if (sqlHelper.Result == SQLResult.Success)
             {
                 ServerHelper.WriteLine(clientName + " 账号已被注册");
@@ -81,7 +81,7 @@ namespace Milimoe.FunGame.Server.Services
             }
 
             // 检查邮箱是否重复
-            sqlHelper.ExecuteDataSet(UserQuery.Select_IsExistEmail(sqlHelper, email));
+            sqlHelper.ExecuteDataSet(UserQuery.Select_UserByEmail(sqlHelper, email));
             if (sqlHelper.Result == SQLResult.Success)
             {
                 ServerHelper.WriteLine(clientName + " 邮箱已被注册");
