@@ -154,20 +154,19 @@ namespace Milimoe.FunGame.Server.Controller
                 }
             }
 
-            if (ValidateClientParameters is null)
+            if (ValidateClientParameters != null)
             {
-                return "";
-            }
-
-            foreach (Func<SocketObject, string> handler in ValidateClientParameters.GetInvocationList().Cast<Func<SocketObject, string>>())
-            {
-                string msg = handler(obj);
-                if (msg != "")
+                foreach (Func<SocketObject, string> handler in ValidateClientParameters.GetInvocationList().Cast<Func<SocketObject, string>>())
                 {
-                    builder.AppendLine(msg);
-                    ServerHelper.WriteLine(msg, InvokeMessageType.Error);
+                    string msg = handler(obj);
+                    if (msg != "")
+                    {
+                        builder.AppendLine(msg);
+                        ServerHelper.WriteLine(msg, InvokeMessageType.Error);
+                    }
                 }
             }
+
             return builder.ToString().Trim();
         }
     }
