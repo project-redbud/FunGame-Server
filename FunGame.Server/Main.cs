@@ -16,7 +16,7 @@ HTTPListener? WebSocketListener = null;
 ServerHelper.WriteLine("正在读取配置文件并初始化服务 . . .");
 
 // 检查是否存在配置文件
-if (!INIHelper.ExistINIFile())
+if (!INIHelper.INIFileExists())
 {
     ServerHelper.WriteLine("未检测到配置文件，将自动创建配置文件 . . .");
     INIHelper.Init(Config.FunGameType);

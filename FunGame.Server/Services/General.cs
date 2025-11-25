@@ -148,7 +148,7 @@ namespace Milimoe.FunGame.Server.Services
         private static Hashtable GetServerSettingHashtable()
         {
             Hashtable settings = [];
-            if (INIHelper.ExistINIFile())
+            if (INIHelper.INIFileExists())
             {
                 settings.Add("LogLevel", INIHelper.ReadINI("Console", "LogLevel"));
                 settings.Add("Name", INIHelper.ReadINI("Server", "Name"));
@@ -260,7 +260,7 @@ namespace Milimoe.FunGame.Server.Services
             {
                 if (SenderMailAddress == "" && SenderName == "" && SenderPassword == "" && SmtpHost == "")
                 {
-                    if (INIHelper.ExistINIFile())
+                    if (INIHelper.INIFileExists())
                     {
                         if (bool.TryParse(INIHelper.ReadINI("Mailer", "UseMailSender").ToLower(), out bool use))
                         {
