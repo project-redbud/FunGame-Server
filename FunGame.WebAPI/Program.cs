@@ -181,7 +181,7 @@ try
 
         throw new NoUserLogonException();
     });
-    builder.Services.AddTransient(provider =>
+    builder.Services.AddScoped(provider =>
     {
         SQLHelper? sql = Factory.OpenFactory.GetSQLHelper();
         if (sql != null) return sql;
