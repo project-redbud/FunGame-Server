@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.ApplicationParts;
 using Microsoft.Extensions.Logging.Console;
 using Microsoft.IdentityModel.Tokens;
 using Milimoe.FunGame;
+using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Addon;
 using Milimoe.FunGame.Core.Library.Common.Network;
@@ -180,6 +181,13 @@ try
 
         throw new NoUserLogonException();
     });
+    builder.Services.AddTransient(provider =>
+    {
+        SQLHelper? sql = Factory.OpenFactory.GetSQLHelper();
+        if (sql != null) return sql;
+        throw new SQLServiceException();
+    });
+    builder.Services.AddTransient<JsonTool>();
 
     WebApplication app = builder.Build();
 
