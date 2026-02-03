@@ -51,6 +51,31 @@ namespace Milimoe.FunGame.Server.Model
                     case OrderDictionary.ShowUsers2:
                         ShowUsers(server);
                         break;
+                    case OrderDictionary.ReloadAddons:
+                        FunGameSystem.HotReloadServerPlugins();
+                        FunGameSystem.HotReloadWebAPIPlugins();
+                        FunGameSystem.HotReloadGameModuleList();
+                        break;
+                    case OrderDictionary.ReloadPlugins1:
+                        FunGameSystem.HotReloadServerPlugins();
+                        FunGameSystem.HotReloadWebAPIPlugins();
+                        break;
+                    case OrderDictionary.ReloadPlugins2:
+                        FunGameSystem.HotReloadServerPlugins();
+                        FunGameSystem.HotReloadWebAPIPlugins();
+                        break;
+                    case OrderDictionary.ReloadPlugins3:
+                        FunGameSystem.HotReloadServerPlugins();
+                        break;
+                    case OrderDictionary.ReloadPlugins4:
+                        FunGameSystem.HotReloadWebAPIPlugins();
+                        break;
+                    case OrderDictionary.ReloadModules1:
+                        FunGameSystem.HotReloadGameModuleList();
+                        break;
+                    case OrderDictionary.ReloadModules2:
+                        FunGameSystem.HotReloadGameModuleList();
+                        break;
                     default:
                         break;
                 }
