@@ -239,8 +239,8 @@ namespace Milimoe.FunGame.Server.Controller
                 }
                 else eventArgs.Success = false;
 
-                FunGameSystem.ServerPluginLoader?.OnBeforeLogoutEvent(this, eventArgs);
-                FunGameSystem.WebAPIPluginLoader?.OnBeforeLogoutEvent(this, eventArgs);
+                FunGameSystem.ServerPluginLoader?.OnAfterLogoutEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterLogoutEvent(this, eventArgs);
             }
             resultData.Add("msg", msg);
             resultData.Add("key", key);

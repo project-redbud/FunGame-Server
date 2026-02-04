@@ -1,4 +1,5 @@
 ﻿using Milimoe.FunGame.Core.Api.Utility;
+using Milimoe.FunGame.Core.Library.Common.Event;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Controller;
@@ -168,21 +169,34 @@ void StartServerListening()
                             bool isDebugMode = false;
 
                             // 开始处理客户端连接请求
+                            ConnectEventArgs eventArgs = new(clientip, Config.ServerPort);
+                            FunGameSystem.ServerPluginLoader?.OnBeforeConnectEvent(socket, eventArgs);
+                            FunGameSystem.WebAPIPluginLoader?.OnBeforeConnectEvent(socket, eventArgs);
                             SocketObject[] objs = socket.Receive();
                             (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs);
+                            eventArgs.Success = isConnected;
                             if (isConnected)
                             {
+                                eventArgs.ConnectResult = ConnectResult.Success;
+                                FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                                FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                                 ServerModel<ServerSocket> ClientModel = new(listener, socket, isDebugMode);
                                 ClientModel.SetClientName(clientip);
                                 Task t = Task.Run(ClientModel.Start);
                             }
                             else
                             {
+                                eventArgs.ConnectResult = ConnectResult.ConnectFailed;
+                                FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                                FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                                 ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
                             }
                             Config.ConnectingPlayerCount--;
                         }).OnError(e =>
                         {
+                            ConnectEventArgs eventArgs = new(clientip, Config.ServerPort, ConnectResult.CanNotConnect);
+                            FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                            FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                             if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
                             ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
                             ServerHelper.Error(e);
@@ -232,26 +246,39 @@ void StartServerListening()
                             bool isDebugMode = false;
 
                             // 开始处理客户端连接请求
+                            ConnectEventArgs eventArgs = new(clientip, Config.ServerPort);
+                            FunGameSystem.ServerPluginLoader?.OnBeforeConnectEvent(socket, eventArgs);
+                            FunGameSystem.WebAPIPluginLoader?.OnBeforeConnectEvent(socket, eventArgs);
                             IEnumerable<SocketObject> objs = [];
                             while (!objs.Any(o => o.SocketType == SocketMessageType.Connect))
                             {
                                 objs = await socket.ReceiveAsync();
                             }
                             (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs.Where(o => o.SocketType == SocketMessageType.Connect));
+                            eventArgs.Success = isConnected;
                             if (isConnected)
                             {
+                                eventArgs.ConnectResult = ConnectResult.Success;
+                                FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                                FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                                 ServerModel<ServerWebSocket> ClientModel = new(listener, socket, isDebugMode);
                                 ClientModel.SetClientName(clientip);
                                 Task t = Task.Run(ClientModel.Start);
                             }
                             else
                             {
+                                eventArgs.ConnectResult = ConnectResult.ConnectFailed;
+                                FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                                FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                                 ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
                                 await socket.CloseAsync();
                             }
                             Config.ConnectingPlayerCount--;
                         }).OnError(e =>
                         {
+                            ConnectEventArgs eventArgs = new(clientip, Config.ServerPort, ConnectResult.CanNotConnect);
+                            FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                            FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                             if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
                             ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
                             ServerHelper.Error(e);

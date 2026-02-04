@@ -15,6 +15,7 @@ using Milimoe.FunGame;
 using Milimoe.FunGame.Core.Api.Transmittal;
 using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Common.Addon;
+using Milimoe.FunGame.Core.Library.Common.Event;
 using Milimoe.FunGame.Core.Library.Common.Network;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Controller;
@@ -320,28 +321,50 @@ async Task WebSocketConnectionHandler(HttpContext context)
             Guid token = Guid.NewGuid();
             ServerWebSocket socket = new(listener, instance, clientip, clientip, token);
             Config.ConnectingPlayerCount++;
-            bool isConnected = false;
-            bool isDebugMode = false;
+            try
+            {
+                bool isConnected = false;
+                bool isDebugMode = false;
 
-            // 开始处理客户端连接请求
-            IEnumerable<SocketObject> objs = [];
-            while (!objs.Any(o => o.SocketType == SocketMessageType.Connect))
-            {
-                objs = await socket.ReceiveAsync();
+                // 开始处理客户端连接请求
+                ConnectEventArgs eventArgs = new(clientip, Config.ServerPort);
+                FunGameSystem.ServerPluginLoader?.OnBeforeConnectEvent(socket, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnBeforeConnectEvent(socket, eventArgs);
+                IEnumerable<SocketObject> objs = [];
+                while (!objs.Any(o => o.SocketType == SocketMessageType.Connect))
+                {
+                    objs = await socket.ReceiveAsync();
+                }
+                (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs.Where(o => o.SocketType == SocketMessageType.Connect));
+                eventArgs.Success = isConnected;
+                if (isConnected)
+                {
+                    eventArgs.ConnectResult = ConnectResult.Success;
+                    FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                    ServerModel<ServerWebSocket> ClientModel = new(listener, socket, isDebugMode);
+                    ClientModel.SetClientName(clientip);
+                    await ClientModel.Start();
+                }
+                else
+                {
+                    eventArgs.ConnectResult = ConnectResult.ConnectFailed;
+                    FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                    FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                    ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
+                    await socket.CloseAsync();
+                }
+                Config.ConnectingPlayerCount--;
             }
-            (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs.Where(o => o.SocketType == SocketMessageType.Connect));
-            if (isConnected)
+            catch (Exception e)
             {
-                ServerModel<ServerWebSocket> ClientModel = new(listener, socket, isDebugMode);
-                ClientModel.SetClientName(clientip);
-                await ClientModel.Start();
+                ConnectEventArgs eventArgs = new(clientip, Config.ServerPort, ConnectResult.CanNotConnect);
+                FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(context, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(context, eventArgs);
+                if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
+                ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
+                ServerHelper.Error(e);
             }
-            else
-            {
-                ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
-                await socket.CloseAsync();
-            }
-            Config.ConnectingPlayerCount--;
         }
         else
         {
@@ -350,8 +373,6 @@ async Task WebSocketConnectionHandler(HttpContext context)
     }
     catch (Exception e)
     {
-        if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
-        ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
         ServerHelper.Error(e);
     }
 }

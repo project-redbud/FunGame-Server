@@ -664,6 +664,9 @@ namespace Milimoe.FunGame.Server.Model
         {
             try
             {
+                GeneralEventArgs eventArgs = new();
+                FunGameSystem.ServerPluginLoader?.OnAfterDisconnectEvent(this, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterDisconnectEvent(this, eventArgs);
                 await Socket.CloseAsync();
                 _running = false;
                 Listener.ClientList.Remove(ClientName);
