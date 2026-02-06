@@ -4,6 +4,7 @@ using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Entity;
 using Milimoe.FunGame.Core.Library.Constant;
 using Milimoe.FunGame.Server.Others;
+using TaskScheduler = Milimoe.FunGame.Core.Api.Utility.TaskScheduler;
 
 namespace Milimoe.FunGame.Server.Services
 {
@@ -71,6 +72,12 @@ namespace Milimoe.FunGame.Server.Services
         public static void Error(Exception e)
         {
             Console.WriteLine("\r" + GetPrefix(InvokeMessageType.Error, LogLevel.Error) + e.Message + "\n" + e.StackTrace);
+            if (e.InnerException != null)
+            {
+                Error(e.InnerException);
+                TXTHelper.AppendErrorLog(e);
+                return;
+            }
             Type();
             TXTHelper.AppendErrorLog(e);
         }
@@ -227,6 +234,11 @@ namespace Milimoe.FunGame.Server.Services
                     if (MaxConnectFailed != null) Config.MaxConnectionFaileds = (int)MaxConnectFailed;
                 }
                 WriteLine($"当前输出的日志级别为：{Config.LogLevelValue}", useLevel: false);
+                if (Config.UseHotLoadAddons)
+                {
+                    WriteLine($"已启用可热更新加载项的加载模式", useLevel: false);
+                    TaskScheduler.StartCleanUnusedAddonContexts(Error);
+                }
             }
             catch (Exception e)
             {

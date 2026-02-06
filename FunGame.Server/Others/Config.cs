@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Library.Constant;
 
 namespace Milimoe.FunGame.Server.Others
@@ -9,6 +10,19 @@ namespace Milimoe.FunGame.Server.Others
         /// 使用 ASP.NET Core Web API
         /// </summary>
         public static bool AspNetCore { get; set; } = false;
+
+        /// <summary>
+        /// 使用可热更新的加载项模式
+        /// </summary>
+        public static bool UseHotLoadAddons
+        {
+            get
+            {
+                _useHotLoadAddon ??= Convert.ToBoolean(INIHelper.ReadINI("Console", "UseHotLoadAddons"));
+                return _useHotLoadAddon.Value;
+            }
+        }
+        private static bool? _useHotLoadAddon = null;
 
         /// <summary>
         /// 日志级别

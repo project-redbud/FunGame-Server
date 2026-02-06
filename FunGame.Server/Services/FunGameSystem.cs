@@ -159,7 +159,34 @@ namespace Milimoe.FunGame.Server.Services
             // 读取modules目录下的模组
             try
             {
-                GameModuleLoader = GameModuleLoader.LoadGameModules(Config.FunGameType, delegates);
+                if (Config.UseHotLoadAddons && GameModuleLoader != null)
+                {
+                    GameModuleLoader.HotReload(Config.FunGameType, delegates);
+                }
+                else
+                {
+                    GameModuleLoader = Config.UseHotLoadAddons ? GameModuleLoader.LoadGameModulesByHotLoadMode(Config.FunGameType, delegates) : GameModuleLoader.LoadGameModules(Config.FunGameType, delegates);
+                }
+                foreach (GameMap map in GameModuleLoader.Maps.Values)
+                {
+                    supported.Add(map.Name);
+                    ServerHelper.WriteLine("GameMap Loaded -> " + map.Name, InvokeMessageType.Core);
+                }
+                foreach (CharacterModule module in GameModuleLoader.Characters.Values)
+                {
+                    supported.Add(module.Name);
+                    ServerHelper.WriteLine("CharacterModule Loaded -> " + module.Name, InvokeMessageType.Core);
+                }
+                foreach (SkillModule module in GameModuleLoader.Skills.Values)
+                {
+                    supported.Add(module.Name);
+                    ServerHelper.WriteLine("SkillModule Loaded -> " + module.Name, InvokeMessageType.Core);
+                }
+                foreach (ItemModule module in GameModuleLoader.Items.Values)
+                {
+                    supported.Add(module.Name);
+                    ServerHelper.WriteLine("ItemModule Loaded -> " + module.Name, InvokeMessageType.Core);
+                }
                 foreach (GameModuleServer module in GameModuleLoader.ModuleServers.Values)
                 {
                     try
@@ -173,7 +200,7 @@ namespace Milimoe.FunGame.Server.Services
                         }
                         if (check)
                         {
-                            if (!module.IsAnonymous) supported.Add(module.Name);
+                            supported.Add(module.Name);
                             ServerHelper.WriteLine("GameModule Loaded -> " + module.Name, InvokeMessageType.Core);
                         }
                     }
@@ -194,6 +221,31 @@ namespace Milimoe.FunGame.Server.Services
         }
 
         /// <summary>
+        /// 热更新游戏模组
+        /// </summary>
+        /// <returns></returns>
+        public static bool HotReloadGameModuleList()
+        {
+            if (!Config.UseHotLoadAddons)
+            {
+                return false;
+            }
+
+            if (GameModuleLoader != null)
+            {
+                GameModuleLoader.Modules.Clear();
+                GameModuleLoader.ModuleServers.Clear();
+                GameModuleLoader.Maps.Clear();
+                GameModuleLoader.Characters.Clear();
+                GameModuleLoader.Skills.Clear();
+                GameModuleLoader.Items.Clear();
+                GameModuleLoader = null;
+            }
+
+            return GetGameModuleList();
+        }
+
+        /// <summary>
         /// 加载服务器插件
         /// </summary>
         public static void GetServerPlugins()
@@ -204,7 +256,14 @@ namespace Milimoe.FunGame.Server.Services
             try
             {
                 // 读取plugins目录下的插件
-                ServerPluginLoader = ServerPluginLoader.LoadPlugins(delegates);
+                if (Config.UseHotLoadAddons && ServerPluginLoader != null)
+                {
+                    ServerPluginLoader.HotReload(delegates);
+                }
+                else
+                {
+                    ServerPluginLoader = Config.UseHotLoadAddons ? ServerPluginLoader.LoadPluginsByHotLoadMode(delegates) : ServerPluginLoader.LoadPlugins(delegates);
+                }
                 foreach (ServerPlugin plugin in ServerPluginLoader.Plugins.Values)
                 {
                     ServerHelper.WriteLine("Plugin Loaded -> " + plugin.Name, InvokeMessageType.Core);
@@ -227,7 +286,14 @@ namespace Milimoe.FunGame.Server.Services
             try
             {
                 // 读取plugins目录下的插件
-                WebAPIPluginLoader = WebAPIPluginLoader.LoadPlugins(delegates, otherobjs);
+                if (Config.UseHotLoadAddons && WebAPIPluginLoader != null)
+                {
+                    WebAPIPluginLoader.HotReload(delegates, otherobjs);
+                }
+                else
+                {
+                    WebAPIPluginLoader = Config.UseHotLoadAddons ? WebAPIPluginLoader.LoadPluginsByHotLoadMode(delegates, otherobjs) : WebAPIPluginLoader.LoadPlugins(delegates, otherobjs);
+                }
                 foreach (WebAPIPlugin plugin in WebAPIPluginLoader.Plugins.Values)
                 {
                     ServerHelper.WriteLine("Plugin Loaded -> " + plugin.Name, InvokeMessageType.Core);
@@ -237,6 +303,36 @@ namespace Milimoe.FunGame.Server.Services
             {
                 ServerHelper.Error(e);
             }
+        }
+
+        /// <summary>
+        /// 热更新服务器插件
+        /// </summary>
+        /// <returns></returns>
+        public static bool HotReloadServerPlugins()
+        {
+            if (!Config.UseHotLoadAddons)
+            {
+                return false;
+            }
+
+            GetServerPlugins();
+            return (ServerPluginLoader?.Plugins.Count ?? 0) > 0;
+        }
+
+        /// <summary>
+        /// 热更新 Web API 插件
+        /// </summary>
+        /// <returns></returns>
+        public static bool HotReloadWebAPIPlugins()
+        {
+            if (!Config.UseHotLoadAddons)
+            {
+                return false;
+            }
+
+            GetWebAPIPlugins();
+            return (WebAPIPluginLoader?.Plugins.Count ?? 0) > 0;
         }
 
         /// <summary>

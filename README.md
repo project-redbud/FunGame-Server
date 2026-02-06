@@ -1,6 +1,6 @@
 # 项目简介
 
-FunGameServer 是 [FunGame](https://github.com/project-redbud/FunGame-Core) 的服务器端实现，基于 ASP.NET Core Web API，轻量、高性能、跨平台。
+FunGameServer 是 [FunGame](https://github.com/project-redbud/FunGame-Core) 的服务器端实现，基于 ASP.NET Core Web API，高性能且跨平台。
 
 它支持多种服务模式，使得服务器端的扩展和集成更加灵活：
 
