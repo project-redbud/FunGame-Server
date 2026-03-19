@@ -48,9 +48,9 @@ namespace Milimoe.FunGame.Server.Model
         protected DataSet _dsUser = new();
         protected Guid _checkLoginKey = Guid.Empty;
 
-        public ServerModel(ISocketListener<T> server, ISocketMessageProcessor socket, bool isDebugMode)
+        public ServerModel(ISocketListener<T> listener, ISocketMessageProcessor socket, bool isDebugMode)
         {
-            Listener = server;
+            Listener = listener;
             Socket = socket;
             DataRequestController = new(this);
             IsDebugMode = isDebugMode;
