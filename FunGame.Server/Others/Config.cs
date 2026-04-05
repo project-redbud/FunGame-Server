@@ -137,7 +137,7 @@ namespace Milimoe.FunGame.Server.Others
         /// <summary>
         /// 正在连接的玩家数量
         /// </summary>
-        public static int ConnectingPlayerCount { get; set; } = 0;
+        public static int ConnectingPlayerCount => Math.Max(0, _connectingPlayerCount);
 
         /// <summary>
         /// 默认传输字符集
@@ -158,6 +158,36 @@ namespace Milimoe.FunGame.Server.Others
         /// 未Loadmodules时，此属性表示至少需要安装的模组
         /// </summary>
         public static string[] GameModuleSupported { get; set; } = [];
+
+        /// <summary>
+        /// 正在连接的玩家数量
+        /// </summary>
+        private static int _connectingPlayerCount = 0;
+
+        /// <summary>
+        /// 线程安全的递增正在连接的玩家数量
+        /// </summary>
+        /// <returns></returns>
+        public static int IncrementConnectingPlayerCount()
+        {
+            return Interlocked.Increment(ref _connectingPlayerCount);
+        }
+
+        /// <summary>
+        /// 线程安全的递减正在连接的玩家数量
+        /// </summary>
+        /// <returns></returns>
+        public static int DecrementConnectingPlayerCount()
+        {
+            int original, newValue;
+            do
+            {
+                original = Volatile.Read(ref _connectingPlayerCount);
+                newValue = Math.Max(0, original - 1);
+            } while (Interlocked.CompareExchange(ref _connectingPlayerCount, newValue, original) != original);
+
+            return newValue;
+        }
     }
 
     /// <summary>
