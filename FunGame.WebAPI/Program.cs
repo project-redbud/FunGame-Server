@@ -265,7 +265,7 @@ try
         await app.StopAsync();
     };
 
-    Task order = Task.Factory.StartNew(GetConsoleOrder);
+    Task order = Task.Run(GetConsoleOrder);
 
     otherobjs = [app, listener];
     FunGameSystem.OnWebAPIStarted(otherobjs);
@@ -281,7 +281,7 @@ async Task GetConsoleOrder()
 {
     while (true)
     {
-        string order = Console.ReadLine() ?? "";
+        string order = await Console.In.ReadLineAsync() ?? "";
         ServerHelper.Type();
         if (order != "")
         {
@@ -320,7 +320,7 @@ async Task WebSocketConnectionHandler(HttpContext context)
 
             Guid token = Guid.NewGuid();
             ServerWebSocket socket = new(listener, instance, clientip, clientip, token);
-            Config.ConnectingPlayerCount++;
+            Config.IncrementConnectingPlayerCount();
             try
             {
                 bool isConnected = false;
@@ -337,6 +337,7 @@ async Task WebSocketConnectionHandler(HttpContext context)
                 }
                 (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs.Where(o => o.SocketType == SocketMessageType.Connect));
                 eventArgs.Success = isConnected;
+                Config.DecrementConnectingPlayerCount();
                 if (isConnected)
                 {
                     eventArgs.ConnectResult = ConnectResult.Success;
@@ -354,14 +355,13 @@ async Task WebSocketConnectionHandler(HttpContext context)
                     ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
                     await socket.CloseAsync();
                 }
-                Config.ConnectingPlayerCount--;
             }
             catch (Exception e)
             {
+                Config.DecrementConnectingPlayerCount();
                 ConnectEventArgs eventArgs = new(clientip, Config.ServerPort, ConnectResult.CanNotConnect);
                 FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(context, eventArgs);
                 FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(context, eventArgs);
-                if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
                 ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
                 ServerHelper.Error(e);
             }

@@ -69,7 +69,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
         public async Task<IActionResult> Login([FromBody] LoginDTO dto)
         {
             string msg = "服务器暂时无法处理登录请求。";
-            Config.ConnectingPlayerCount++;
+            Config.IncrementConnectingPlayerCount();
             PayloadModel<DataRequestType> response = new()
             {
                 Event = "user_login",
@@ -94,7 +94,7 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                         // 确认登录
                         await model.CheckLogin();
                         string token = jwtTokenService.GenerateToken(username);
-                        Config.ConnectingPlayerCount--;
+                        Config.DecrementConnectingPlayerCount();
                         response.StatusCode = 200;
                         response.Message = "登录成功！";
                         response.Data = new()
@@ -107,14 +107,14 @@ namespace Milimoe.FunGame.WebAPI.Controllers
                     await model.Send(SocketMessageType.Disconnect);
                 }
 
-                Config.ConnectingPlayerCount--;
+                Config.DecrementConnectingPlayerCount();
                 response.Message = msg;
                 response.StatusCode = 401;
                 return Unauthorized(response);
             }
             catch (Exception e)
             {
-                Config.ConnectingPlayerCount--;
+                Config.DecrementConnectingPlayerCount();
                 logger.LogError("Error: {e}", e);
             }
 

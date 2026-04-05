@@ -164,7 +164,7 @@ void StartServerListening()
                         TaskUtility.NewTask(async () =>
                         {
                             clientip = socket.ClientIP;
-                            Config.ConnectingPlayerCount++;
+                            Config.IncrementConnectingPlayerCount();
                             bool isConnected = false;
                             bool isDebugMode = false;
 
@@ -175,6 +175,7 @@ void StartServerListening()
                             SocketObject[] objs = socket.Receive();
                             (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs);
                             eventArgs.Success = isConnected;
+                            Config.DecrementConnectingPlayerCount();
                             if (isConnected)
                             {
                                 eventArgs.ConnectResult = ConnectResult.Success;
@@ -191,13 +192,12 @@ void StartServerListening()
                                 FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                                 ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
                             }
-                            Config.ConnectingPlayerCount--;
                         }).OnError(e =>
                         {
+                            Config.DecrementConnectingPlayerCount();
                             ConnectEventArgs eventArgs = new(clientip, Config.ServerPort, ConnectResult.CanNotConnect);
                             FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                             FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
-                            if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
                             ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
                             ServerHelper.Error(e);
                         });
@@ -241,7 +241,7 @@ void StartServerListening()
                         TaskUtility.NewTask(async () =>
                         {
                             clientip = socket.ClientIP;
-                            Config.ConnectingPlayerCount++;
+                            Config.IncrementConnectingPlayerCount();
                             bool isConnected = false;
                             bool isDebugMode = false;
 
@@ -256,6 +256,7 @@ void StartServerListening()
                             }
                             (isConnected, isDebugMode) = await ConnectController.Connect(listener, socket, token, clientip, objs.Where(o => o.SocketType == SocketMessageType.Connect));
                             eventArgs.Success = isConnected;
+                            Config.DecrementConnectingPlayerCount();
                             if (isConnected)
                             {
                                 eventArgs.ConnectResult = ConnectResult.Success;
@@ -273,13 +274,12 @@ void StartServerListening()
                                 ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 连接失败。", InvokeMessageType.Core);
                                 await socket.CloseAsync();
                             }
-                            Config.ConnectingPlayerCount--;
                         }).OnError(e =>
                         {
+                            Config.DecrementConnectingPlayerCount();
                             ConnectEventArgs eventArgs = new(clientip, Config.ServerPort, ConnectResult.CanNotConnect);
                             FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                             FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
-                            if (--Config.ConnectingPlayerCount < 0) Config.ConnectingPlayerCount = 0;
                             ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
                             ServerHelper.Error(e);
                         });
