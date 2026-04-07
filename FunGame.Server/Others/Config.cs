@@ -155,6 +155,11 @@ namespace Milimoe.FunGame.Server.Others
         public static SQLMode SQLMode { get; set; } = SQLMode.None;
 
         /// <summary>
+        /// CORS：允许所有来源
+        /// </summary>
+        public static bool AllowAnyOrigin { get; set; } = false;
+
+        /// <summary>
         /// 未Loadmodules时，此属性表示至少需要安装的模组
         /// </summary>
         public static string[] GameModuleSupported { get; set; } = [];

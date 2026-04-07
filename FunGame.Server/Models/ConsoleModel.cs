@@ -13,85 +13,188 @@ namespace Milimoe.FunGame.Server.Model
 {
     public class ConsoleModel
     {
-        public static async Task Order<T>(ISocketListener<T>? server, string order) where T : ISocketMessageProcessor
+        public static void InitOrders<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
+        {
+            FunGameSystem.OrderList[OrderDictionary.Kick] = async (args) =>
+            {
+                if (args.Length == 0 || args[0] is not string client)
+                {
+                    ServerHelper.Write("输入需要踢出的客户端名称：");
+                    client = await Console.In.ReadLineAsync() ?? "";
+                }
+                if (client != "" && server != null && server.ClientList.ContainsKey(client))
+                {
+                    await Kick(server.ClientList[client]);
+                }
+                else
+                {
+                    ServerHelper.WriteLine("未找到指定的客户端。");
+                }
+            };
+            FunGameSystem.OrderList[OrderDictionary.Logout] = async (args) =>
+            {
+                if (args.Length == 0 || args[0] is not string user)
+                {
+                    ServerHelper.Write("输入需要强制下线的玩家ID：");
+                    user = await Console.In.ReadLineAsync() ?? "";
+                }
+                if (user != "" && server != null && server.UserList.ContainsKey(user))
+                {
+                    await ForceLogOut(server.UserList[user]);
+                }
+                else
+                {
+                    ServerHelper.WriteLine("未找到指定的玩家。");
+                }
+            };
+            FunGameSystem.OrderList[OrderDictionary.Show] = async (args) =>
+            {
+                if (args.Length > 0 && args[0] is string type)
+                {
+                    switch (type)
+                    {
+                        case "clients":
+                        case "-c":
+                            ShowClients(server);
+                            break;
+                        case "users":
+                        case "-u":
+                            ShowUsers(server);
+                            break;
+                        default:
+                            ServerHelper.WriteLine($"指令 '{OrderDictionary.Show}' 的参数 '{type}' 无效。", InvokeMessageType.Warning);
+                            ShowClients(server);
+                            ShowUsers(server);
+                            break;
+                    }
+                }
+                else
+                {
+                    ShowClients(server);
+                    ShowUsers(server);
+                }
+            };
+            FunGameSystem.OrderList[OrderDictionary.ShowClients] = async (args) =>
+            {
+                ShowClients(server);
+            };
+            FunGameSystem.OrderList[OrderDictionary.ShowUsers] = async (args) =>
+            {
+                ShowUsers(server);
+            };
+            FunGameSystem.OrderList[OrderDictionary.Reload] = async (args) =>
+            {
+                if (args.Length > 0 && args[0] is string type)
+                {
+                    switch (type)
+                    {
+                        case "addons":
+                        case "-a":
+                            FunGameSystem.HotReloadServerPlugins();
+                            FunGameSystem.HotReloadWebAPIPlugins();
+                            FunGameSystem.HotReloadGameModuleList();
+                            break;
+                        case "modules":
+                        case "-m":
+                            FunGameSystem.HotReloadGameModuleList();
+                            break;
+                        case "plugins":
+                        case "-p":
+                            FunGameSystem.HotReloadServerPlugins();
+                            FunGameSystem.HotReloadWebAPIPlugins();
+                            break;
+                        case "serverplugins":
+                        case "-sp":
+                            FunGameSystem.HotReloadServerPlugins();
+                            break;
+                        case "webapiplugins":
+                        case "-wp":
+                            FunGameSystem.HotReloadWebAPIPlugins();
+                            break;
+                        default:
+                            ServerHelper.WriteLine($"指令 '{OrderDictionary.Reload}' 的参数 '{type}' 无效。", InvokeMessageType.Error);
+                            break;
+                    }
+                }
+            };
+            FunGameSystem.OrderList[OrderDictionary.Help] = async (args) =>
+            {
+                ServerHelper.WriteLine($"可用指令：{string.Join("，", FunGameSystem.OrderList.Keys.Select(c => $"{c}{GetOrderAliases(c)}"))}");
+            };
+            FunGameSystem.OrderList[OrderDictionary.Ban] = async (args) =>
+            {
+                if (args.Length > 0 && args[0] is string type)
+                {
+                    if (args.Length == 1 || args[1] is not string banned)
+                    {
+                        ServerHelper.WriteLine($"没有提供指令 '{OrderDictionary.Ban}' 所需的第二个参数 'banned ip' 值。", InvokeMessageType.Error);
+                        return;
+                    }
+                    if (!NetworkUtility.IsIP(banned))
+                    {
+                        ServerHelper.WriteLine($"指令 '{OrderDictionary.Ban}' 的参数 '{banned}' 不是一个 IP 地址。", InvokeMessageType.Error);
+                        return;
+                    }
+                    switch (type)
+                    {
+                        case "add":
+                        case "-a":
+                            Config.ServerBannedList.Add(banned);
+                            ServerHelper.WriteLine($"将 {banned} 添加入黑名单成功。");
+                            break;
+                        case "remove":
+                        case "-r":
+                            Config.ServerBannedList.Remove(banned);
+                            ServerHelper.WriteLine($"将 {banned} 移出黑名单成功。");
+                            break;
+                        default:
+                            ServerHelper.WriteLine($"指令 '{OrderDictionary.Ban}' 的参数 '{type}' 无效。", InvokeMessageType.Error);
+                            break;
+                    }
+                }
+                else
+                {
+                    ServerHelper.WriteLine($"没有提供指令 '{OrderDictionary.Ban}' 所需的参数。", InvokeMessageType.Error);
+                }
+            };
+        }
+
+        public static void AddOrderAlias(string order, params string[] aliases)
+        {
+            foreach (string alias in aliases)
+            {
+                FunGameSystem.OrderAliasList[alias] = order;
+            }
+        }
+
+        public static async Task Order(string order, string[] args)
         {
             try
             {
-                switch (order)
+                if (FunGameSystem.OrderList.TryGetValue(order, out Func<string[], Task>? func) && func != null)
                 {
-                    case OrderDictionary.Kick:
-                        {
-                            ServerHelper.Write("输入需要踢出的客户端名称：");
-                            string client = Console.ReadLine() ?? "";
-                            if (client != "" && server != null)
-                            {
-                                await Kick(server.ClientList[client]);
-                            }
-                            break;
-                        }
-                    case OrderDictionary.Logout:
-                        {
-                            ServerHelper.Write("输入需要强制下线的玩家ID：");
-                            string user = Console.ReadLine() ?? "";
-                            if (user != "" && server != null)
-                            {
-                                await ForceLogOut(server.UserList[user]);
-                            }
-                            break;
-                        }
-                    case OrderDictionary.ShowList:
-                        ShowClients(server);
-                        ShowUsers(server);
-                        break;
-                    case OrderDictionary.ShowClients1:
-                    case OrderDictionary.ShowClients2:
-                        ShowClients(server);
-                        break;
-                    case OrderDictionary.ShowUsers1:
-                    case OrderDictionary.ShowUsers2:
-                        ShowUsers(server);
-                        break;
-                    case OrderDictionary.ReloadAddons:
-                        FunGameSystem.HotReloadServerPlugins();
-                        FunGameSystem.HotReloadWebAPIPlugins();
-                        FunGameSystem.HotReloadGameModuleList();
-                        break;
-                    case OrderDictionary.ReloadPlugins1:
-                        FunGameSystem.HotReloadServerPlugins();
-                        FunGameSystem.HotReloadWebAPIPlugins();
-                        break;
-                    case OrderDictionary.ReloadPlugins2:
-                        FunGameSystem.HotReloadServerPlugins();
-                        FunGameSystem.HotReloadWebAPIPlugins();
-                        break;
-                    case OrderDictionary.ReloadPlugins3:
-                        FunGameSystem.HotReloadServerPlugins();
-                        break;
-                    case OrderDictionary.ReloadPlugins4:
-                        FunGameSystem.HotReloadWebAPIPlugins();
-                        break;
-                    case OrderDictionary.ReloadModules1:
-                        FunGameSystem.HotReloadGameModuleList();
-                        break;
-                    case OrderDictionary.ReloadModules2:
-                        FunGameSystem.HotReloadGameModuleList();
-                        break;
-                    default:
-                        break;
+                    await func.Invoke(args);
+                }
+                else if (FunGameSystem.OrderAliasList.TryGetValue(order, out string? actualOrder) && actualOrder != null)
+                {
+                    if (FunGameSystem.OrderList.TryGetValue(actualOrder, out Func<string[], Task>? func2) && func2 != null)
+                    {
+                        await func2.Invoke(args);
+                    }
                 }
                 // 广播到插件
                 if (FunGameSystem.ServerPluginLoader != null)
                 {
                     foreach (ServerPlugin plugin in FunGameSystem.ServerPluginLoader.Plugins.Values)
                     {
-                        plugin.ProcessInput(order);
+                        plugin.ProcessInput(order, args);
                     }
                 }
                 if (FunGameSystem.WebAPIPluginLoader != null)
                 {
                     foreach (WebAPIPlugin plugin in FunGameSystem.WebAPIPluginLoader.Plugins.Values)
                     {
-                        plugin.ProcessInput(order);
+                        plugin.ProcessInput(order, args);
                     }
                 }
             }
@@ -101,17 +204,23 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public static async Task Kick(IServerModel clientModel)
+        public static string GetOrderAliases(string order)
+        {
+            string[] alias = [.. FunGameSystem.OrderAliasList.Where(kv => kv.Value == order).Select(kv => kv.Key)];
+            return alias.Length > 0 ? $"（替代：{string.Join("，", alias)}）" : "";
+        }
+
+        private static async Task Kick(IServerModel clientModel)
         {
             await clientModel.Kick("您已被服务器管理员踢出此服务器。");
         }
 
-        public static async Task ForceLogOut(IServerModel clientModel)
+        private static async Task ForceLogOut(IServerModel clientModel)
         {
             await clientModel.ForceLogOut("您已被服务器管理员强制下线。");
         }
 
-        public static void ShowClients<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
+        private static void ShowClients<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
         {
             if (server != null)
             {
@@ -124,7 +233,7 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
-        public static void ShowUsers<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
+        private static void ShowUsers<T>(ISocketListener<T>? server) where T : ISocketMessageProcessor
         {
             if (server != null)
             {

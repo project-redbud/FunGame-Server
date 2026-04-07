@@ -30,8 +30,8 @@ else
     Console.Title = Config.ServerName + " - FunGame Server Port: " + Config.ServerPort;
 }
 
-// 初始化命令菜单
-ServerHelper.InitOrderList();
+// 读取启动项
+FunGameSystem.GetStartupArguments(args);
 
 // 初始化SQLHelper
 FunGameSystem.InitSQLHelper();
@@ -86,41 +86,44 @@ FunGameSystem.CloseListener += async () =>
     }
 };
 
+// 初始化命令菜单
+if (SocketListener != null)
+{
+    ConsoleModel.InitOrders(SocketListener);
+}
+else
+{
+    ConsoleModel.InitOrders(WebSocketListener);
+}
 while (Running)
 {
-    string order = Console.ReadLine() ?? "";
+    string input = Console.ReadLine()?.Trim() ?? "";
     ServerHelper.Type();
-    if (order != "" && Running)
+    if (input != "" && Running)
     {
-        order = order.ToLower();
-        if (FunGameSystem.OrderList.TryGetValue(order, out Action<string>? action) && action != null)
+        string[] strings = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (strings.Length > 0)
         {
-            action(order);
-        }
-        switch (order)
-        {
-            case OrderDictionary.Quit:
-            case OrderDictionary.Exit:
-            case OrderDictionary.Close:
-                CloseServer();
-                break;
-            case OrderDictionary.Restart:
-                if (SocketListener is null || WebSocketListener is null)
-                {
-                    StartServerListening();
-                }
-                else ServerHelper.WriteLine("服务器正在运行，请手动结束服务器进程再启动！");
-                break;
-            default:
-                if (SocketListener != null)
-                {
-                    await ConsoleModel.Order(SocketListener, order);
-                }
-                else
-                {
-                    await ConsoleModel.Order(WebSocketListener, order);
-                }
-                break;
+            string order = strings[0].ToLower();
+            string[] inputArgs = [.. strings.Skip(1)];
+            switch (order)
+            {
+                case OrderDictionary.Quit:
+                case OrderDictionary.Exit:
+                case OrderDictionary.Close:
+                    CloseServer();
+                    break;
+                case OrderDictionary.Restart:
+                    if (SocketListener is null || WebSocketListener is null)
+                    {
+                        StartServerListening();
+                    }
+                    else ServerHelper.WriteLine("服务器正在运行，请手动结束服务器进程再启动！");
+                    break;
+                default:
+                    await ConsoleModel.Order(order, inputArgs);
+                    break;
+            }
         }
     }
 }
