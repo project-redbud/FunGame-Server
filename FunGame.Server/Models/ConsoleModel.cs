@@ -49,7 +49,7 @@ namespace Milimoe.FunGame.Server.Model
             };
             FunGameSystem.OrderList[OrderDictionary.Show] = async (args) =>
             {
-                if (args.Length >= 0 && args[0] is string type)
+                if (args.Length > 0 && args[0] is string type)
                 {
                     switch (type)
                     {
@@ -84,7 +84,7 @@ namespace Milimoe.FunGame.Server.Model
             };
             FunGameSystem.OrderList[OrderDictionary.Reload] = async (args) =>
             {
-                if (args.Length >= 0 && args[0] is string type)
+                if (args.Length > 0 && args[0] is string type)
                 {
                     switch (type)
                     {
@@ -119,7 +119,7 @@ namespace Milimoe.FunGame.Server.Model
             };
             FunGameSystem.OrderList[OrderDictionary.Help] = async (args) =>
             {
-                ServerHelper.WriteLine($"可用指令：{string.Join("，", FunGameSystem.OrderAliasList.Keys.Select(c => $"{c}{GetOrderAliases(c)}"))}");
+                ServerHelper.WriteLine($"可用指令：{string.Join("，", FunGameSystem.OrderList.Keys.Select(c => $"{c}{GetOrderAliases(c)}"))}");
             };
             FunGameSystem.OrderList[OrderDictionary.Ban] = async (args) =>
             {

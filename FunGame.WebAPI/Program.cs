@@ -134,6 +134,7 @@ try
         {
             if (Config.AllowAnyOrigin)
             {
+                ServerHelper.WriteLine($"已允许所有来源跨域访问", InvokeMessageType.Warning);
                 policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
             }
             else
