@@ -52,8 +52,8 @@ try
         ServerHelper.GetServerSettings();
     }
 
-    // 初始化命令菜单
-    ServerHelper.InitOrderList();
+    // 读取启动项
+    FunGameSystem.GetStartupArguments(args);
 
     // 初始化 SQLHelper
     FunGameSystem.InitSQLHelper();
@@ -132,7 +132,15 @@ try
     {
         options.AddPolicy("AllowSpecificOrigin", policy =>
         {
-            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            if (Config.AllowAnyOrigin)
+            {
+                policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            }
+            else
+            {
+                string[] allowedOrigins = builder.Configuration.GetSection("AllowOrigins").Get<string[]>() ?? ["http://localhost:12099", "https://localhost:12099"];
+                policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+            }
         });
     });
     // 添加 JWT 认证
@@ -279,30 +287,33 @@ catch (Exception e)
 
 async Task GetConsoleOrder()
 {
+    // 初始化命令菜单
+    ConsoleModel.InitOrders(listener);
     while (true)
     {
-        string order = await Console.In.ReadLineAsync() ?? "";
+        string input = (await Console.In.ReadLineAsync())?.Trim() ?? "";
         ServerHelper.Type();
-        if (order != "")
+        if (input != "")
         {
-            order = order.ToLower();
-            if (FunGameSystem.OrderList.TryGetValue(order, out Action<string>? action) && action != null)
+            string[] strings = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (strings.Length > 0)
             {
-                action(order);
-            }
-            switch (order)
-            {
-                case OrderDictionary.Quit:
-                case OrderDictionary.Exit:
-                case OrderDictionary.Close:
-                    CloseServer();
-                    break;
-                case OrderDictionary.Restart:
-                    ServerHelper.WriteLine("服务器正在运行，请手动结束服务器进程再启动！");
-                    break;
-                default:
-                    await ConsoleModel.Order(listener, order);
-                    break;
+                string order = strings[0].ToLower();
+                string[] args = [.. strings.Skip(1)];
+                switch (order)
+                {
+                    case OrderDictionary.Quit:
+                    case OrderDictionary.Exit:
+                    case OrderDictionary.Close:
+                        CloseServer();
+                        break;
+                    case OrderDictionary.Restart:
+                        ServerHelper.WriteLine("服务器正在运行，请手动结束服务器进程再启动！");
+                        break;
+                    default:
+                        await ConsoleModel.Order(order, args);
+                        break;
+                }
             }
         }
     }
@@ -360,8 +371,8 @@ async Task WebSocketConnectionHandler(HttpContext context)
             {
                 Config.DecrementConnectingPlayerCount();
                 ConnectEventArgs eventArgs = new(clientip, Config.ServerPort, ConnectResult.CanNotConnect);
-                FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(context, eventArgs);
-                FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(context, eventArgs);
+                FunGameSystem.ServerPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
+                FunGameSystem.WebAPIPluginLoader?.OnAfterConnectEvent(socket, eventArgs);
                 ServerHelper.WriteLine(ServerHelper.MakeClientName(clientip) + " 中断连接！", InvokeMessageType.Core);
                 ServerHelper.Error(e);
             }

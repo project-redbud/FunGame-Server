@@ -20,7 +20,12 @@ namespace Milimoe.FunGame.Server.Services
         /// <summary>
         /// 服务器指令列表
         /// </summary>
-        public static Dictionary<string, Action<string>> OrderList { get; } = [];
+        public static Dictionary<string, Func<string[], Task>> OrderList { get; } = [];
+
+        /// <summary>
+        /// 服务器指令的别名列表
+        /// </summary>
+        public static Dictionary<string, string> OrderAliasList { get; } = [];
 
         /// <summary>
         /// 在线房间列表
@@ -71,6 +76,31 @@ namespace Milimoe.FunGame.Server.Services
         /// API Secret 文件名
         /// </summary>
         public const string APISecretFileName = ".apisecret";
+
+        /// <summary>
+        /// 读取启动项
+        /// </summary>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        public static void GetStartupArguments(string[] args)
+        {
+            foreach (string arg in args)
+            {
+                switch (arg)
+                {
+                    case "--debug":
+                    case "-d":
+                        FunGameInfo.FunGame_DebugMode = true;
+                        break;
+                    case "--allowanyorigin":
+                    case "-aao":
+                        Config.AllowAnyOrigin = true;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
 
         /// <summary>
         /// 初始化数据库连接器
