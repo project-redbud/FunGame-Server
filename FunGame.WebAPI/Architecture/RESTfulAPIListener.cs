@@ -1,5 +1,7 @@
-﻿using Milimoe.FunGame.Core.Api.Utility;
+﻿using System.Collections.Concurrent;
+using Milimoe.FunGame.Core.Api.Utility;
 using Milimoe.FunGame.Core.Interface.Base;
+using Milimoe.FunGame.Core.Library.Common.Addon;
 
 namespace Milimoe.FunGame.WebAPI.Architecture
 {
@@ -12,6 +14,8 @@ namespace Milimoe.FunGame.WebAPI.Architecture
         public ConcurrentModelList<IServerModel> ClientList { get; } = [];
 
         public ConcurrentModelList<IServerModel> UserList { get; } = [];
+
+        public ConcurrentDictionary<long, GameModuleServer> NowGamingServers { get; } = [];
 
         public List<string> BannedList { get; } = [];
 

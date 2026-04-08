@@ -661,12 +661,14 @@ namespace Milimoe.FunGame.Server.Controller
                     room.RoomState = RoomState.Gaming;
                     Client.NowGamingServer = FunGameSystem.GameModuleLoader.GetServerMode(room.GameModule);
                     Client.User.OnlineState = OnlineState.Gaming;
+                    Client.Listener.NowGamingServers[Client.User.Id] = Client.NowGamingServer;
                     Dictionary<string, IServerModel> all = Client.Listener.UserList.Cast<IServerModel>().ToDictionary(k => k.User.Username, v => v);
                     // 给其他玩家赋值模组服务器
                     foreach (IServerModel model in all.Values.Where(s => s.User.Username != Client.User.Username))
                     {
                         model.NowGamingServer = Client.NowGamingServer;
                         model.User.OnlineState = OnlineState.Gaming;
+                        Client.Listener.NowGamingServers[model.User.Id] = Client.NowGamingServer;
                     }
                     GamingObject obj = new(room, users, Client, all);
                     if (Client.NowGamingServer.StartServer(obj))

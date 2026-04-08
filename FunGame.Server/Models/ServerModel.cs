@@ -33,6 +33,7 @@ namespace Milimoe.FunGame.Server.Model
         public MailSender? MailSender => _mailer;
         public bool IsDebugMode { get; }
         public GameModuleServer? NowGamingServer { get; set; } = null;
+        public GameModuleServer? NowAnonymousServer { get; set; } = null;
 
         /**
          * protected
@@ -85,15 +86,12 @@ namespace Milimoe.FunGame.Server.Model
 
                 if (eventArgs.Cancel)
                 {
-                    ServerHelper.WriteLine($"{SocketSet.GetTypeString(SocketMessageType.EndGame)} 请求已取消。", InvokeMessageType.Core, LogLevel.Warning);
+                    ServerHelper.WriteLine($"{SocketSet.GetTypeString(SocketMessageType.EndGame)} 请求已取消。{(eventArgs.EventMsg != "" ? $"原因：{eventArgs.EventMsg}" : "")}", InvokeMessageType.Core, LogLevel.Warning);
                 }
                 else
                 {
-                    if (NowGamingServer != null && NowGamingServer.IsAnonymous)
-                    {
-                        NowGamingServer.CloseAnonymousServer(this);
-                    }
                     NowGamingServer = null;
+                    Listener.NowGamingServers.Remove(User.Id, out _);
                     User.OnlineState = OnlineState.InRoom;
                     if (User.Id == InRoom.RoomMaster.Id) InRoom.RoomState = RoomState.Created;
                 }
@@ -103,6 +101,11 @@ namespace Milimoe.FunGame.Server.Model
                 FunGameSystem.WebAPIPluginLoader?.OnAfterEndGameEvent(DataRequestController, eventArgs);
 
                 return !eventArgs.Cancel;
+            }
+
+            if (type == SocketMessageType.ReconnectToGame)
+            {
+                return await CheckGamingServerReconnect();
             }
 
             if (type == SocketMessageType.AnonymousGameServer)
@@ -259,17 +262,26 @@ namespace Milimoe.FunGame.Server.Model
         protected async Task<bool> AnonymousGameServerHandler(SocketObject obj)
         {
             string serverName = "";
+            bool isDisconnect = false;
             Dictionary<string, object> data = [];
             Dictionary<string, object> result = [];
             if (obj.Parameters.Length > 0) serverName = obj.GetParam<string>(0) ?? "";
             if (obj.Parameters.Length > 1) data = obj.GetParam<Dictionary<string, object>>(1) ?? [];
+            if (obj.Parameters.Length > 2) isDisconnect = obj.GetParam<bool>(2);
 
             bool willSend = false;
-            if (NowGamingServer != null)
+            if (NowAnonymousServer != null)
             {
                 try
                 {
-                    result = await NowGamingServer.AnonymousGameServerHandler(this, data);
+                    if (isDisconnect)
+                    {
+                        NowAnonymousServer.CloseAnonymousServer(this);
+                    }
+                    else
+                    {
+                        result = await NowAnonymousServer.AnonymousGameServerHandler(this, data);
+                    }
                     willSend = true;
                 }
                 catch (Exception e)
@@ -278,7 +290,7 @@ namespace Milimoe.FunGame.Server.Model
                     return await Send(SocketMessageType.AnonymousGameServer, result);
                 }
             }
-            else
+            else if (!isDisconnect)
             {
                 // 建立连接
                 if (FunGameSystem.GameModuleLoader != null && FunGameSystem.GameModuleLoader.ModuleServers.ContainsKey(serverName))
@@ -286,10 +298,10 @@ namespace Milimoe.FunGame.Server.Model
                     GameModuleServer mod = FunGameSystem.GameModuleLoader.GetServerMode(serverName);
                     if (mod.StartAnonymousServer(this, data))
                     {
-                        NowGamingServer = mod;
+                        NowAnonymousServer = mod;
                         try
                         {
-                            result = await NowGamingServer.AnonymousGameServerHandler(this, data);
+                            result = await NowAnonymousServer.AnonymousGameServerHandler(this, data);
                             willSend = true;
                         }
                         catch (Exception e)
@@ -432,7 +444,7 @@ namespace Milimoe.FunGame.Server.Model
             // 不是房主直接退出房间
             else
             {
-                this.InRoom = General.HallInstance;
+                InRoom = General.HallInstance;
                 await NotifyQuitRoom(Room);
                 result = true;
             }
@@ -595,6 +607,43 @@ namespace Milimoe.FunGame.Server.Model
                 ServerHelper.Error(e);
                 return false;
             }
+        }
+
+        protected async Task<bool> CheckGamingServerReconnect()
+        {
+            bool sendResult = false;
+
+            if (Listener.NowGamingServers.TryGetValue(User.Id, out GameModuleServer? value) && value != null)
+            {
+                GamingObject? obj = value.GetGamingObjectOfUser(User.Id);
+
+                if (obj != null && obj.Running && value.GetRoomOfUser(User.Id, obj) is Room room)
+                {
+                    Dictionary<string, object> data = await DataRequestController.GetResultData(DataRequestType.Main_IntoRoom, new()
+                    {
+                        { "roomid", room.Roomid }
+                    });
+                    if (data.TryGetValue("result", out object? value2) && value2 is bool result && result)
+                    {
+                        FunGameSystem.RoomList.CancelReady(room.Roomid, User);
+                        obj.UserReconnect(User);
+                        sendResult = await Send(SocketMessageType.StartGame, room, obj.Users);
+                        if (sendResult)
+                        {
+                            NowGamingServer = value;
+                            User.OnlineState = OnlineState.Gaming;
+                        }
+                    }
+                }
+            }
+
+            if (!sendResult)
+            {
+                Listener.NowGamingServers.Remove(User.Id, out _);
+                ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(AnonymousGameServerHandler) + ": " + sendResult, InvokeMessageType.Error);
+            }
+
+            return sendResult;
         }
 
         protected async Task CreateStreamReader()
