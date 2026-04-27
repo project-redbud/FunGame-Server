@@ -75,7 +75,7 @@ namespace Milimoe.FunGame.Server.Model
 
             if (type == SocketMessageType.HeartBeat)
             {
-                return await HeartBeat();
+                return await HeartBeat(obj);
             }
 
             if (type == SocketMessageType.EndGame)
@@ -139,9 +139,10 @@ namespace Milimoe.FunGame.Server.Model
             return await Send(type, msg);
         }
 
-        public async Task<bool> HeartBeat()
+        public async Task<bool> HeartBeat(SocketObject obj)
         {
-            bool result = await Send(SocketMessageType.HeartBeat);
+            string probeId = obj.GetParam<string>(0) ?? "";
+            bool result = await Send(SocketMessageType.HeartBeat, probeId);
             if (!result)
             {
                 ServerHelper.WriteLine("[ " + GetClientName() + " ] " + nameof(HeartBeat) + ": " + result, InvokeMessageType.Error);
@@ -346,7 +347,7 @@ namespace Milimoe.FunGame.Server.Model
                         case SocketMessageType.Chat:
                             return true;
                     }
-                    if (objs.Length > 0 && objs[0] is string str && str != "")
+                    if (type != SocketMessageType.HeartBeat && objs.Length > 0 && objs[0] is string str && str != "")
                     {
                         ServerHelper.WriteLine("[" + SocketSet.GetTypeString(type) + "] " + GetClientName() + " <- " + str, InvokeMessageType.Core);
                     }
