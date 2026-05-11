@@ -61,6 +61,11 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         public override DataSet DataSet => _dataSet;
 
         /// <summary>
+        /// 最后一次执行命令时发生的异常
+        /// </summary>
+        public override Exception? LastException => _lastException;
+
+        /// <summary>
         /// SQL 语句参数
         /// </summary>
         public override Dictionary<string, object> Parameters { get; } = [];
@@ -73,6 +78,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
         private readonly SQLServerInfo? _serverInfo;
         private int _affectedRows = 0;
         private long _lastInsertId = 0;
+        private Exception? _lastException = null;
 
         public MySQLHelper(string script = "", CommandType type = CommandType.Text)
         {
@@ -167,6 +173,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             }
             catch (Exception e)
             {
+                _lastException = e;
                 if (localTransaction) Rollback();
                 _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
@@ -231,6 +238,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             }
             catch (Exception e)
             {
+                _lastException = e;
                 if (localTransaction) Rollback();
                 _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
@@ -295,6 +303,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             }
             catch (Exception e)
             {
+                _lastException = e;
                 if (localTransaction) Rollback();
                 _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
@@ -359,6 +368,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             }
             catch (Exception e)
             {
+                _lastException = e;
                 if (localTransaction) Rollback();
                 _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
@@ -395,6 +405,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             }
             catch (Exception e)
             {
+                _lastException = e;
                 _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
             }
@@ -416,6 +427,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             }
             catch (Exception e)
             {
+                _lastException = e;
                 _result = SQLResult.SQLError;
                 ServerHelper.Error(e);
             }
@@ -438,6 +450,7 @@ namespace Milimoe.FunGame.Server.Services.DataUtility
             }
             catch (Exception e)
             {
+                _lastException = e;
                 ServerHelper.Error(e);
                 _result = SQLResult.SQLError;
                 return false;
