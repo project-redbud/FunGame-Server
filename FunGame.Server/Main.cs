@@ -101,8 +101,8 @@ while (Running)
     ServerHelper.Type();
     if (input != "" && Running)
     {
-        string[] strings = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (strings.Length > 0)
+        List<string> strings = ConsoleModel.ParseCommandLine(input);
+        if (strings.Count > 0)
         {
             string order = strings[0].ToLower();
             string[] inputArgs = [.. strings.Skip(1)];

@@ -296,8 +296,8 @@ async Task GetConsoleOrder()
         ServerHelper.Type();
         if (input != "")
         {
-            string[] strings = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (strings.Length > 0)
+            List<string> strings = ConsoleModel.ParseCommandLine(input);
+            if (strings.Count > 0)
             {
                 string order = strings[0].ToLower();
                 string[] args = [.. strings.Skip(1)];

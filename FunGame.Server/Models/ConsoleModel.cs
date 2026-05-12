@@ -204,6 +204,74 @@ namespace Milimoe.FunGame.Server.Model
             }
         }
 
+        public static List<string> ParseCommandLine(string input)
+        {
+            ReadOnlySpan<char> inputSpan = input.AsSpan();
+            List<string> strings = [];
+            StringBuilder current = new();
+            bool inQuotes = false;
+
+            for (int i = 0; i < inputSpan.Length; i++)
+            {
+                char c = inputSpan[i];
+
+                if (inQuotes)
+                {
+                    if (c == '"')
+                    {
+                        // 检查是否是转义引号 \"
+                        if (i + 1 < inputSpan.Length && inputSpan[i + 1] == '"')
+                        {
+                            current.Append('"');
+                            // 跳过下一个引号
+                            i++;
+                        }
+                        else
+                        {
+                            // 结束引号
+                            inQuotes = false;
+                        }
+                    }
+                    else if (c == '\\' && i + 1 < inputSpan.Length && inputSpan[i + 1] == '"')
+                    {
+                        current.Append('"');
+                        i++;
+                    }
+                    else
+                    {
+                        current.Append(c);
+                    }
+                }
+                else
+                {
+                    if (c == '"')
+                    {
+                        inQuotes = true;
+                    }
+                    else if (char.IsWhiteSpace(c))
+                    {
+                        if (current.Length > 0)
+                        {
+                            strings.Add(current.ToString());
+                            current.Clear();
+                        }
+                    }
+                    else
+                    {
+                        current.Append(c);
+                    }
+                }
+            }
+
+            // 收尾最后一个参数
+            if (current.Length > 0)
+            {
+                strings.Add(current.ToString());
+            }
+
+            return strings;
+        }
+
         public static string GetOrderAliases(string order)
         {
             string[] alias = [.. FunGameSystem.OrderAliasList.Where(kv => kv.Value == order).Select(kv => kv.Key)];
